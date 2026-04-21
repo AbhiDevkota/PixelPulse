@@ -49,8 +49,35 @@ target_compile_features(CoreZone PRIVATE cxx_std_20)
 
 target_link_libraries(CoreZone PRIVATE SFML::Graphics SFML::Window SFML::System SFML::Audio SFML::Network)
 
+# -----------------------
+# Copy assets
+# -----------------------
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets")
     file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/assets" DESTINATION "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 else()
     message(WARNING "assets folder not found")
+endif()
+
+# Copy fonts next to executable after every build
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts")
+    add_custom_command(TARGET CoreZone POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/fonts"
+        "$<TARGET_FILE_DIR:CoreZone>/fonts"
+        COMMENT "Copying fonts to output directory"
+    )
+else()
+    message(WARNING "fonts folder not found at ${CMAKE_CURRENT_SOURCE_DIR}/fonts")
+endif()
+
+# Copy audios next to executable after every build
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/audios")
+    add_custom_command(TARGET CoreZone POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/audios"
+        "$<TARGET_FILE_DIR:CoreZone>/audios"
+        COMMENT "Copying audios to output directory"
+    )
+else()
+    message(WARNING "audios folder not found at ${CMAKE_CURRENT_SOURCE_DIR}/audios")
 endif()
