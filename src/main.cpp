@@ -5,7 +5,7 @@ int main()
 {
 	// Use correct SFML namespace (lowercase 'sf') and proper VideoMode ctor
     // construct VideoMode from an initializer list for Vector2u
-	sf::Window window(sf::VideoMode({800, 600}), "My window");
+	sf::Window window(sf::VideoMode::getDesktopMode(), "Core Zone", sf::State::Fullscreen);
 	while (window.isOpen())
 	{
 		// pollEvent returns std::optional<sf::Event> in recent SFML versions
