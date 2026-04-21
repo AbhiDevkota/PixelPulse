@@ -2,6 +2,7 @@
 #include <SFML/System.hpp>
 #include <SFML/Audio.hpp>
 #include <algorithm>
+#include <iostream>
 
 namespace corezone {
 
@@ -74,11 +75,12 @@ HomeScreen::HomeScreen(sf::RenderWindow& window, const std::string& fontPath,
 
 void HomeScreen::initialize() {
     // Load font
-    if (!font_.openFromFile(fontPath_)) {
-        // Try default path if file not found
-        if (!font_.openFromFile("fonts/regular.ttf")) {
-            // If still not found, continue (will use default rendering)
-        }
+    bool fontLoaded = font_.openFromFile(fontPath_);
+    if (!fontLoaded) {
+        fontLoaded = font_.openFromFile("fonts/regular.ttf");
+    }
+    if (!fontLoaded) {
+        std::cerr << "Warning: Font not found! Using default path.\n";
     }
 
     setupMenu();
@@ -143,36 +145,33 @@ void HomeScreen::draw() {
 void HomeScreen::renderBackground() {
     auto windowSize = window_.getSize();
 
-    // Draw grid
-    sf::RectangleShape grid({static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)});
-    grid.setPosition({0.0f, 0.0f});
-    grid.setFillColor(sf::Color(
-        1, 1, 1,
-        static_cast<unsigned char>(Config::GRID_STRENGTH * 255))
-    );
+    // Dark background with very faint grid fill
+    sf::RectangleShape grid({ static_cast<float>(windowSize.x), static_cast<float>(windowSize.y) });
+    grid.setPosition({ 0.0f, 0.0f });
+    grid.setFillColor(sf::Color(10, 10, 20, 255));   // dark retro background
     window_.draw(grid);
 
-    // Vertical grid lines
+    // Vertical grid lines - now visible faint white
     for (float x = 0; x < windowSize.x; x += GRID_SPACING) {
-        sf::RectangleShape line({1.0f, static_cast<float>(windowSize.y)});
-        line.setPosition({x, 0.0f});
-        line.setFillColor(sf::Color(1, 1, 1, 1));
+        sf::RectangleShape line({ 1.0f, static_cast<float>(windowSize.y) });
+        line.setPosition({ x, 0.0f });
+        line.setFillColor(sf::Color(255, 255, 255, 35));   // fixed!
         window_.draw(line);
     }
 
-    // Horizontal grid lines
+    // Horizontal grid lines - faint white
     for (float y = 0; y < windowSize.y; y += GRID_SPACING) {
-        sf::RectangleShape line({static_cast<float>(windowSize.x), 1.0f});
-        line.setPosition({0.0f, y});
-        line.setFillColor(sf::Color(1, 1, 1, 1));
+        sf::RectangleShape line({ static_cast<float>(windowSize.x), 1.0f });
+        line.setPosition({ 0.0f, y });
+        line.setFillColor(sf::Color(255, 255, 255, 35));   // fixed!
         window_.draw(line);
     }
 
-    // Scanline effect
+    // Scanline effect (CRT look)
     for (float y = 0; y < windowSize.y; y += 2) {
-        sf::RectangleShape scanline({static_cast<float>(windowSize.x), 2.0f});
-        scanline.setPosition({0.0f, y});
-        scanline.setFillColor(sf::Color(0, 0, 0, 13));
+        sf::RectangleShape scanline({ static_cast<float>(windowSize.x), 2.0f });
+        scanline.setPosition({ 0.0f, y });
+        scanline.setFillColor(sf::Color(0, 0, 0, 20));
         window_.draw(scanline);
     }
 }
