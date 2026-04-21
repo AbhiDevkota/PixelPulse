@@ -179,7 +179,7 @@ void HomeScreen::renderBackground() {
 
 void HomeScreen::renderIntro() {
     if (introVisible_) {
-        sf::Text text("", font_);
+        sf::Text text(font_, "");
         text.setCharacterSize(14);
         text.setLetterSpacing(2.0f);
         text.setFillColor(sf::Color(255, 255, 255, static_cast<unsigned char>(introOpacity_ * 255)));
@@ -226,7 +226,7 @@ void HomeScreen::renderFlash() {
 //}
 
 void HomeScreen::renderTitle() {
-    sf::Text title("CORE ZONE", font_);
+    sf::Text title(font_, "CORE ZONE");
     title.setCharacterSize(38);
     title.setLetterSpacing(0.5f);
     title.setFillColor(sf::Color(255, 255, 255));
@@ -243,7 +243,7 @@ void HomeScreen::renderTitle() {
 void HomeScreen::renderMenu() {
     const auto& items = menu_->getItems();
     for (size_t i = 0; i < items.size(); ++i) {
-        sf::Text text("", font_);
+        sf::Text text(font_, "");
         text.setCharacterSize(20);
         text.setLetterSpacing(3.0f);
         text.setFillColor(sf::Color(255, 255, 255));
@@ -279,7 +279,7 @@ void HomeScreen::renderMenu() {
 }
 
 void HomeScreen::renderHint() {
-    sf::Text hint("SELECT GAME TO START", font_);
+    sf::Text hint(font_, "SELECT GAME TO START");
     hint.setCharacterSize(11);
     hint.setLetterSpacing(1.0f);
     hint.setFillColor(sf::Color(80, 80, 80));
