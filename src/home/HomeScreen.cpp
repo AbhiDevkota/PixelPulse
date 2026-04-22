@@ -306,12 +306,12 @@ namespace corezone {
         window_.draw(title);
 
         //Underline on the COREZONE
-        //float boxW = bounds.size.x + 40.0f;
-        //float boxH = 4.0f;
-        //sf::RectangleShape underline({ boxW, boxH });
-        //underline.setPosition({ cx - 20.0f, 60.0f + bounds.size.y + 10.0f });
-        //underline.setFillColor(sf::Color(255, 255, 255, alpha / 2));
-        //window_.draw(underline);
+        float boxW = bounds.size.x + 40.0f;
+        float boxH = 4.0f;
+        sf::RectangleShape underline({ boxW, boxH });
+        underline.setPosition({ cx - 20.0f, 356.0f + bounds.size.y + 10.0f });
+        underline.setFillColor(sf::Color(255, 255, 255, alpha / 2));
+        window_.draw(underline);
     }
 
     void HomeScreen::renderMenu() {
