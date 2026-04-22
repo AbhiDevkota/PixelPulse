@@ -1,361 +1,236 @@
 #include "HomeScreen.h"
-#include <SFML/System.hpp>
-#include <SFML/Audio.hpp>
-#include <algorithm>
 #include <iostream>
+#include <cmath>
 
 namespace corezone {
 
-// --- Config class ---
-
-const float Config::BG_COLOR = 0.0196f;        
-const float Config::GRID_STRENGTH = 0.011f;
-const int Config::INTRO_DURATION_MS = 5200;
-const std::string Config::INTRO_INITIAL_TEXT = "Developed by GROUP X";
-
-
-Menu::Menu() {              //<-----Menu Class----->
-	//Menu Items
-	addItem("UDD JETHA UDD");
-	addItem("SNAKE");
-	addItem("CHESS");
-	addItem("CAR CHASE");
-}
-
-void Menu::addItem(const std::string& name) {
-	items_.push_back(name);
-}
-
-void Menu::selectNext() {
-	selectedIndex_ = (selectedIndex_ + 1) % static_cast<int>(items_.size());
-}
-
-void Menu::selectPrev() {
-	selectedIndex_ = (selectedIndex_ - 1 + static_cast<int>(items_.size())) % static_cast<int>(items_.size());
-}
-
-const std::string& Menu::getSelectedName() const {
-	return items_[selectedIndex_];
-}
-
-sf::FloatRect Menu::getBounds() const {
-	return sf::FloatRect({0.0f, yPos_}, {480.0f, static_cast<float>(itemHeight_)});
-}
-
-// --- Effects class ---
-
-void Effects::showIntro() {
-    introVisible_ = true;
-}
-
-void Effects::hideIntro() {
-    introVisible_ = false;
-}
-
-void Effects::triggerFlash() {
-    flashActive_ = true;
-}
-
-bool Effects::isIntroVisible() const {
-    return introVisible_;
-}
-
-// --- HomeScreen class ---
-
-HomeScreen::HomeScreen(sf::RenderWindow& window, const std::string& fontPath,
-                       const std::string& homeMusicPath, const std::string& selectSoundPath)
-    : window_(window)
-    , fontPath_(fontPath)
-    , homeMusicPath_(homeMusicPath)
-    , selectSoundPath_(selectSoundPath)
-{
-    menu_ = std::make_unique<Menu>();
-    effects_ = std::make_unique<Effects>();
-}
-
-void HomeScreen::initialize() {
-    // Load font
-    bool fontLoaded = font_.openFromFile(fontPath_);
-    if (!fontLoaded) {
-        fontLoaded = font_.openFromFile("fonts/regular.ttf");
-    }
-    if (!fontLoaded) {
-        std::cerr << "Warning: Font not found! Using default path.\n";
+    Menu::Menu() {
+        items_ = { "UDD JETHA UDD", "SNAKE", "CHESS", "CAR CHASE" };
     }
 
-    setupMenu();
-}
-
-void HomeScreen::setupMenu() {
-    // Menu items are already added in Menu constructor
-    // Calculate positions
-    itemHeight_ = 40;
-    yPos_ = window_.getSize().y / 2.0f - (menu_->getItems().size() * itemHeight_) / 2.0f;
-    menu_->setYPos(yPos_);
-    menu_->setItemHeight(itemHeight_);
-}
-
-void HomeScreen::update(float deltaTime) {
-    // Animate intro if visible
-    animateIntro(deltaTime);
-
-    // Check if intro should be hidden
-    if (introFinished_ && introOpacity_ <= 0.0f) {
-        introVisible_ = false;
+    void Menu::selectNext() {
+        selectedIndex_ = (selectedIndex_ + 1) % static_cast<int>(items_.size());
     }
-}
 
-void HomeScreen::animateIntro(float deltaTime) {
-    if (!introVisible_) return;
+    void Menu::selectPrev() {
+        selectedIndex_ = (selectedIndex_ - 1 + static_cast<int>(items_.size())) % static_cast<int>(items_.size());
+    }
 
-    animationTimer_ += deltaTime;
+    const std::string& Menu::getSelected() const {
+        return items_[selectedIndex_];
+    }
 
-    // Fade out intro
-    if (animationTimer_ > 2.0f) {
-        introOpacity_ = 1.0f - (animationTimer_ - 2.0f) / 3.0f;
-        if (introOpacity_ <= 0.0f) {
-            introOpacity_ = 0.0f;
-            introFinished_ = true;
+    HomeScreen::HomeScreen(sf::RenderWindow& window, const std::string& fontPath)
+        : window_(window)
+    {
+        // Try the path passed from main.cpp
+        if (font_.openFromFile(fontPath)) {
+            fontLoaded_ = true;
+            std::cout << "✓ Font loaded successfully: " << fontPath << std::endl;
+        }
+        // Extra fallback for regular.ttf
+        else if (font_.openFromFile("fonts/regular.ttf")) {
+            fontLoaded_ = true;
+            std::cout << "✓ Font loaded from fonts/regular.ttf" << std::endl;
+        }
+        else {
+            std::cerr << "✗ FONT NOT FOUND!\n"
+                << "   Your font file is named regular.ttf\n"
+                << "   Make sure it is in fonts/ folder\n" << std::endl;
         }
     }
-}
 
-void HomeScreen::draw() {
-    // Draw background
-    renderBackground();
-
-    // Draw intro if visible
-    if (introVisible_) {
-        renderIntro();
+    void HomeScreen::initialize() {
+        // Nothing extra needed
     }
 
-    // Draw flash effect
-    renderFlash();
+    void HomeScreen::update(float deltaTime) {
+        if (introVisible_) {
+            float time = introClock_.getElapsedTime().asSeconds();
+            if (time > 2.0f && introText_ == "Developed by GROUP X") {
+                introText_ = "Presenting You";
+            }
+            if (time > 4.2f) {
+                introOpacity_ = std::max(0.0f, introOpacity_ - deltaTime * 180.0f);
+                if (introOpacity_ <= 0.0f) introVisible_ = false;
+            }
+        }
 
-    // Draw title
-    renderTitle();
-
-    // Draw menu
-    renderMenu();
-
-    // Draw hint
-    renderHint();
-}
-
-void HomeScreen::renderBackground() {
-    auto windowSize = window_.getSize();
-
-    // Dark background with very faint grid fill
-    sf::RectangleShape grid({ static_cast<float>(windowSize.x), static_cast<float>(windowSize.y) });
-    grid.setPosition({ 0.0f, 0.0f });
-    grid.setFillColor(sf::Color(10, 10, 20, 255));   // dark retro background
-    window_.draw(grid);
-
-    // Vertical grid lines - now visible faint white
-    for (float x = 0; x < windowSize.x; x += GRID_SPACING) {
-        sf::RectangleShape line({ 1.0f, static_cast<float>(windowSize.y) });
-        line.setPosition({ x, 0.0f });
-        line.setFillColor(sf::Color(255, 255, 255, 35));   // fixed!
-        window_.draw(line);
+        if (loadingMode_) {
+            if (loadingClock_.getElapsedTime().asSeconds() > 0.4f) {
+                dotCount_ = (dotCount_ + 1) % 4;
+                loadingClock_.restart();
+            }
+        }
     }
 
-    // Horizontal grid lines - faint white
-    for (float y = 0; y < windowSize.y; y += GRID_SPACING) {
-        sf::RectangleShape line({ static_cast<float>(windowSize.x), 1.0f });
-        line.setPosition({ 0.0f, y });
-        line.setFillColor(sf::Color(255, 255, 255, 35));   // fixed!
-        window_.draw(line);
+    void HomeScreen::handleInput(const sf::Event& event) {
+        if (event.is<sf::Event::KeyPressed>()) {
+            const auto* key = event.getIf<sf::Event::KeyPressed>();
+            switch (key->code) {
+            case sf::Keyboard::Key::Down: case sf::Keyboard::Key::S: menu_.selectNext(); break;
+            case sf::Keyboard::Key::Up:   case sf::Keyboard::Key::W: menu_.selectPrev(); break;
+            case sf::Keyboard::Key::Enter: case sf::Keyboard::Key::Space: startLoading(); break;
+            case sf::Keyboard::Key::Escape: menu_.selectPrev(); break;
+            default: break;
+            }
+        }
     }
 
-    // Scanline effect (CRT look)
-    for (float y = 0; y < windowSize.y; y += 2) {
-        sf::RectangleShape scanline({ static_cast<float>(windowSize.x), 2.0f });
-        scanline.setPosition({ 0.0f, y });
-        scanline.setFillColor(sf::Color(0, 0, 0, 20));
-        window_.draw(scanline);
-    }
-}
+    void HomeScreen::draw() {
+        renderBackground();
+        if (introVisible_) renderIntro();
+        if (flashActive_) renderFlash();
 
-void HomeScreen::renderIntro() {
-    if (introVisible_) {
-        sf::Text text(font_, "");
-        text.setCharacterSize(14);
+        renderTitle();
+        renderMenu();
+        renderHint();
+        renderControls();
+        renderCredit();
+    }
+
+    void HomeScreen::renderBackground() {
+        auto size = window_.getSize();
+        sf::RectangleShape bg({ static_cast<float>(size.x), static_cast<float>(size.y) });
+        bg.setFillColor(sf::Color(10, 10, 10));
+        window_.draw(bg);
+
+        // Grid
+        for (float x = 0; x < static_cast<float>(size.x); x += 28.0f) {
+            sf::RectangleShape line({ 1.0f, static_cast<float>(size.y) });
+            line.setPosition({ x, 0.0f });
+            line.setFillColor(sf::Color(255, 255, 255, 28));
+            window_.draw(line);
+        }
+        for (float y = 0; y < static_cast<float>(size.y); y += 28.0f) {
+            sf::RectangleShape line({ static_cast<float>(size.x), 1.0f });
+            line.setPosition({ 0.0f, y });
+            line.setFillColor(sf::Color(255, 255, 255, 28));
+            window_.draw(line);
+        }
+
+        // Scanlines
+        for (float y = 0; y < static_cast<float>(size.y); y += 3.0f) {
+            sf::RectangleShape line({ static_cast<float>(size.x), 1.0f });
+            line.setPosition({ 0.0f, y });
+            line.setFillColor(sf::Color(0, 0, 0, 45));
+            window_.draw(line);
+        }
+    }
+
+    void HomeScreen::renderIntro() {
+        if (!fontLoaded_) return;
+        sf::Text text(font_, introText_);
+        text.setCharacterSize(22);
         text.setLetterSpacing(2.0f);
-        text.setFillColor(sf::Color(255, 255, 255, static_cast<unsigned char>(introOpacity_ * 255)));
-        text.setString(Config::INTRO_INITIAL_TEXT);
-        sf::FloatRect textBounds = text.getLocalBounds();
-        text.setPosition({
-            (window_.getSize().x - textBounds.size.x) / 2.0f,
-            (window_.getSize().y - textBounds.size.y) / 2.0f + 30.0f
-        });
+        text.setFillColor(sf::Color(255, 255, 255, static_cast<unsigned char>(introOpacity_)));
 
+        auto bounds = text.getLocalBounds();
+        float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
+        float y = (static_cast<float>(window_.getSize().y) - bounds.size.y) / 2.0f;
+
+        text.setPosition({ x, y });
         window_.draw(text);
     }
-}
 
-void HomeScreen::renderFlash() {
-    // Flash effect rendering (currently disabled)
-    // Can be implemented later if needed
-}
+    void HomeScreen::renderFlash() {
+        sf::RectangleShape flash({ static_cast<float>(window_.getSize().x),
+                                  static_cast<float>(window_.getSize().y) });
+        flash.setFillColor(sf::Color(255, 255, 255, 200));
+        window_.draw(flash);
+        flashActive_ = false;
+    }
 
-//void HomeScreen::renderFlash() {                              //(Lastai Annoying bhayo)
-//    if (flashActive_) {
-//        window_.resetFullscreen();
-//        window_.setBackgroundColor(sf::Color(255, 255, 255));
-//
-//        // Flash animation
-//        float flashAlpha = 0.85f;
-//        float startTime = 0.0f;
-//
-//        if (flashActive_) {
-//            flashSprite_.setColor(sf::Color(255, 255, 255, 255));
-//
-//            // Render a white flash overlay
-//            sf::Sprite flashOverlay(window_.createTexture());
-//            auto windowSize = window_.getSize();
-//            flashOverlay.setTexture(sf::Texture(windowSize.x, windowSize.y));
-//            flashOverlay.setPosition(0, 0);
-//            flashOverlay.setColor(sf::Color(255, 255, 255));
-//
-//            window_.draw(flashOverlay);
-//        }
-//    } else {
-//        window_.setFullscreen(sf::WindowHandle(sf::VideoMode::getDesktopMode()));
-//    }
-//}
+    void HomeScreen::renderTitle() {
+        if (!fontLoaded_) return;
+        sf::Text title(font_, "CORE ZONE");
+        title.setCharacterSize(52);
+        title.setLetterSpacing(6.0f);
 
-void HomeScreen::renderTitle() {
-    sf::Text title(font_, "CORE ZONE");
-    title.setCharacterSize(38);
-    title.setLetterSpacing(0.5f);
-    title.setFillColor(sf::Color(255, 255, 255));
+        float flicker = std::sin(flickerClock_.getElapsedTime().asSeconds() * 8.0f) * 30.0f + 225.0f;
+        title.setFillColor(sf::Color(255, 255, 255, static_cast<unsigned char>(flicker)));
 
-    sf::FloatRect titleBounds = title.getLocalBounds();
-    title.setPosition({
-        (window_.getSize().x - titleBounds.size.x) / 2.0f,
-        (window_.getSize().y - titleBounds.size.y) / 2.0f - 65.0f
-    });
+        auto bounds = title.getLocalBounds();
+        float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
+        title.setPosition({ x, 80.0f });
+        window_.draw(title);
+    }
 
-    window_.draw(title);
-}
+    void HomeScreen::renderMenu() {
+        if (!fontLoaded_) return;
+        const auto& items = menu_.getItems();
+        float startY = static_cast<float>(window_.getSize().y) / 2.0f - 40.0f;
 
-void HomeScreen::renderMenu() {
-    const auto& items = menu_->getItems();
-    for (size_t i = 0; i < items.size(); ++i) {
-        sf::Text text(font_, "");
-        text.setCharacterSize(20);
-        text.setLetterSpacing(3.0f);
-        text.setFillColor(sf::Color(255, 255, 255));
+        for (size_t i = 0; i < items.size(); ++i) {
+            std::string display = items[i];
+            if (static_cast<int>(i) == menu_.getSelectedIndex()) {
+                display = "> " + items[i] + " <";
+            }
 
-        // Add prefix for active item
-        if (i == static_cast<size_t>(menu_->getSelectedIndex())) {
-            text.setString("> " + items[i]);
-            text.setFillColor(sf::Color(255, 255, 255));
-        } else {
-            text.setString(items[i]);
-        }
+            sf::Text text(font_, display);
+            text.setCharacterSize(20);
+            text.setLetterSpacing(3.0f);
 
-        float yPos = menu_->getYPos() + (i * menu_->getItemHeight());
-        sf::FloatRect textBounds = text.getLocalBounds();
-        text.setPosition({
-            (window_.getSize().x - textBounds.size.x) / 2.0f,
-            yPos
-        });
-
-        // Blink effect for active item
-        if (i == static_cast<size_t>(menu_->getSelectedIndex())) {
-            blinkTimer_ += 0.016f; // approximately 60fps
-            float blinkCycle = std::fmod(blinkTimer_, 0.65f);
-            if (blinkCycle < 0.325f) {
+            if (static_cast<int>(i) == menu_.getSelectedIndex()) {
+                float blink = std::sin(blinkClock_.getElapsedTime().asSeconds() * 8.0f);
+                text.setFillColor(blink > 0.0f ? sf::Color(255, 255, 255) : sf::Color(180, 180, 180));
+            }
+            else {
                 text.setFillColor(sf::Color(255, 255, 255));
-            } else {
-                text.setFillColor(sf::Color(128, 128, 128));
             }
-        }
 
-        window_.draw(text);
-    }
-}
+            auto bounds = text.getLocalBounds();
+            float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
+            float y = startY + static_cast<float>(i) * 42.0f;
 
-void HomeScreen::renderHint() {
-    sf::Text hint(font_, "SELECT GAME TO START");
-    hint.setCharacterSize(11);
-    hint.setLetterSpacing(1.0f);
-    hint.setFillColor(sf::Color(80, 80, 80));
-
-    sf::FloatRect hintBounds = hint.getLocalBounds();
-    hint.setPosition({
-        (window_.getSize().x - hintBounds.size.x) / 2.0f,
-        window_.getSize().y - hintBounds.size.y - 15.0f
-    });
-
-    window_.draw(hint);
-}
-
-void HomeScreen::handleInput(const sf::Event& event) {
-    if (event.is<sf::Event::KeyPressed>()) {
-        if (const auto* keyPress = event.getIf<sf::Event::KeyPressed>()) {
-            switch (keyPress->code) {
-                case sf::Keyboard::Key::Down:
-                case sf::Keyboard::Key::S:
-                    menu_->selectNext();
-                    playSelectSound();
-                    break;
-                case sf::Keyboard::Key::Up:
-                case sf::Keyboard::Key::W:
-                    menu_->selectPrev();
-                    playSelectSound();
-                    break;
-                case sf::Keyboard::Key::Enter:
-                case sf::Keyboard::Key::Space:
-                    onGameSelected();
-                    break;
-                case sf::Keyboard::Key::Escape:
-                    menu_->setSelectedIndex(0);
-                    break;
-                default:
-                    break;
-            }
+            text.setPosition({ x, y });
+            window_.draw(text);
         }
     }
-}
 
-void HomeScreen::handleResize(const sf::Event::Resized& event) {
-    // Recalculate menu positions on window resize
-    yPos_ = event.size.y / 2.0f - (menu_->getItems().size() * itemHeight_) / 2.0f;
-    menu_->setYPos(yPos_);
-}
+    void HomeScreen::renderHint() {
+        if (!fontLoaded_) return;
+        std::string hintStr = loadingMode_
+            ? ">> LOADING  " + loadingName_ + "  " + std::string(dotCount_, '.')
+            : "PRESS ENTER TO START";
 
-void HomeScreen::playMusic() {
-    homeMusic_ = std::make_unique<sf::Music>();
-    if (homeMusic_->openFromFile(homeMusicPath_)) {
-        homeMusic_->setLooping(true);
-        homeMusic_->setVolume(50.0f);
-        homeMusic_->play();
+        sf::Text hint(font_, hintStr);
+        hint.setCharacterSize(11);
+        hint.setLetterSpacing(1.0f);
+        hint.setFillColor(sf::Color(120, 120, 120));
+
+        auto bounds = hint.getLocalBounds();
+        float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
+        hint.setPosition({ x, static_cast<float>(window_.getSize().y) - 65.0f });
+        window_.draw(hint);
     }
-}
 
-void HomeScreen::playSelectSound() {
-    selectSoundBuffer_ = std::make_unique<sf::SoundBuffer>();
-    if (selectSoundBuffer_->loadFromFile(selectSoundPath_)) {
-        selectSound_ = std::make_unique<sf::Sound>(*selectSoundBuffer_);
-        selectSound_->play();
+    void HomeScreen::renderControls() {
+        if (!fontLoaded_) return;
+        sf::Text ctrl(font_, "↑ ↓ NAVIGATE\nENTER LAUNCH\nESC MENU");
+        ctrl.setCharacterSize(9);
+        ctrl.setFillColor(sf::Color(80, 80, 80));
+        ctrl.setPosition({ 32.0f, static_cast<float>(window_.getSize().y) - 70.0f });
+        window_.draw(ctrl);
     }
-}
 
-void HomeScreen::onGameSelected() {
-    std::string selected = menu_->getSelectedName();
-    // Could show loading message here if we had hintText_ member
-    // For now, just handle selection
-}
+    void HomeScreen::renderCredit() {
+        if (!fontLoaded_) return;
+        sf::Text credit(font_, "*Developed by Group X");
+        credit.setCharacterSize(11);
+        credit.setFillColor(sf::Color(80, 80, 80));
 
-void HomeScreen::cleanup() {
-    if (homeMusic_) {
-        homeMusic_->stop();
+        auto bounds = credit.getLocalBounds();
+        float x = static_cast<float>(window_.getSize().x) - bounds.size.x - 40.0f;
+        credit.setPosition({ x, static_cast<float>(window_.getSize().y) - 35.0f });
+        window_.draw(credit);
     }
-    if (selectSound_) {
-        selectSound_->stop();
-    }
-}
 
-}
+    void HomeScreen::startLoading() {
+        loadingName_ = menu_.getSelected();
+        loadingMode_ = true;
+        flashActive_ = true;
+        loadingClock_.restart();
+    }
+
+} // namespace corezone
