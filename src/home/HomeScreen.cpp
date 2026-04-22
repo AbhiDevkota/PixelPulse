@@ -32,8 +32,11 @@ namespace corezone {
             std::cerr << "✗ Font not found: " << fontPath << std::endl;
         }
 
-        if (!iconFont_.openFromFile("./fonts/DejaVuSans.ttf")) {
-            std::cerr << "✗ Icon font not found\n";
+        if (iconFont_.openFromFile("fonts/DejaVuSans.ttf")) {
+            std::cout << "✓ Icon font loaded\n";
+        }
+        else {
+            std::cerr << "✗ Icon font not found (fonts/DejaVuSans.ttf)\n";
         }
     }
 
@@ -88,22 +91,23 @@ namespace corezone {
     }
 
     void drawKey(sf::RenderWindow& window, sf::Font& font,
-        const sf::String& label, sf::Vector2f pos)
+        const sf::String& label, sf::Vector2f pos, float width = 80.f)
     {
-        sf::RectangleShape box({ 60.f, 28.f });
+        sf::RectangleShape box({ width, 42.f });
         box.setPosition(pos);
         box.setFillColor(sf::Color::Transparent);
         box.setOutlineColor(sf::Color(100, 100, 100));
         box.setOutlineThickness(1.5f);
 
-        sf::Text text(font, label, 16);
+        sf::Text text(font, label, 20);
         text.setFillColor(sf::Color(160, 160, 160));
         text.setStyle(sf::Text::Italic);
 
         auto bounds = text.getLocalBounds();
+
         text.setPosition({
-            pos.x + (box.getSize().x - bounds.size.x) / 2.f,
-            pos.y + (box.getSize().y - bounds.size.y) / 2.f - 4.f
+            pos.x + (width - bounds.size.x) / 2.f - bounds.position.x,
+            pos.y + (42.f - bounds.size.y) / 2.f - bounds.position.y - 2.f
             });
 
         window.draw(box);
@@ -295,34 +299,31 @@ namespace corezone {
     void HomeScreen::renderControls() {
         if (!fontLoaded_) return;
 
-        float baseY = static_cast<float>(window_.getSize().y) - 110.f;
+        float baseY = static_cast<float>(window_.getSize().y) - 120.f;
 
-        sf::String up = "\u2191";
-        sf::String down = "\u2193";
-
-        drawKey(window_, iconFont_, up, { 38.f, baseY });
-        drawKey(window_, iconFont_, down, { 105.f, baseY });
+        sf::String up = sf::String(static_cast<char32_t>(0x2191));
+        sf::String down = sf::String(static_cast<char32_t>(0x2193));
 
         sf::Text nav(font_, "NAVIGATE", 20);
         nav.setFillColor(sf::Color(120, 120, 120));
         nav.setStyle(sf::Text::Italic);
-        nav.setPosition({ 180.f, baseY });
+        nav.setPosition({ 210.f, baseY + 8.f });
         window_.draw(nav);
 
-        drawKey(window_, font_, "ENTER", { 38.f, baseY + 40.f });
+        drawKey(window_, font_, "ENTER", { 38.f, baseY + 50.f }, 130.f);
 
         sf::Text launch(font_, "LAUNCH", 20);
         launch.setFillColor(sf::Color(120, 120, 120));
         launch.setStyle(sf::Text::Italic);
-        launch.setPosition({ 110.f, baseY + 40.f });
+        launch.setPosition({ 180.f, baseY + 58.f });
         window_.draw(launch);
 
-        drawKey(window_, font_, "ESC", { 38.f, baseY + 80.f });
+        drawKey(window_, font_, "ESC", { 38.f, baseY + 100.f }, 100.f);
 
         sf::Text menu(font_, "MENU", 20);
         menu.setFillColor(sf::Color(120, 120, 120));
         menu.setStyle(sf::Text::Italic);
-        menu.setPosition({ 110.f, baseY + 80.f });
+        menu.setPosition({ 150.f, baseY + 108.f });
         window_.draw(menu);
     }
 
