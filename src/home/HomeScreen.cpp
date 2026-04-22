@@ -122,26 +122,41 @@ namespace corezone {
             static_cast<float>(size.y) + 300.0f
         ) - 300.0f;
 
-        const float beamHeight = 160.0f;
+        const float beamHeight = 240.0f;                        //Background Beam Height. Badayo bhane width badxa
         const float center = beamHeight / 2.0f;
 
         sf::VertexArray beam(sf::PrimitiveType::TriangleStrip);
 
-        for (int i = 0; i <= static_cast<int>(beamHeight); ++i) {
-            float y = beamY + i;
+        float time = beamClock_.getElapsedTime().asSeconds();
+        const int groupSize = 5;
 
-            // Distance from center (0 at center → 1 at edges)
+        for (int i = 0; i <= static_cast<int>(beamHeight); i += groupSize) {
             float dist = std::abs(i - center) / center;
 
-            // Invert + smooth falloff (you can tweak the power)
-            float intensity = std::pow(1.0f - dist, 2.2f);
+            // Softer falloff
+            float baseIntensity = std::pow(1.0f - dist, 1.8f);
+            baseIntensity *= (0.85f + 0.15f * dist);
 
-            std::uint8_t alpha = static_cast<std::uint8_t>(intensity * 25.0f);
+            // Flicker
+            float flicker =
+                0.92f +
+                0.06f * std::sin(time * 18.0f + i * 0.15f) +
+                0.04f * std::sin(time * 3.5f);
 
-            sf::Color col(255, 255, 255, alpha);
+            // Draw 5 lines
+            for (int j = 0; j < groupSize; ++j) {
+                float y = beamY + i + j;
 
-            beam.append(sf::Vertex({ 0.0f, y }, col));
-            beam.append(sf::Vertex({ static_cast<float>(size.x), y }, col));
+                float localFactor = 1.0f - (j / static_cast<float>(groupSize)) * 0.25f;
+                float intensity = baseIntensity * localFactor;
+
+                std::uint8_t alpha = static_cast<std::uint8_t>(intensity * 15.0f * flicker);
+
+                sf::Color col(255, 255, 255, alpha);
+
+                beam.append(sf::Vertex({ 0.0f, y }, col));
+                beam.append(sf::Vertex({ static_cast<float>(size.x), y }, col));
+            }
         }
 
         window_.draw(beam);
