@@ -229,15 +229,27 @@ namespace corezone {
         if (!fontLoaded_) return;
         sf::Text title(font_, "CORE ZONE");
         title.setCharacterSize(58);
-        title.setLetterSpacing(8.0f);
+        title.setLetterSpacing(3.0f);  // reduced from 8.0f — was too wide
 
         float flicker = std::sin(flickerClock_.getElapsedTime().asSeconds() * 8.0f) * 30.0f + 225.0f;
-        title.setFillColor(sf::Color(255, 255, 255, static_cast<unsigned char>(flicker)));
+        std::uint8_t alpha = static_cast<std::uint8_t>(flicker);
+        title.setFillColor(sf::Color(255, 255, 255, alpha));
 
         auto bounds = title.getLocalBounds();
-        float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
-        title.setPosition({ x, 110.0f });
+        float cx = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
+
+        const float TITLE_Y = 360.0f;                //Increase garda down, Reduce garda UP
+
+        title.setPosition({ cx, TITLE_Y });
         window_.draw(title);
+                                                    //Underline on the COREZONE
+        // Decorative box under the title
+        //float boxW = bounds.size.x + 40.0f;
+        //float boxH = 4.0f;
+        //sf::RectangleShape underline({ boxW, boxH });
+        //underline.setPosition({ cx - 20.0f, 60.0f + bounds.size.y + 10.0f });
+        //underline.setFillColor(sf::Color(255, 255, 255, alpha / 2));
+        //window_.draw(underline);
     }
 
     void HomeScreen::renderMenu() {
@@ -291,7 +303,9 @@ namespace corezone {
 
         auto bounds = hint.getLocalBounds();
         float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
-        hint.setPosition({ x, static_cast<float>(window_.getSize().y) - 105.0f });
+        // Position hint just below the last menu item
+		float menuBottom = static_cast<float>(window_.getSize().y) / 2.0f + 65.0f + 4 * 38.0f + 16.0f;      //+ 65.0f lai - garda up, + garda down, 4*38.0f = 4 items, +16.0f = extra spacing
+        hint.setPosition({ x, menuBottom });
 
         window_.draw(hint);
     }
