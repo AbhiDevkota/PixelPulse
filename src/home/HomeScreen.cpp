@@ -31,6 +31,10 @@ namespace corezone {
         else {
             std::cerr << "✗ Font not found: " << fontPath << std::endl;
         }
+
+        if (!iconFont_.openFromFile("./fonts/DejaVuSans.ttf")) {
+            std::cerr << "✗ Icon font not found\n";
+        }
     }
 
     void HomeScreen::initialize() {}
@@ -40,7 +44,7 @@ namespace corezone {
             float time = introClock_.getElapsedTime().asSeconds();
 
             if (time < 1.8f) {
-                introText_ = "Developed by GROUP X";
+                introText_ = "Developed by ZONE BREACHER";
                 introOpacity_ = 255.0f;
             }
             else if (time < 2.2f) {
@@ -81,6 +85,29 @@ namespace corezone {
             default: break;
             }
         }
+    }
+
+    void drawKey(sf::RenderWindow& window, sf::Font& font,
+        const sf::String& label, sf::Vector2f pos)
+    {
+        sf::RectangleShape box({ 60.f, 28.f });
+        box.setPosition(pos);
+        box.setFillColor(sf::Color::Transparent);
+        box.setOutlineColor(sf::Color(100, 100, 100));
+        box.setOutlineThickness(1.5f);
+
+        sf::Text text(font, label, 16);
+        text.setFillColor(sf::Color(160, 160, 160));
+        text.setStyle(sf::Text::Italic);
+
+        auto bounds = text.getLocalBounds();
+        text.setPosition({
+            pos.x + (box.getSize().x - bounds.size.x) / 2.f,
+            pos.y + (box.getSize().y - bounds.size.y) / 2.f - 4.f
+            });
+
+        window.draw(box);
+        window.draw(text);
     }
 
     void HomeScreen::draw() {
@@ -132,27 +159,27 @@ namespace corezone {
 
         for (int i = 0; i <= static_cast<int>(beamHeight); i += groupSize)
         {
-                                                                // Distance from center (0 → center, 1 → edges)
+            // Distance from center (0 → center, 1 → edges)
             float dist = std::abs(i - center) / center;
 
-                                                                // Softer falloff
+            // Softer falloff
             float baseIntensity = std::pow(1.0f - dist, 1.8f);
 
-                                                                    // Slightly reduce center brightness
+            // Slightly reduce center brightness
             baseIntensity *= (0.85f + 0.15f * dist);
 
-                                                                            // Flicker
+            // Flicker
             float flicker =
                 0.92f +
                 0.06f * std::sin(time * 18.0f + i * 0.15f) +
                 0.04f * std::sin(time * 3.5f);
 
-            
+
             for (int j = 0; j < groupSize; ++j) //Draw Multiple Lines
             {
                 float y = beamY + i + j;
 
-                                // Slight variation inside group (top a bit brighter)
+                // Slight variation inside group (top a bit brighter)
                 float localFactor = 1.0f - (j / static_cast<float>(groupSize)) * 0.15f;
 
                 float intensity = baseIntensity * localFactor;
@@ -175,6 +202,11 @@ namespace corezone {
         text.setCharacterSize(24);
         text.setLetterSpacing(2.0f);
         text.setFillColor(sf::Color(255, 255, 255, static_cast<unsigned char>(introOpacity_)));
+
+        if (introText_ == "Presenting You") {
+            text.setStyle(sf::Text::Italic);
+        }
+
         auto bounds = text.getLocalBounds();
         float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
         float y = (static_cast<float>(window_.getSize().y) - bounds.size.y) / 2.0f;
@@ -238,35 +270,69 @@ namespace corezone {
 
     void HomeScreen::renderHint() {
         if (!fontLoaded_) return;
-        std::string hintStr = loadingMode_
-            ? ">> LOADING  " + loadingName_ + "  " + std::string(dotCount_, '.')
-            : "SELECT GAME TO START";
 
-        sf::Text hint(font_, hintStr);
-        hint.setCharacterSize(13);
+        sf::Text hint(font_, "", 13);
         hint.setLetterSpacing(1.0f);
         hint.setFillColor(sf::Color(160, 160, 160));
+
+        if (loadingMode_) {
+            std::string loadingStr = ">> LOADING  " + loadingName_ + "  " + std::string(dotCount_, '.');
+            hint.setString(loadingStr);
+            hint.setStyle(sf::Text::Italic);
+        }
+        else {
+            hint.setString("SELECT GAME TO START");
+            hint.setStyle(sf::Text::Regular);
+        }
 
         auto bounds = hint.getLocalBounds();
         float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
         hint.setPosition({ x, static_cast<float>(window_.getSize().y) - 105.0f });
+
         window_.draw(hint);
     }
 
     void HomeScreen::renderControls() {
         if (!fontLoaded_) return;
-        sf::Text ctrl(font_, "↑ ↓ NAVIGATE\nENTER LAUNCH\nESC MENU");
-        ctrl.setCharacterSize(13);                    // bigger as requested
-        ctrl.setFillColor(sf::Color(100, 100, 100));
-        ctrl.setPosition({ 38.0f, static_cast<float>(window_.getSize().y) - 78.0f });
-        window_.draw(ctrl);
+
+        float baseY = static_cast<float>(window_.getSize().y) - 110.f;
+
+        sf::String up = "\u2191";
+        sf::String down = "\u2193";
+
+        drawKey(window_, iconFont_, up, { 38.f, baseY });
+        drawKey(window_, iconFont_, down, { 105.f, baseY });
+
+        sf::Text nav(font_, "NAVIGATE", 20);
+        nav.setFillColor(sf::Color(120, 120, 120));
+        nav.setStyle(sf::Text::Italic);
+        nav.setPosition({ 180.f, baseY });
+        window_.draw(nav);
+
+        drawKey(window_, font_, "ENTER", { 38.f, baseY + 40.f });
+
+        sf::Text launch(font_, "LAUNCH", 20);
+        launch.setFillColor(sf::Color(120, 120, 120));
+        launch.setStyle(sf::Text::Italic);
+        launch.setPosition({ 110.f, baseY + 40.f });
+        window_.draw(launch);
+
+        drawKey(window_, font_, "ESC", { 38.f, baseY + 80.f });
+
+        sf::Text menu(font_, "MENU", 20);
+        menu.setFillColor(sf::Color(120, 120, 120));
+        menu.setStyle(sf::Text::Italic);
+        menu.setPosition({ 110.f, baseY + 80.f });
+        window_.draw(menu);
     }
 
     void HomeScreen::renderCredit() {
         if (!fontLoaded_) return;
-        sf::Text credit(font_, "*Developed by Group X");
-        credit.setCharacterSize(14);                  // bigger as requested
+        sf::Text credit(font_, "*Developed by ZONE BREACHER");
+        credit.setCharacterSize(13);                  // bigger as requested
         credit.setFillColor(sf::Color(100, 100, 100));
+        credit.setStyle(sf::Text::Italic);
+
 
         auto bounds = credit.getLocalBounds();
         float x = static_cast<float>(window_.getSize().x) - bounds.size.x - 42.0f;

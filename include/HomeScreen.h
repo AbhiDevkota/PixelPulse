@@ -26,6 +26,7 @@ namespace corezone {
         sf::RenderWindow& window_;
         sf::Font font_;
         bool fontLoaded_ = false;
+        sf::Font iconFont_;
 
         Menu menu_;
 
