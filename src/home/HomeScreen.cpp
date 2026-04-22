@@ -1,6 +1,7 @@
 #include "HomeScreen.h"
 #include <iostream>
 #include <cmath>
+#include <cstdint>
 
 namespace corezone {
 
@@ -38,16 +39,20 @@ namespace corezone {
         if (state_ == State::Boot) {
             float time = introClock_.getElapsedTime().asSeconds();
 
-            if (time < 2.0f) {
+            if (time < 1.8f) {
                 introText_ = "Developed by GROUP X";
                 introOpacity_ = 255.0f;
             }
-            else if (time < 4.2f) {
+            else if (time < 2.2f) {
+                float progress = (time - 1.8f) / 0.4f;
+                introOpacity_ = 255.0f * (1.0f - progress);
+            }
+            else if (time < 4.0f) {
                 introText_ = "Presenting You";
                 introOpacity_ = 255.0f;
             }
             else {
-                introOpacity_ = std::max(0.0f, 255.0f - (time - 4.2f) * 180.0f);
+                introOpacity_ = std::max(0.0f, 255.0f - (time - 4.0f) * 180.0f);
                 if (introOpacity_ <= 0.0f) {
                     state_ = State::Menu;
                     introVisible_ = false;
@@ -96,25 +101,12 @@ namespace corezone {
 
     void HomeScreen::renderBackground() {
         auto size = window_.getSize();
+
         sf::RectangleShape bg({ static_cast<float>(size.x), static_cast<float>(size.y) });
         bg.setFillColor(sf::Color(10, 10, 10));
         window_.draw(bg);
 
-        if (state_ == State::Boot) return;   // clean black during boot
-
-        // Grid
-        for (float x = 0; x < static_cast<float>(size.x); x += 28.0f) {
-            sf::RectangleShape line({ 1.0f, static_cast<float>(size.y) });
-            line.setPosition({ x, 0.0f });
-            line.setFillColor(sf::Color(255, 255, 255, 28));
-            window_.draw(line);
-        }
-        for (float y = 0; y < static_cast<float>(size.y); y += 28.0f) {
-            sf::RectangleShape line({ static_cast<float>(size.x), 1.0f });
-            line.setPosition({ 0.0f, y });
-            line.setFillColor(sf::Color(255, 255, 255, 28));
-            window_.draw(line);
-        }
+        if (state_ == State::Boot) return;
 
         // Scanlines
         for (float y = 0; y < static_cast<float>(size.y); y += 3.0f) {
@@ -124,11 +116,34 @@ namespace corezone {
             window_.draw(line);
         }
 
-        // Vertical moving CRT beam
-        float beamY = std::fmod(beamClock_.getElapsedTime().asSeconds() * 90.0f, static_cast<float>(size.y) + 300.0f) - 300.0f;
-        sf::RectangleShape beam({ static_cast<float>(size.x), 160.0f });
-        beam.setPosition({ 0.0f, beamY });
-        beam.setFillColor(sf::Color(255, 255, 255, 22));
+        // Moving CRT beam (with gradient falloff)
+        float beamY = std::fmod(
+            beamClock_.getElapsedTime().asSeconds() * 90.0f,
+            static_cast<float>(size.y) + 300.0f
+        ) - 300.0f;
+
+        const float beamHeight = 160.0f;
+        const float center = beamHeight / 2.0f;
+
+        sf::VertexArray beam(sf::PrimitiveType::TriangleStrip);
+
+        for (int i = 0; i <= static_cast<int>(beamHeight); ++i) {
+            float y = beamY + i;
+
+            // Distance from center (0 at center → 1 at edges)
+            float dist = std::abs(i - center) / center;
+
+            // Invert + smooth falloff (you can tweak the power)
+            float intensity = std::pow(1.0f - dist, 2.2f);
+
+            std::uint8_t alpha = static_cast<std::uint8_t>(intensity * 25.0f);
+
+            sf::Color col(255, 255, 255, alpha);
+
+            beam.append(sf::Vertex({ 0.0f, y }, col));
+            beam.append(sf::Vertex({ static_cast<float>(size.x), y }, col));
+        }
+
         window_.draw(beam);
     }
 
@@ -170,7 +185,7 @@ namespace corezone {
     void HomeScreen::renderMenu() {
         if (!fontLoaded_) return;
         const auto& items = menu_.getItems();
-        float startY = static_cast<float>(window_.getSize().y) / 2.0f - 30.0f;
+        float startY = static_cast<float>(window_.getSize().y) / 2.0f - 65.0f;   // moved up
 
         for (size_t i = 0; i < items.size(); ++i) {
             std::string display = items[i];
@@ -192,7 +207,7 @@ namespace corezone {
 
             auto bounds = text.getLocalBounds();
             float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
-            float y = startY + static_cast<float>(i) * 48.0f;
+            float y = startY + static_cast<float>(i) * 38.0f;   // less space
 
             text.setPosition({ x, y });
             window_.draw(text);
@@ -219,7 +234,7 @@ namespace corezone {
     void HomeScreen::renderControls() {
         if (!fontLoaded_) return;
         sf::Text ctrl(font_, "↑ ↓ NAVIGATE\nENTER LAUNCH\nESC MENU");
-        ctrl.setCharacterSize(11);
+        ctrl.setCharacterSize(13);                    // bigger as requested
         ctrl.setFillColor(sf::Color(100, 100, 100));
         ctrl.setPosition({ 38.0f, static_cast<float>(window_.getSize().y) - 78.0f });
         window_.draw(ctrl);
@@ -228,7 +243,7 @@ namespace corezone {
     void HomeScreen::renderCredit() {
         if (!fontLoaded_) return;
         sf::Text credit(font_, "*Developed by Group X");
-        credit.setCharacterSize(12);
+        credit.setCharacterSize(14);                  // bigger as requested
         credit.setFillColor(sf::Color(100, 100, 100));
 
         auto bounds = credit.getLocalBounds();
