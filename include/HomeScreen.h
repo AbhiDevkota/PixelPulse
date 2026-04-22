@@ -2,6 +2,7 @@
 #define HOMESCREEN_H
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>        // ← added for sound/music
 #include <vector>
 #include <string>
 
@@ -35,7 +36,7 @@ namespace corezone {
         sf::Clock flickerClock_;
         sf::Clock blinkClock_;
         sf::Clock loadingClock_;
-        sf::Clock beamClock_;           // ← vertical moving scanline
+        sf::Clock beamClock_;
 
         // Boot state
         enum class State { Boot, Menu };
@@ -49,6 +50,15 @@ namespace corezone {
         int dotCount_ = 0;
 
         float introOpacity_ = 255.0f;
+
+        // ── AUDIO ─────────────────────────────────────────────────────────────
+        sf::Music       bgMusic_;           // looping background music
+        sf::SoundBuffer selectBuf_;         // navigate/select beep buffer
+        sf::Sound       selectSnd_;         // navigate/select beep player
+        sf::SoundBuffer launchBuf_;         // launch sound buffer
+        sf::Sound       launchSnd_;         // launch sound player
+        bool            bgMusicStarted_ = false;  // guard so music starts once
+        // ─────────────────────────────────────────────────────────────────────
 
     public:
         HomeScreen(sf::RenderWindow& window, const std::string& fontPath);

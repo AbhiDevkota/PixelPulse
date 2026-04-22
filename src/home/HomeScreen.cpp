@@ -38,6 +38,40 @@ namespace corezone {
         else {
             std::cerr << "✗ Icon font not found (fonts/DejaVuSans.ttf)\n";
         }
+
+        // ── AUDIO SETUP ───────────────────────────────────────────────────────
+
+        // Background music — loops forever, starts when "Presenting You" fades out
+        if (bgMusic_.openFromFile("audios/home/home_screen.wav")) {
+            bgMusic_.setLooping(true);
+            bgMusic_.setVolume(70.f);   // TWEAK: bg music volume (0–100)
+            std::cout << "✓ BG music loaded\n";
+        }
+        else {
+            std::cerr << "✗ BG music not found: audios/home/home_screen.wav\n";
+        }
+
+        // Navigate sound — plays on Up / Down / Escape, on top of bg music
+        if (selectBuf_.loadFromFile("audios/home/select_game.wav")) {
+            selectSnd_.setBuffer(selectBuf_);
+            selectSnd_.setVolume(100.f);  // TWEAK: navigate sound volume (0–100)
+            std::cout << "✓ Select sound loaded\n";
+        }
+        else {
+            std::cerr << "✗ Select sound not found: audios/home/select_game.wav\n";
+        }
+
+        // Launch sound — plays on Enter / Space, on top of bg music
+        if (launchBuf_.loadFromFile("audios/home/launch_game.wav")) {
+            launchSnd_.setBuffer(launchBuf_);
+            launchSnd_.setVolume(100.f);  // TWEAK: launch sound volume (0–100)
+            std::cout << "✓ Launch sound loaded\n";
+        }
+        else {
+            std::cerr << "✗ Launch sound not found: audios/home/launch_game.wav\n";
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
     }
 
     void HomeScreen::initialize() {}
@@ -60,6 +94,16 @@ namespace corezone {
             }
             else {
                 introOpacity_ = std::max(0.0f, 255.0f - (time - 4.0f) * 180.0f);
+
+                // ── Start bg music as "Presenting You" begins fading out ──────
+                // TWEAK: the music kicks in at t=4.0s (when this else branch runs).
+                // To start it earlier, move this block into the "time < 4.0f" branch.
+                if (!bgMusicStarted_) {
+                    bgMusic_.play();
+                    bgMusicStarted_ = true;
+                }
+                // ─────────────────────────────────────────────────────────────
+
                 if (introOpacity_ <= 0.0f) {
                     state_ = State::Menu;
                     introVisible_ = false;
@@ -81,10 +125,30 @@ namespace corezone {
         if (event.is<sf::Event::KeyPressed>()) {
             const auto* key = event.getIf<sf::Event::KeyPressed>();
             switch (key->code) {
-            case sf::Keyboard::Key::Down: case sf::Keyboard::Key::S: menu_.selectNext(); break;
-            case sf::Keyboard::Key::Up:   case sf::Keyboard::Key::W: menu_.selectPrev(); break;
-            case sf::Keyboard::Key::Enter: case sf::Keyboard::Key::Space: startLoading(); break;
-            case sf::Keyboard::Key::Escape: menu_.selectPrev(); break;
+
+            case sf::Keyboard::Key::Down:
+            case sf::Keyboard::Key::S:
+                menu_.selectNext();
+                selectSnd_.play();   // navigate beep on top of bg music
+                break;
+
+            case sf::Keyboard::Key::Up:
+            case sf::Keyboard::Key::W:
+                menu_.selectPrev();
+                selectSnd_.play();   // navigate beep on top of bg music
+                break;
+
+            case sf::Keyboard::Key::Enter:
+            case sf::Keyboard::Key::Space:
+                launchSnd_.play();   // launch sound on top of bg music
+                startLoading();
+                break;
+
+            case sf::Keyboard::Key::Escape:
+                menu_.selectPrev();
+                selectSnd_.play();   // navigate beep on top of bg music
+                break;
+
             default: break;
             }
         }
@@ -178,7 +242,6 @@ namespace corezone {
                 0.06f * std::sin(time * 18.0f + i * 0.15f) +
                 0.04f * std::sin(time * 3.5f);
 
-
             for (int j = 0; j < groupSize; ++j) //Draw Multiple Lines
             {
                 float y = beamY + i + j;
@@ -238,12 +301,11 @@ namespace corezone {
         auto bounds = title.getLocalBounds();
         float cx = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
 
-        const float TITLE_Y = 360.0f;                //Increase garda down, Reduce garda UP
-
+        const float TITLE_Y = 360.0f;   //Increase garda down, Reduce garda UP
         title.setPosition({ cx, TITLE_Y });
         window_.draw(title);
-                                                    //Underline on the COREZONE
-        // Decorative box under the title
+
+        //Underline on the COREZONE
         //float boxW = bounds.size.x + 40.0f;
         //float boxH = 4.0f;
         //sf::RectangleShape underline({ boxW, boxH });
@@ -303,8 +365,8 @@ namespace corezone {
 
         auto bounds = hint.getLocalBounds();
         float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
-        // Position hint just below the last menu item
-		float menuBottom = static_cast<float>(window_.getSize().y) / 2.0f + 65.0f + 4 * 38.0f + 16.0f;      //+ 65.0f lai - garda up, + garda down, 4*38.0f = 4 items, +16.0f = extra spacing
+        // + 65.0f lai - garda up, + garda down, 4*38.0f = 4 items, +16.0f = extra spacing
+        float menuBottom = static_cast<float>(window_.getSize().y) / 2.0f + 65.0f + 4 * 38.0f + 16.0f;
         hint.setPosition({ x, menuBottom });
 
         window_.draw(hint);
@@ -349,10 +411,9 @@ namespace corezone {
     void HomeScreen::renderCredit() {
         if (!fontLoaded_) return;
         sf::Text credit(font_, "*Developed by ZONE BREACHER");
-        credit.setCharacterSize(13);                  // bigger as requested
+        credit.setCharacterSize(13);
         credit.setFillColor(sf::Color(100, 100, 100));
         credit.setStyle(sf::Text::Italic);
-
 
         auto bounds = credit.getLocalBounds();
         float x = static_cast<float>(window_.getSize().x) - bounds.size.x - 42.0f;
