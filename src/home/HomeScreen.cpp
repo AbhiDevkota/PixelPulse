@@ -299,31 +299,36 @@ namespace corezone {
     void HomeScreen::renderControls() {
         if (!fontLoaded_) return;
 
-        float baseY = static_cast<float>(window_.getSize().y) - 120.f;
+        float baseY = static_cast<float>(window_.getSize().y) - 160.f;
+        float keyX = 30.f;
+        float labelX = 170.f;   // fixed label column, right of all keys
 
-        sf::String up = sf::String(static_cast<char32_t>(0x2191));
-        sf::String down = sf::String(static_cast<char32_t>(0x2193));
+        // Row 1: up/down arrow keys + NAVIGATE label
+        drawKey(window_, font_, sf::String(static_cast<char32_t>(0x2191)), { keyX,        baseY }, 50.f);
+        drawKey(window_, font_, sf::String(static_cast<char32_t>(0x2193)), { keyX + 58.f, baseY }, 50.f);
 
-        sf::Text nav(font_, "NAVIGATE", 20);
+        sf::Text nav(font_, "NAVIGATE", 18);
         nav.setFillColor(sf::Color(120, 120, 120));
         nav.setStyle(sf::Text::Italic);
-        nav.setPosition({ 210.f, baseY + 8.f });
+        nav.setPosition({ labelX, baseY + 10.f });
         window_.draw(nav);
 
-        drawKey(window_, font_, "ENTER", { 38.f, baseY + 50.f }, 130.f);
+        // Row 2: ENTER + LAUNCH label
+        drawKey(window_, font_, "ENTER", { keyX, baseY + 58.f }, 120.f);
 
-        sf::Text launch(font_, "LAUNCH", 20);
+        sf::Text launch(font_, "LAUNCH", 18);
         launch.setFillColor(sf::Color(120, 120, 120));
         launch.setStyle(sf::Text::Italic);
-        launch.setPosition({ 180.f, baseY + 58.f });
+        launch.setPosition({ labelX, baseY + 68.f });
         window_.draw(launch);
 
-        drawKey(window_, font_, "ESC", { 38.f, baseY + 100.f }, 100.f);
+        // Row 3: ESC + MENU label
+        drawKey(window_, font_, "ESC", { keyX, baseY + 116.f }, 80.f);
 
-        sf::Text menu(font_, "MENU", 20);
+        sf::Text menu(font_, "MENU", 18);
         menu.setFillColor(sf::Color(120, 120, 120));
         menu.setStyle(sf::Text::Italic);
-        menu.setPosition({ 150.f, baseY + 108.f });
+        menu.setPosition({ labelX, baseY + 126.f });
         window_.draw(menu);
     }
 
