@@ -23,40 +23,39 @@ namespace corezone {
     HomeScreen::HomeScreen(sf::RenderWindow& window, const std::string& fontPath)
         : window_(window)
     {
-        // Try the path passed from main.cpp
         if (font_.openFromFile(fontPath)) {
             fontLoaded_ = true;
-            std::cout << "✓ Font loaded successfully: " << fontPath << std::endl;
-        }
-        // Extra fallback for regular.ttf
-        else if (font_.openFromFile("fonts/regular.ttf")) {
-            fontLoaded_ = true;
-            std::cout << "✓ Font loaded from fonts/regular.ttf" << std::endl;
+            std::cout << "✓ Font loaded: " << fontPath << std::endl;
         }
         else {
-            std::cerr << "✗ FONT NOT FOUND!\n"
-                << "   Your font file is named regular.ttf\n"
-                << "   Make sure it is in fonts/ folder\n" << std::endl;
+            std::cerr << "✗ Font not found: " << fontPath << std::endl;
         }
     }
 
-    void HomeScreen::initialize() {
-        // Nothing extra needed
-    }
+    void HomeScreen::initialize() {}
 
     void HomeScreen::update(float deltaTime) {
-        if (introVisible_) {
+        if (state_ == State::Boot) {
             float time = introClock_.getElapsedTime().asSeconds();
-            if (time > 2.0f && introText_ == "Developed by GROUP X") {
-                introText_ = "Presenting You";
+
+            if (time < 2.0f) {
+                introText_ = "Developed by GROUP X";
+                introOpacity_ = 255.0f;
             }
-            if (time > 4.2f) {
-                introOpacity_ = std::max(0.0f, introOpacity_ - deltaTime * 180.0f);
-                if (introOpacity_ <= 0.0f) introVisible_ = false;
+            else if (time < 4.2f) {
+                introText_ = "Presenting You";
+                introOpacity_ = 255.0f;
+            }
+            else {
+                introOpacity_ = std::max(0.0f, 255.0f - (time - 4.2f) * 180.0f);
+                if (introOpacity_ <= 0.0f) {
+                    state_ = State::Menu;
+                    introVisible_ = false;
+                }
             }
         }
 
-        if (loadingMode_) {
+        if (state_ == State::Menu && loadingMode_) {
             if (loadingClock_.getElapsedTime().asSeconds() > 0.4f) {
                 dotCount_ = (dotCount_ + 1) % 4;
                 loadingClock_.restart();
@@ -65,6 +64,8 @@ namespace corezone {
     }
 
     void HomeScreen::handleInput(const sf::Event& event) {
+        if (state_ != State::Menu) return;
+
         if (event.is<sf::Event::KeyPressed>()) {
             const auto* key = event.getIf<sf::Event::KeyPressed>();
             switch (key->code) {
@@ -79,14 +80,18 @@ namespace corezone {
 
     void HomeScreen::draw() {
         renderBackground();
-        if (introVisible_) renderIntro();
-        if (flashActive_) renderFlash();
 
-        renderTitle();
-        renderMenu();
-        renderHint();
-        renderControls();
-        renderCredit();
+        if (state_ == State::Boot) {
+            renderIntro();
+        }
+        else {
+            renderTitle();
+            renderMenu();
+            renderHint();
+            renderControls();
+            renderCredit();
+            if (flashActive_) renderFlash();
+        }
     }
 
     void HomeScreen::renderBackground() {
@@ -94,6 +99,8 @@ namespace corezone {
         sf::RectangleShape bg({ static_cast<float>(size.x), static_cast<float>(size.y) });
         bg.setFillColor(sf::Color(10, 10, 10));
         window_.draw(bg);
+
+        if (state_ == State::Boot) return;   // clean black during boot
 
         // Grid
         for (float x = 0; x < static_cast<float>(size.x); x += 28.0f) {
@@ -116,26 +123,30 @@ namespace corezone {
             line.setFillColor(sf::Color(0, 0, 0, 45));
             window_.draw(line);
         }
+
+        // Vertical moving CRT beam
+        float beamY = std::fmod(beamClock_.getElapsedTime().asSeconds() * 90.0f, static_cast<float>(size.y) + 300.0f) - 300.0f;
+        sf::RectangleShape beam({ static_cast<float>(size.x), 160.0f });
+        beam.setPosition({ 0.0f, beamY });
+        beam.setFillColor(sf::Color(255, 255, 255, 22));
+        window_.draw(beam);
     }
 
     void HomeScreen::renderIntro() {
         if (!fontLoaded_) return;
         sf::Text text(font_, introText_);
-        text.setCharacterSize(22);
+        text.setCharacterSize(24);
         text.setLetterSpacing(2.0f);
         text.setFillColor(sf::Color(255, 255, 255, static_cast<unsigned char>(introOpacity_)));
-
         auto bounds = text.getLocalBounds();
         float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
         float y = (static_cast<float>(window_.getSize().y) - bounds.size.y) / 2.0f;
-
         text.setPosition({ x, y });
         window_.draw(text);
     }
 
     void HomeScreen::renderFlash() {
-        sf::RectangleShape flash({ static_cast<float>(window_.getSize().x),
-                                  static_cast<float>(window_.getSize().y) });
+        sf::RectangleShape flash({ static_cast<float>(window_.getSize().x), static_cast<float>(window_.getSize().y) });
         flash.setFillColor(sf::Color(255, 255, 255, 200));
         window_.draw(flash);
         flashActive_ = false;
@@ -144,22 +155,22 @@ namespace corezone {
     void HomeScreen::renderTitle() {
         if (!fontLoaded_) return;
         sf::Text title(font_, "CORE ZONE");
-        title.setCharacterSize(52);
-        title.setLetterSpacing(6.0f);
+        title.setCharacterSize(58);
+        title.setLetterSpacing(8.0f);
 
         float flicker = std::sin(flickerClock_.getElapsedTime().asSeconds() * 8.0f) * 30.0f + 225.0f;
         title.setFillColor(sf::Color(255, 255, 255, static_cast<unsigned char>(flicker)));
 
         auto bounds = title.getLocalBounds();
         float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
-        title.setPosition({ x, 80.0f });
+        title.setPosition({ x, 110.0f });
         window_.draw(title);
     }
 
     void HomeScreen::renderMenu() {
         if (!fontLoaded_) return;
         const auto& items = menu_.getItems();
-        float startY = static_cast<float>(window_.getSize().y) / 2.0f - 40.0f;
+        float startY = static_cast<float>(window_.getSize().y) / 2.0f - 30.0f;
 
         for (size_t i = 0; i < items.size(); ++i) {
             std::string display = items[i];
@@ -168,7 +179,7 @@ namespace corezone {
             }
 
             sf::Text text(font_, display);
-            text.setCharacterSize(20);
+            text.setCharacterSize(26);
             text.setLetterSpacing(3.0f);
 
             if (static_cast<int>(i) == menu_.getSelectedIndex()) {
@@ -181,7 +192,7 @@ namespace corezone {
 
             auto bounds = text.getLocalBounds();
             float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
-            float y = startY + static_cast<float>(i) * 42.0f;
+            float y = startY + static_cast<float>(i) * 48.0f;
 
             text.setPosition({ x, y });
             window_.draw(text);
@@ -192,37 +203,37 @@ namespace corezone {
         if (!fontLoaded_) return;
         std::string hintStr = loadingMode_
             ? ">> LOADING  " + loadingName_ + "  " + std::string(dotCount_, '.')
-            : "PRESS ENTER TO START";
+            : "SELECT GAME TO START";
 
         sf::Text hint(font_, hintStr);
-        hint.setCharacterSize(11);
+        hint.setCharacterSize(13);
         hint.setLetterSpacing(1.0f);
-        hint.setFillColor(sf::Color(120, 120, 120));
+        hint.setFillColor(sf::Color(160, 160, 160));
 
         auto bounds = hint.getLocalBounds();
         float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
-        hint.setPosition({ x, static_cast<float>(window_.getSize().y) - 65.0f });
+        hint.setPosition({ x, static_cast<float>(window_.getSize().y) - 105.0f });
         window_.draw(hint);
     }
 
     void HomeScreen::renderControls() {
         if (!fontLoaded_) return;
         sf::Text ctrl(font_, "↑ ↓ NAVIGATE\nENTER LAUNCH\nESC MENU");
-        ctrl.setCharacterSize(9);
-        ctrl.setFillColor(sf::Color(80, 80, 80));
-        ctrl.setPosition({ 32.0f, static_cast<float>(window_.getSize().y) - 70.0f });
+        ctrl.setCharacterSize(11);
+        ctrl.setFillColor(sf::Color(100, 100, 100));
+        ctrl.setPosition({ 38.0f, static_cast<float>(window_.getSize().y) - 78.0f });
         window_.draw(ctrl);
     }
 
     void HomeScreen::renderCredit() {
         if (!fontLoaded_) return;
         sf::Text credit(font_, "*Developed by Group X");
-        credit.setCharacterSize(11);
-        credit.setFillColor(sf::Color(80, 80, 80));
+        credit.setCharacterSize(12);
+        credit.setFillColor(sf::Color(100, 100, 100));
 
         auto bounds = credit.getLocalBounds();
-        float x = static_cast<float>(window_.getSize().x) - bounds.size.x - 40.0f;
-        credit.setPosition({ x, static_cast<float>(window_.getSize().y) - 35.0f });
+        float x = static_cast<float>(window_.getSize().x) - bounds.size.x - 42.0f;
+        credit.setPosition({ x, static_cast<float>(window_.getSize().y) - 38.0f });
         window_.draw(credit);
     }
 

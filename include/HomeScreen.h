@@ -29,10 +29,16 @@ namespace corezone {
 
         Menu menu_;
 
+        // Clocks
         sf::Clock introClock_;
         sf::Clock flickerClock_;
         sf::Clock blinkClock_;
         sf::Clock loadingClock_;
+        sf::Clock beamClock_;           // ← vertical moving scanline
+
+        // Boot state
+        enum class State { Boot, Menu };
+        State state_ = State::Boot;
 
         bool introVisible_ = true;
         std::string introText_ = "Developed by GROUP X";
