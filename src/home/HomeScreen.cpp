@@ -130,24 +130,31 @@ namespace corezone {
         float time = beamClock_.getElapsedTime().asSeconds();
         const int groupSize = 5;
 
-        for (int i = 0; i <= static_cast<int>(beamHeight); i += groupSize) {
+        for (int i = 0; i <= static_cast<int>(beamHeight); i += groupSize)
+        {
+                                                                // Distance from center (0 → center, 1 → edges)
             float dist = std::abs(i - center) / center;
 
-            // Softer falloff
+                                                                // Softer falloff
             float baseIntensity = std::pow(1.0f - dist, 1.8f);
+
+                                                                    // Slightly reduce center brightness
             baseIntensity *= (0.85f + 0.15f * dist);
 
-            // Flicker
+                                                                            // Flicker
             float flicker =
                 0.92f +
                 0.06f * std::sin(time * 18.0f + i * 0.15f) +
                 0.04f * std::sin(time * 3.5f);
 
-            // Draw 5 lines
-            for (int j = 0; j < groupSize; ++j) {
+            
+            for (int j = 0; j < groupSize; ++j) //Draw Multiple Lines
+            {
                 float y = beamY + i + j;
 
-                float localFactor = 1.0f - (j / static_cast<float>(groupSize)) * 0.25f;
+                                // Slight variation inside group (top a bit brighter)
+                float localFactor = 1.0f - (j / static_cast<float>(groupSize)) * 0.15f;
+
                 float intensity = baseIntensity * localFactor;
 
                 std::uint8_t alpha = static_cast<std::uint8_t>(intensity * 15.0f * flicker);
