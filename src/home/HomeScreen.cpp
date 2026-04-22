@@ -26,17 +26,17 @@ namespace corezone {
     {
         if (font_.openFromFile(fontPath)) {
             fontLoaded_ = true;
-            std::cout << "✓ Font loaded: " << fontPath << std::endl;
+            std::cout << "Font loaded: " << fontPath << std::endl;
         }
         else {
-            std::cerr << "✗ Font not found: " << fontPath << std::endl;
+            std::cerr << "Font not found: " << fontPath << std::endl;
         }
 
         if (iconFont_.openFromFile("fonts/DejaVuSans.ttf")) {
-            std::cout << "✓ Icon font loaded\n";
+            std::cout << "Icon font loaded\n";
         }
         else {
-            std::cerr << "✗ Icon font not found (fonts/DejaVuSans.ttf)\n";
+            std::cerr << "Icon font not found (fonts/DejaVuSans.ttf)\n";
         }
 
         // ── AUDIO SETUP ───────────────────────────────────────────────────────

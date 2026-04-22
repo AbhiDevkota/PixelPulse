@@ -54,9 +54,9 @@ namespace corezone {
         // ── AUDIO ─────────────────────────────────────────────────────────────
         sf::Music       bgMusic_;           // looping background music
         sf::SoundBuffer selectBuf_;         // navigate/select beep buffer
-        sf::Sound       selectSnd_;         // navigate/select beep player
+        sf::Sound       selectSnd_{selectBuf_};  // navigate/select beep player
         sf::SoundBuffer launchBuf_;         // launch sound buffer
-        sf::Sound       launchSnd_;         // launch sound player
+        sf::Sound       launchSnd_{launchBuf_};  // launch sound player
         bool            bgMusicStarted_ = false;  // guard so music starts once
         // ─────────────────────────────────────────────────────────────────────
 
