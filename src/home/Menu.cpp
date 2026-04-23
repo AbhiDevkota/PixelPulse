@@ -32,13 +32,13 @@ namespace corezone {
 
     void MenuItem::applyGlow() {
         if (hovered_) {
-            // Lerp fill from dark-grey toward a highlighted colour
-            uint8_t g = static_cast<uint8_t>(40 + (glowAlpha_ / 255.f) * 55.f);
-            background_.setFillColor(sf::Color(g, g, g + 20));
+            // Lerp fill from dark-grey toward white for highlight
+            uint8_t brightness = static_cast<uint8_t>(40 + (glowAlpha_ / 255.f) * 85.f);
+            background_.setFillColor(sf::Color(brightness, brightness, brightness));
             background_.setOutlineColor(sf::Color(
                 static_cast<uint8_t>(glowAlpha_),
                 static_cast<uint8_t>(glowAlpha_),
-                255));
+                static_cast<uint8_t>(glowAlpha_)));
             background_.setOutlineThickness(3.f);
         }
         else {
@@ -154,8 +154,8 @@ namespace corezone {
         overlay_.setFillColor(sf::Color(0, 0, 0, 160));
 
         // ── Panel ─────────────────────────────────────────────────────────────
-        panel_.setFillColor(sf::Color(20, 20, 30, 220));
-        panel_.setOutlineColor(sf::Color(80, 80, 120));
+        panel_.setFillColor(sf::Color(20, 20, 20, 220));
+        panel_.setOutlineColor(sf::Color(255, 255, 255));
         panel_.setOutlineThickness(2.f);
 
         // ── Title ─────────────────────────────────────────────────────────────
@@ -181,7 +181,12 @@ namespace corezone {
         state_ = MenuState::Closed;
         for (auto& item : mainMenuItems_)    item.setHovered(false);
         for (auto& item : settingsMenuItems_) item.setHovered(false);
-        if (settings_) settings_->hide();
+        if (settings_) {
+            settings_->hide();
+            // Force reset settings state to prevent volume controls from being stuck
+            settings_->forceStopAllDragging();
+            settings_->resetState();
+        }
     }
 
     // ── Input ────────────────────────────────────────────────────────────────
@@ -303,16 +308,9 @@ namespace corezone {
             }
         }
         else if (state_ == MenuState::Settings) {
-            // Hover detection for BACK button
-            for (size_t i = 0; i < settingsMenuItems_.size(); ++i) {
-                if (settingsMenuItems_[i].getBackground().getGlobalBounds().contains(mousePos)) {
-                    if (settingsHoveredIndex_ != static_cast<int>(i)) {
-                        settingsMenuItems_[settingsHoveredIndex_].setHovered(false);
-                        settingsHoveredIndex_ = static_cast<int>(i);
-                        settingsMenuItems_[settingsHoveredIndex_].setHovered(true);
-                    }
-                    return;
-                }
+            // Forward mouse move to Settings for volume bar dragging
+            if (settings_) {
+                settings_->handleMouseMove(mousePos);
             }
         }
     }
@@ -370,8 +368,11 @@ namespace corezone {
     void Menu::draw() {
         if (state_ == MenuState::Closed) return;
 
-        // Dim the game world behind the menu
-        window_.draw(overlay_);
+        // When in Settings, let Settings handle the overlay
+        if (state_ != MenuState::Settings) {
+            // Dim the game world behind the menu
+            window_.draw(overlay_);
+        }
 
         if (state_ == MenuState::MainMenu) {
             // Panel background

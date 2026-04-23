@@ -1,15 +1,20 @@
 #include "Settings.h"
 #include <cmath>
 #include <iostream>
+#include <string>
 
 namespace corezone {
 
     VolumeBar::VolumeBar(const sf::Font& font, const std::string& label)
-        : label_(label), labelText_(font, label) {
+        : label_(label), labelText_(font, label), volumeText_(font, ""), font_(font) {
 
         // Label text
         labelText_.setCharacterSize(18);
         labelText_.setFillColor(sf::Color(200, 200, 200));
+
+        // Volume percentage text
+        volumeText_.setCharacterSize(18);
+        volumeText_.setFillColor(sf::Color(200, 200, 200));
 
         // Background (track)
         background_.setSize({ BAR_WIDTH, BAR_HEIGHT });
@@ -19,11 +24,11 @@ namespace corezone {
 
         // Fill (progress)
         fill_.setSize({ BAR_WIDTH * (volume_ / maxVolume_), BAR_HEIGHT });
-        fill_.setFillColor(sf::Color(100, 200, 100));
+        fill_.setFillColor(sf::Color(200, 200, 200));
 
         // Knob (slider handle)
         knob_.setSize({ 15.f, BAR_HEIGHT + 10.f });
-        knob_.setFillColor(sf::Color(150, 255, 150));
+        knob_.setFillColor(sf::Color(255, 255, 255));
         knob_.setOutlineColor(sf::Color(255, 255, 255));
         knob_.setOutlineThickness(1.5f);
     }
@@ -36,9 +41,13 @@ namespace corezone {
         knob_.setPosition({ knobX, pos.y - 5.f });
 
         labelText_.setPosition({ pos.x - 150.f, pos.y + 2.f });
+
+        // Position volume percentage text to the right of the bar
+        volumeText_.setPosition({ pos.x + BAR_WIDTH + 20.f, pos.y + 2.f });
     }
 
     void VolumeBar::setVolume(float vol) {
+        float oldVolume = volume_;
         volume_ = std::max(minVolume_, std::min(maxVolume_, vol));
 
         // Update fill width
@@ -48,6 +57,14 @@ namespace corezone {
         auto bgPos = background_.getPosition();
         float knobX = bgPos.x + (volume_ / maxVolume_) * BAR_WIDTH - 7.5f;
         knob_.setPosition({ knobX, bgPos.y - 5.f });
+
+        // Update volume text
+        volumeText_.setString(std::to_string(static_cast<int>(volume_)) + "%");
+
+        // Trigger callback if volume changed
+        if (oldVolume != volume_ && onVolumeChange) {
+            onVolumeChange(volume_);
+        }
     }
 
     void VolumeBar::handleMousePress(sf::Vector2f mousePos) {
@@ -79,6 +96,10 @@ namespace corezone {
         return bounds.contains(mousePos);
     }
 
+    void VolumeBar::forceStopDragging() {
+        isDragging_ = false;
+    }
+
     void VolumeBar::update() {
         // Could add animation or other updates here
     }
@@ -88,6 +109,7 @@ namespace corezone {
         window.draw(background_);
         window.draw(fill_);
         window.draw(knob_);
+        window.draw(volumeText_);
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -102,13 +124,20 @@ namespace corezone {
         float centerX = static_cast<float>(size.x) / 2.f;
         float centerY = static_cast<float>(size.y) / 2.f;
 
-        // Position volume bars
-        masterVolumeBar_.setPosition({ centerX - 150.f, centerY - 80.f });
-        effectVolumeBar_.setPosition({ centerX - 150.f, centerY + 20.f });
+        // Position volume bars with better spacing
+        masterVolumeBar_.setPosition({ centerX - 150.f, centerY - 60.f });
+        effectVolumeBar_.setPosition({ centerX - 150.f, centerY + 40.f });
+
+        // Initialize overlay
+        overlay_.setSize({ static_cast<float>(size.x), static_cast<float>(size.y) });
+        overlay_.setFillColor(sf::Color(0, 0, 0, 160));
     }
 
     void Settings::handleInput(const sf::Event& event) {
-        if (!showSettings_) return;
+        if (!showSettings_) {
+            forceStopAllDragging();
+            return;
+        }
 
         if (event.is<sf::Event::MouseButtonPressed>()) {
             const auto* mouse = event.getIf<sf::Event::MouseButtonPressed>();
@@ -127,12 +156,33 @@ namespace corezone {
         }
     }
 
-    void Settings::update() {
-        if (!showSettings_) return;
+    void Settings::handleMouseMove(sf::Vector2f mousePos) {
+        if (!showSettings_) {
+            forceStopAllDragging();
+            return;
+        }
 
-        auto mousePos = window_.mapPixelToCoords(sf::Mouse::getPosition(window_));
         masterVolumeBar_.handleMouseMove(mousePos);
         effectVolumeBar_.handleMouseMove(mousePos);
+    }
+
+    void Settings::handleMousePress(sf::Vector2f mousePos) {
+        if (!showSettings_) return;
+        
+        masterVolumeBar_.handleMousePress(mousePos);
+        effectVolumeBar_.handleMousePress(mousePos);
+    }
+
+    void Settings::handleMouseRelease() {
+        masterVolumeBar_.handleMouseRelease();
+        effectVolumeBar_.handleMouseRelease();
+    }
+
+    void Settings::update() {
+        if (!showSettings_) {
+            forceStopAllDragging();
+            return;
+        }
 
         masterVolumeBar_.update();
         effectVolumeBar_.update();
@@ -140,6 +190,9 @@ namespace corezone {
 
     void Settings::draw() {
         if (!showSettings_) return;
+
+        // Draw overlay to darken background
+        window_.draw(overlay_);
 
         // Title
         sf::Text title(font_, "SETTINGS");
@@ -166,6 +219,29 @@ namespace corezone {
         bounds = backText.getLocalBounds();
         backText.setPosition({ centerX - bounds.size.x / 2.f, static_cast<float>(size.y) - 80.f });
         window_.draw(backText);
+    }
+
+    void Settings::resetState() {
+        forceStopAllDragging();
+    }
+
+    void Settings::forceStopAllDragging() {
+        masterVolumeBar_.forceStopDragging();
+        effectVolumeBar_.forceStopDragging();
+    }
+
+    void Settings::setMasterVolume(float vol) {
+        masterVolumeBar_.setVolume(vol);
+        if (onMasterVolumeChange) {
+            onMasterVolumeChange(vol);
+        }
+    }
+
+    void Settings::setEffectVolume(float vol) {
+        effectVolumeBar_.setVolume(vol);
+        if (onEffectVolumeChange) {
+            onEffectVolumeChange(vol);
+        }
     }
 
 } // namespace corezone

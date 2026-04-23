@@ -72,11 +72,28 @@ namespace corezone {
         }
 
         // ── MENU SETUP ────────────────────────────────────────────────────────
+        menu_.setSettings(&settings_);
         menu_.onSettings = [this]() {
             settings_.show();
         };
         menu_.onQuit = [this]() {
             window_.close();
+        };
+        menu_.onMasterVolumeChange = [this](float volume) {
+            bgMusic_.setVolume(volume);
+        };
+        menu_.onEffectVolumeChange = [this](float volume) {
+            selectSnd_.setVolume(volume);
+            launchSnd_.setVolume(volume);
+        };
+        
+        // Wire up Settings volume callbacks
+        settings_.onMasterVolumeChange = [this](float volume) {
+            bgMusic_.setVolume(volume);
+        };
+        settings_.onEffectVolumeChange = [this](float volume) {
+            selectSnd_.setVolume(volume);
+            launchSnd_.setVolume(volume);
         };
         // ─────────────────────────────────────────────────────────────────────
     }
@@ -84,6 +101,10 @@ namespace corezone {
     void HomeScreen::initialize() {}
 
     void HomeScreen::update(float deltaTime) {
+        // Manage mouse cursor visibility
+        bool shouldShowCursor = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
+        window_.setMouseCursorVisible(shouldShowCursor);
+
         if (state_ == State::Boot) {
             float time = introClock_.getElapsedTime().asSeconds();
 
@@ -126,8 +147,13 @@ namespace corezone {
         }
 
         // Update menu and settings
-        menu_.update();
-        settings_.update();
+        menu_.update(deltaTime);
+        if (settings_.isVisible()) {
+            settings_.update();
+        } else {
+            // Force stop dragging when settings are not visible
+            settings_.resetState();
+        }
     }
 
     void HomeScreen::handleInput(const sf::Event& event) {
@@ -143,15 +169,28 @@ namespace corezone {
             }
         }
 
-        // If menu is open, let it handle input
-        if (menu_.getState() != Menu::MenuState::Closed) {
-            menu_.handleInput(event);
+        // Handle mouse events for Settings
+        if (settings_.isVisible()) {
+            if (event.is<sf::Event::MouseButtonPressed>()) {
+                const auto* mouse = event.getIf<sf::Event::MouseButtonPressed>();
+                if (mouse->button == sf::Mouse::Button::Left) {
+                    auto mousePos = window_.mapPixelToCoords({mouse->position.x, mouse->position.y});
+                    settings_.handleMousePress(mousePos);
+                }
+            }
+            else if (event.is<sf::Event::MouseButtonReleased>()) {
+                const auto* mouse = event.getIf<sf::Event::MouseButtonReleased>();
+                if (mouse->button == sf::Mouse::Button::Left) {
+                    settings_.handleMouseRelease();
+                }
+            }
+            settings_.handleInput(event);
             return;
         }
 
-        // If settings is open, let it handle input
-        if (settings_.isVisible()) {
-            settings_.handleInput(event);
+        // If menu is open, let it handle input
+        if (menu_.getState() != Menu::MenuState::Closed) {
+            menu_.handleInput(event);
             return;
         }
 
@@ -185,12 +224,20 @@ namespace corezone {
 
     void HomeScreen::handleMouseMove(sf::Vector2f mousePos) {
         if (state_ != State::Menu) return;
-        menu_.handleMouseMove(mousePos);
+        
+        // Only handle mouse move if menu is open or settings are visible
+        if (menu_.getState() != Menu::MenuState::Closed || settings_.isVisible()) {
+            menu_.handleMouseMove(mousePos);
+        }
     }
 
     void HomeScreen::handleMouseClick(sf::Vector2f mousePos) {
         if (state_ != State::Menu) return;
-        menu_.handleMouseClick(mousePos);
+        
+        // Only handle mouse click if menu is open or settings are visible
+        if (menu_.getState() != Menu::MenuState::Closed || settings_.isVisible()) {
+            menu_.handleMouseClick(mousePos);
+        }
     }
 
     void drawKey(sf::RenderWindow& window, sf::Font& font,

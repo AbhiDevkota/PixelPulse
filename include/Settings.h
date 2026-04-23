@@ -3,6 +3,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <functional>
 
 namespace corezone {
 
@@ -13,6 +14,8 @@ namespace corezone {
         sf::RectangleShape knob_;
         std::string label_;
         sf::Text labelText_;
+        sf::Text volumeText_;  // Display volume percentage
+        const sf::Font& font_;
 
         float volume_ = 70.f;  // 0-100
         float minVolume_ = 0.f;
@@ -35,9 +38,14 @@ namespace corezone {
 
         bool isHovered(sf::Vector2f mousePos) const;
         bool isDragging() const { return isDragging_; }
+        void resetDragging() { isDragging_ = false; }  // Reset dragging state
+        void forceStopDragging();  // Force stop dragging
 
         void update();
         void draw(sf::RenderWindow& window);
+
+        // Callback for volume changes
+        std::function<void(float)> onVolumeChange;
     };
 
     class Settings {
@@ -52,6 +60,9 @@ namespace corezone {
         bool showSettings_ = false;
         int focusedSlider_ = 0;  // 0 = master, 1 = effect
 
+        // Overlay to darken background
+        sf::RectangleShape overlay_;
+
     public:
         Settings(sf::RenderWindow& window, const sf::Font& font);
 
@@ -62,12 +73,21 @@ namespace corezone {
         float getMasterVolume() const { return masterVolumeBar_.getVolume(); }
         float getEffectVolume() const { return effectVolumeBar_.getVolume(); }
 
-        void setMasterVolume(float vol) { masterVolumeBar_.setVolume(vol); }
-        void setEffectVolume(float vol) { effectVolumeBar_.setVolume(vol); }
+        void setMasterVolume(float vol);
+        void setEffectVolume(float vol);
 
         void handleInput(const sf::Event& event);
+        void handleMouseMove(sf::Vector2f mousePos);
+        void handleMousePress(sf::Vector2f mousePos);  // Direct mouse press handling
+        void handleMouseRelease();  // Direct mouse release handling
         void update();
         void draw();
+        void resetState();  // Reset volume bars state when closing menu
+        void forceStopAllDragging();  // Force stop all dragging operations
+
+        // Callbacks for volume changes
+        std::function<void(float)> onMasterVolumeChange;
+        std::function<void(float)> onEffectVolumeChange;
     };
 
 } // namespace corezone
