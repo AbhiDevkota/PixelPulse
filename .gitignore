@@ -3,3 +3,6 @@
 *.suo
 build/
 out/
+
+# Added this cause my this project is at Document/CoreZone/ so. Only affects my local machine. :)
+Saved/
