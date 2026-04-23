@@ -164,17 +164,7 @@ namespace corezone {
     void HomeScreen::handleInput(const sf::Event& event) {
         if (state_ != State::Menu) return;
 
-        // Handle pause menu first (ESC opens/closes it)
-        if (event.is<sf::Event::KeyPressed>()) {
-            const auto* key = event.getIf<sf::Event::KeyPressed>();
-            if (key->code == sf::Keyboard::Key::Escape) {
-                menu_.toggle();
-                selectSnd_.play();
-                return;
-            }
-        }
-
-        // Handle mouse events for Settings
+        // Handle mouse events for Settings first
         if (settings_.isVisible()) {
             if (event.is<sf::Event::MouseButtonPressed>()) {
                 const auto* mouse = event.getIf<sf::Event::MouseButtonPressed>();
@@ -189,14 +179,22 @@ namespace corezone {
                     settings_.handleMouseRelease();
                 }
             }
-            settings_.handleInput(event);
-            return;
         }
 
-        // If menu is open, let it handle input
+        // If menu is open (including settings), let it handle all input
         if (menu_.getState() != Menu::MenuState::Closed) {
             menu_.handleInput(event);
             return;
+        }
+
+        // Handle ESC to open menu when nothing is open
+        if (event.is<sf::Event::KeyPressed>()) {
+            const auto* key = event.getIf<sf::Event::KeyPressed>();
+            if (key->code == sf::Keyboard::Key::Escape) {
+                menu_.open();
+                selectSnd_.play();
+                return;
+            }
         }
 
         // Otherwise handle normal game menu input
@@ -207,18 +205,18 @@ namespace corezone {
             case sf::Keyboard::Key::Down:
             case sf::Keyboard::Key::S:
                 gameMenu_.selectNext();
-                selectSnd_.play();   // navigate beep on top of bg music
+                selectSnd_.play();
                 break;
 
             case sf::Keyboard::Key::Up:
             case sf::Keyboard::Key::W:
                 gameMenu_.selectPrev();
-                selectSnd_.play();   // navigate beep on top of bg music
+                selectSnd_.play();
                 break;
 
             case sf::Keyboard::Key::Enter:
             case sf::Keyboard::Key::Space:
-                launchSnd_.play();   // launch sound on top of bg music
+                launchSnd_.play();
                 startLoading();
                 break;
 

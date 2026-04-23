@@ -45,7 +45,7 @@ namespace corezone {
         float knobX = pos.x + (volume_ / maxVolume_) * BAR_WIDTH - 7.5f;
         knob_.setPosition({ knobX, pos.y - 5.f });
 
-        labelText_.setPosition({ pos.x - 150.f, pos.y + 2.f });
+        labelText_.setPosition({ pos.x - 200.f, pos.y + 2.f });
 
         // Position volume percentage text to the right of the bar
         volumeText_.setPosition({ pos.x + BAR_WIDTH + 20.f, pos.y + 2.f });
@@ -129,9 +129,9 @@ namespace corezone {
         float centerX = static_cast<float>(size.x) / 2.f;
         float centerY = static_cast<float>(size.y) / 2.f;
 
-        // Position volume bars with better spacing
-        masterVolumeBar_.setPosition({ centerX - 150.f, centerY - 60.f });
-        effectVolumeBar_.setPosition({ centerX - 150.f, centerY + 40.f });
+        // Position volume bars - moved significantly right to show full labels
+        masterVolumeBar_.setPosition({ centerX - 10.f, centerY - 60.f });
+        effectVolumeBar_.setPosition({ centerX - 10.f, centerY + 40.f });
 
         // Initialize overlay
         overlay_.setSize({ static_cast<float>(size.x), static_cast<float>(size.y) });
@@ -234,16 +234,6 @@ namespace corezone {
         // Draw volume bars
         masterVolumeBar_.draw(window_);
         effectVolumeBar_.draw(window_);
-
-        // Draw back button
-        sf::Text backText(font_, "Press ESC to go back");
-        backText.setCharacterSize(14);
-        backText.setFillColor(sf::Color(160, 160, 160));
-        backText.setStyle(sf::Text::Italic);
-
-        bounds = backText.getLocalBounds();
-        backText.setPosition({ centerX - bounds.size.x / 2.f, static_cast<float>(size.y) - 80.f });
-        window_.draw(backText);
     }
 
     void Settings::resetState() {
