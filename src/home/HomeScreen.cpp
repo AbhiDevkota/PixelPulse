@@ -146,9 +146,6 @@ namespace corezone {
         // If menu is open, let it handle input
         if (menu_.getState() != Menu::MenuState::Closed) {
             menu_.handleInput(event);
-            if (menu_.getState() == Menu::MenuState::MainMenu) {
-                selectSnd_.play();
-            }
             return;
         }
 
@@ -189,6 +186,11 @@ namespace corezone {
     void HomeScreen::handleMouseMove(sf::Vector2f mousePos) {
         if (state_ != State::Menu) return;
         menu_.handleMouseMove(mousePos);
+    }
+
+    void HomeScreen::handleMouseClick(sf::Vector2f mousePos) {
+        if (state_ != State::Menu) return;
+        menu_.handleMouseClick(mousePos);
     }
 
     void drawKey(sf::RenderWindow& window, sf::Font& font,

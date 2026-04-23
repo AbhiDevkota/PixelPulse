@@ -25,6 +25,13 @@ int main() {
                 home.handleMouseMove(window.mapPixelToCoords({ mouse->position.x, mouse->position.y }));
             }
 
+            if (event->is<sf::Event::MouseButtonPressed>()) {
+                const auto* mouse = event->getIf<sf::Event::MouseButtonPressed>();
+                if (mouse->button == sf::Mouse::Button::Left) {
+                    home.handleMouseClick(window.mapPixelToCoords({ mouse->position.x, mouse->position.y }));
+                }
+            }
+
             home.handleInput(*event);
         }
 

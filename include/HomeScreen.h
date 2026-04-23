@@ -70,6 +70,7 @@ namespace corezone {
         void update(float deltaTime);
         void handleInput(const sf::Event& event);
         void handleMouseMove(sf::Vector2f mousePos);
+        void handleMouseClick(sf::Vector2f mousePos);
         void draw();
 
     private:
