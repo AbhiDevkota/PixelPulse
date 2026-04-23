@@ -5,24 +5,24 @@
 
 namespace corezone {
 
-    Menu::Menu() {
+    GameMenu::GameMenu() {
         items_ = { "UDD JETHA UDD", "SNAKE", "CHESS", "CAR CHASE" };
     }
 
-    void Menu::selectNext() {
+    void GameMenu::selectNext() {
         selectedIndex_ = (selectedIndex_ + 1) % static_cast<int>(items_.size());
     }
 
-    void Menu::selectPrev() {
+    void GameMenu::selectPrev() {
         selectedIndex_ = (selectedIndex_ - 1 + static_cast<int>(items_.size())) % static_cast<int>(items_.size());
     }
 
-    const std::string& Menu::getSelected() const {
+    const std::string& GameMenu::getSelected() const {
         return items_[selectedIndex_];
     }
 
     HomeScreen::HomeScreen(sf::RenderWindow& window, const std::string& fontPath)
-        : window_(window)
+        : window_(window), gameMenu_(), menu_(window, font_), settings_(window, font_)
     {
         if (font_.openFromFile(fontPath)) {
             fontLoaded_ = true;
@@ -71,6 +71,13 @@ namespace corezone {
             std::cerr << "✗ Launch sound not found: audios/home/launch_game.wav\n";
         }
 
+        // ── MENU SETUP ────────────────────────────────────────────────────────
+        menu_.onSettings = [this]() {
+            settings_.show();
+        };
+        menu_.onQuit = [this]() {
+            window_.close();
+        };
         // ─────────────────────────────────────────────────────────────────────
     }
 
@@ -117,24 +124,54 @@ namespace corezone {
                 loadingClock_.restart();
             }
         }
+
+        // Update menu and settings
+        menu_.update();
+        settings_.update();
     }
 
     void HomeScreen::handleInput(const sf::Event& event) {
         if (state_ != State::Menu) return;
 
+        // Handle pause menu first (ESC opens/closes it)
+        if (event.is<sf::Event::KeyPressed>()) {
+            const auto* key = event.getIf<sf::Event::KeyPressed>();
+            if (key->code == sf::Keyboard::Key::Escape) {
+                menu_.toggle();
+                selectSnd_.play();
+                return;
+            }
+        }
+
+        // If menu is open, let it handle input
+        if (menu_.getState() != Menu::MenuState::Closed) {
+            menu_.handleInput(event);
+            if (menu_.getState() == Menu::MenuState::MainMenu) {
+                selectSnd_.play();
+            }
+            return;
+        }
+
+        // If settings is open, let it handle input
+        if (settings_.isVisible()) {
+            settings_.handleInput(event);
+            return;
+        }
+
+        // Otherwise handle normal game menu input
         if (event.is<sf::Event::KeyPressed>()) {
             const auto* key = event.getIf<sf::Event::KeyPressed>();
             switch (key->code) {
 
             case sf::Keyboard::Key::Down:
             case sf::Keyboard::Key::S:
-                menu_.selectNext();
+                gameMenu_.selectNext();
                 selectSnd_.play();   // navigate beep on top of bg music
                 break;
 
             case sf::Keyboard::Key::Up:
             case sf::Keyboard::Key::W:
-                menu_.selectPrev();
+                gameMenu_.selectPrev();
                 selectSnd_.play();   // navigate beep on top of bg music
                 break;
 
@@ -144,14 +181,14 @@ namespace corezone {
                 startLoading();
                 break;
 
-            case sf::Keyboard::Key::Escape:
-                menu_.selectPrev();
-                selectSnd_.play();   // navigate beep on top of bg music
-                break;
-
             default: break;
             }
         }
+    }
+
+    void HomeScreen::handleMouseMove(sf::Vector2f mousePos) {
+        if (state_ != State::Menu) return;
+        menu_.handleMouseMove(mousePos);
     }
 
     void drawKey(sf::RenderWindow& window, sf::Font& font,
@@ -192,6 +229,12 @@ namespace corezone {
             renderCredit();
             if (flashActive_) renderFlash();
         }
+
+        // Draw menu on top
+        menu_.draw();
+
+        // Draw settings on top
+        settings_.draw();
     }
 
     void HomeScreen::renderBackground() {
@@ -316,12 +359,12 @@ namespace corezone {
 
     void HomeScreen::renderMenu() {
         if (!fontLoaded_) return;
-        const auto& items = menu_.getItems();
+        const auto& items = gameMenu_.getItems();
         float startY = static_cast<float>(window_.getSize().y) / 2.0f - 65.0f;   // moved up
 
         for (size_t i = 0; i < items.size(); ++i) {
             std::string display = items[i];
-            if (static_cast<int>(i) == menu_.getSelectedIndex()) {
+            if (static_cast<int>(i) == gameMenu_.getSelectedIndex()) {
                 display = "> " + items[i] + " <";
             }
 
@@ -329,7 +372,7 @@ namespace corezone {
             text.setCharacterSize(26);
             text.setLetterSpacing(3.0f);
 
-            if (static_cast<int>(i) == menu_.getSelectedIndex()) {
+            if (static_cast<int>(i) == gameMenu_.getSelectedIndex()) {
                 float blink = std::sin(blinkClock_.getElapsedTime().asSeconds() * 8.0f);
                 text.setFillColor(blink > 0.0f ? sf::Color(255, 255, 255) : sf::Color(180, 180, 180));
             }
@@ -422,7 +465,7 @@ namespace corezone {
     }
 
     void HomeScreen::startLoading() {
-        loadingName_ = menu_.getSelected();
+        loadingName_ = gameMenu_.getSelected();
         loadingMode_ = true;
         flashActive_ = true;
         loadingClock_.restart();

@@ -5,16 +5,18 @@
 #include <SFML/Audio.hpp>        // ← added for sound/music
 #include <vector>
 #include <string>
+#include "Menu.h"
+#include "Settings.h"
 
 namespace corezone {
 
-    class Menu {
+    class GameMenu {
     private:
         std::vector<std::string> items_;
         int selectedIndex_ = 0;
 
     public:
-        Menu();
+        GameMenu();
         void selectNext();
         void selectPrev();
         const std::string& getSelected() const;
@@ -29,7 +31,9 @@ namespace corezone {
         bool fontLoaded_ = false;
         sf::Font iconFont_;
 
+        GameMenu gameMenu_;
         Menu menu_;
+        Settings settings_;
 
         // Clocks
         sf::Clock introClock_;
@@ -65,6 +69,7 @@ namespace corezone {
         void initialize();
         void update(float deltaTime);
         void handleInput(const sf::Event& event);
+        void handleMouseMove(sf::Vector2f mousePos);
         void draw();
 
     private:
