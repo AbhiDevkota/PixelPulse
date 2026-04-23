@@ -63,9 +63,13 @@ namespace corezone {
         // Overlay to darken background
         sf::RectangleShape overlay_;
 
+        void saveSettings();
+        void loadSettings();
+
     public:
         Settings(sf::RenderWindow& window, const sf::Font& font);
 
+        void initialize();  // Call after wiring up callbacks
         void show() { showSettings_ = true; }
         void hide() { showSettings_ = false; }
         bool isVisible() const { return showSettings_; }

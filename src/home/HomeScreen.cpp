@@ -44,7 +44,7 @@ namespace corezone {
         // Background music — loops forever, starts when "Presenting You" fades out
         if (bgMusic_.openFromFile("audios/home/home_screen.wav")) {
             bgMusic_.setLooping(true);
-            bgMusic_.setVolume(70.f);   // TWEAK: bg music volume (0–100)
+            bgMusic_.setVolume(70.f);   // Default volume, will be overridden by settings
             std::cout << "✓ BG music loaded\n";
         }
         else {
@@ -54,7 +54,7 @@ namespace corezone {
         // Navigate sound — plays on Up / Down / Escape, on top of bg music
         if (selectBuf_.loadFromFile("audios/home/select_game.wav")) {
             selectSnd_.setBuffer(selectBuf_);
-            selectSnd_.setVolume(100.f);  // TWEAK: navigate sound volume (0–100)
+            selectSnd_.setVolume(100.f);  // Default volume, will be overridden by settings
             std::cout << "✓ Select sound loaded\n";
         }
         else {
@@ -64,7 +64,7 @@ namespace corezone {
         // Launch sound — plays on Enter / Space, on top of bg music
         if (launchBuf_.loadFromFile("audios/home/launch_game.wav")) {
             launchSnd_.setBuffer(launchBuf_);
-            launchSnd_.setVolume(100.f);  // TWEAK: launch sound volume (0–100)
+            launchSnd_.setVolume(100.f);  // Default volume, will be overridden by settings
             std::cout << "✓ Launch sound loaded\n";
         }
         else {
@@ -87,14 +87,19 @@ namespace corezone {
             launchSnd_.setVolume(volume);
         };
         
-        // Wire up Settings volume callbacks
+        // Wire up Settings volume callbacks BEFORE initializing settings
         settings_.onMasterVolumeChange = [this](float volume) {
             bgMusic_.setVolume(volume);
+            std::cout << "Master volume changed to: " << volume << "\n";
         };
         settings_.onEffectVolumeChange = [this](float volume) {
             selectSnd_.setVolume(volume);
             launchSnd_.setVolume(volume);
+            std::cout << "Effect volume changed to: " << volume << "\n";
         };
+        
+        // Initialize settings (loads saved values)
+        settings_.initialize();
         // ─────────────────────────────────────────────────────────────────────
     }
 

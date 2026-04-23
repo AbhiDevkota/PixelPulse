@@ -2,7 +2,7 @@
 #define HOMESCREEN_H
 
 #include <SFML/Graphics.hpp>
-#include <SFML/Audio.hpp>        // ← added for sound/music
+#include <SFML/Audio.hpp>        //for sound/music
 #include <vector>
 #include <string>
 #include "Menu.h"
