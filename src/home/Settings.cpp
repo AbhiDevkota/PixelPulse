@@ -45,7 +45,8 @@ namespace corezone {
         float knobX = pos.x + (volume_ / maxVolume_) * BAR_WIDTH - 7.5f;
         knob_.setPosition({ knobX, pos.y - 5.f });
 
-        labelText_.setPosition({ pos.x - 200.f, pos.y + 2.f });
+        // Position label to the LEFT of the bar - INCREASE this number to move label MORE LEFT
+        labelText_.setPosition({ pos.x - 280.f, pos.y + 2.f });
 
         // Position volume percentage text to the right of the bar
         volumeText_.setPosition({ pos.x + BAR_WIDTH + 20.f, pos.y + 2.f });
@@ -129,9 +130,9 @@ namespace corezone {
         float centerX = static_cast<float>(size.x) / 2.f;
         float centerY = static_cast<float>(size.y) / 2.f;
 
-        // Position volume bars - moved significantly right to show full labels
-        masterVolumeBar_.setPosition({ centerX - 10.f, centerY - 60.f });
-        effectVolumeBar_.setPosition({ centerX - 10.f, centerY + 40.f });
+        // Position volume bars to the right to show full labels on the left
+        masterVolumeBar_.setPosition({ centerX + 100.f, centerY - 60.f });
+        effectVolumeBar_.setPosition({ centerX + 100.f, centerY + 40.f });
 
         // Initialize overlay
         overlay_.setSize({ static_cast<float>(size.x), static_cast<float>(size.y) });
