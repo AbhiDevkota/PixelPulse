@@ -2,8 +2,19 @@
 #include <SFML/Graphics.hpp>
 
 int main() {
+    //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
+    //sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
+
+
     sf::VideoMode mode = sf::VideoMode::getDesktopMode();
-    sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
+
+    sf::RenderWindow window(
+        mode,
+        "CORE ZONE",
+        sf::Style::None
+    );
+
+    window.setPosition(sf::Vector2i(0, 0));
 
     // Load and set the application icon
     sf::Image icon;

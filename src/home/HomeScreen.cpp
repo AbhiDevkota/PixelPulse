@@ -387,7 +387,7 @@ namespace corezone {
         if (!fontLoaded_) return;
         sf::Text title(font_, "CORE ZONE");
         title.setCharacterSize(58);
-        title.setLetterSpacing(3.0f);  // reduced from 8.0f — was too wide
+        title.setLetterSpacing(3.0f);  // reduced from 8.0f,  was too wide
 
         float flicker = std::sin(flickerClock_.getElapsedTime().asSeconds() * 8.0f) * 30.0f + 225.0f;
         std::uint8_t alpha = static_cast<std::uint8_t>(flicker);
@@ -400,7 +400,7 @@ namespace corezone {
         title.setPosition({ cx, TITLE_Y });
         window_.draw(title);
 
-        //Underline on the COREZONE
+        //Underline garni on the COREZONE
         float boxW = bounds.size.x + 40.0f;
         float boxH = 4.0f;
         sf::RectangleShape underline({ boxW, boxH });
