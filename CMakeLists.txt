@@ -28,6 +28,7 @@ file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS
 add_executable(CoreZone
     ${SRC_FILES}
     ${HEADER_FILES}
+    CoreZone.rc
 )
 
 if (MSVC)
@@ -59,16 +60,25 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/audios")
     file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/audios" DESTINATION "${CMAKE_BINARY_DIR}/bin")
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Icons")
+    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/Icons" DESTINATION "${CMAKE_BINARY_DIR}/bin")
+    message(STATUS "✅ Icons copied to build/bin/Icons/")
+endif()
+
 # Also copy after every build (backup)
 add_custom_command(TARGET CoreZone POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/fonts"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/audios"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/Icons"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/fonts"
         "$<TARGET_FILE_DIR:CoreZone>/fonts"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/audios"
         "$<TARGET_FILE_DIR:CoreZone>/audios"
-    COMMENT "Copying fonts & audios to executable directory"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/Icons"
+        "$<TARGET_FILE_DIR:CoreZone>/Icons"
+    COMMENT "Copying fonts, audios & icons to executable directory"
     VERBATIM
 )

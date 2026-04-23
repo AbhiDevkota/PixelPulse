@@ -5,6 +5,12 @@ int main() {
     sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
 
+    // Load and set the application icon
+    sf::Image icon;
+    if (icon.loadFromFile("Icons/icon_concept1.ico")) {
+        window.setIcon(icon);
+    }
+
     corezone::HomeScreen home(window, "fonts/regular.ttf");
     home.initialize();
 
