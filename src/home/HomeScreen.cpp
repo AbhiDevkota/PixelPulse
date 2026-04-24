@@ -5,24 +5,24 @@
 
 namespace corezone {
 
-    Menu::Menu() {
-        items_ = { "UDD JETHA UDD", "SNAKE", "CHESS", "CAR CHASE" };
+    GameMenu::GameMenu() {
+        items_ = { "UDD JETHA UDD", "SNAKE", "CHESS", "CAR CHASE", "TUNG TUNG LEAGUE" };
     }
 
-    void Menu::selectNext() {
+    void GameMenu::selectNext() {
         selectedIndex_ = (selectedIndex_ + 1) % static_cast<int>(items_.size());
     }
 
-    void Menu::selectPrev() {
+    void GameMenu::selectPrev() {
         selectedIndex_ = (selectedIndex_ - 1 + static_cast<int>(items_.size())) % static_cast<int>(items_.size());
     }
 
-    const std::string& Menu::getSelected() const {
+    const std::string& GameMenu::getSelected() const {
         return items_[selectedIndex_];
     }
 
     HomeScreen::HomeScreen(sf::RenderWindow& window, const std::string& fontPath)
-        : window_(window)
+        : window_(window), gameMenu_(), menu_(window, font_), settings_(window, font_)
     {
         if (font_.openFromFile(fontPath)) {
             fontLoaded_ = true;
@@ -44,7 +44,7 @@ namespace corezone {
         // Background music — loops forever, starts when "Presenting You" fades out
         if (bgMusic_.openFromFile("audios/home/home_screen.wav")) {
             bgMusic_.setLooping(true);
-            bgMusic_.setVolume(70.f);   // TWEAK: bg music volume (0–100)
+            bgMusic_.setVolume(70.f);   // Default volume, will be overridden by settings
             std::cout << "✓ BG music loaded\n";
         }
         else {
@@ -54,7 +54,7 @@ namespace corezone {
         // Navigate sound — plays on Up / Down / Escape, on top of bg music
         if (selectBuf_.loadFromFile("audios/home/select_game.wav")) {
             selectSnd_.setBuffer(selectBuf_);
-            selectSnd_.setVolume(100.f);  // TWEAK: navigate sound volume (0–100)
+            selectSnd_.setVolume(100.f);  // Default volume, will be overridden by settings
             std::cout << "✓ Select sound loaded\n";
         }
         else {
@@ -64,19 +64,52 @@ namespace corezone {
         // Launch sound — plays on Enter / Space, on top of bg music
         if (launchBuf_.loadFromFile("audios/home/launch_game.wav")) {
             launchSnd_.setBuffer(launchBuf_);
-            launchSnd_.setVolume(100.f);  // TWEAK: launch sound volume (0–100)
+            launchSnd_.setVolume(100.f);  // Default volume, will be overridden by settings
             std::cout << "✓ Launch sound loaded\n";
         }
         else {
             std::cerr << "✗ Launch sound not found: audios/home/launch_game.wav\n";
         }
 
+        // ── MENU SETUP ────────────────────────────────────────────────────────
+        menu_.setSettings(&settings_);
+        menu_.onSettings = [this]() {
+            settings_.show();
+            };
+        menu_.onQuit = [this]() {
+            window_.close();
+            };
+        menu_.onMasterVolumeChange = [this](float volume) {
+            bgMusic_.setVolume(volume);
+            };
+        menu_.onEffectVolumeChange = [this](float volume) {
+            selectSnd_.setVolume(volume);
+            launchSnd_.setVolume(volume);
+            };
+
+        // Wire up Settings volume callbacks BEFORE initializing settings
+        settings_.onMasterVolumeChange = [this](float volume) {
+            bgMusic_.setVolume(volume);
+            std::cout << "Master volume changed to: " << volume << "\n";
+            };
+        settings_.onEffectVolumeChange = [this](float volume) {
+            selectSnd_.setVolume(volume);
+            launchSnd_.setVolume(volume);
+            std::cout << "Effect volume changed to: " << volume << "\n";
+            };
+
+        // Initialize settings (loads saved values)
+        settings_.initialize();
         // ─────────────────────────────────────────────────────────────────────
     }
 
     void HomeScreen::initialize() {}
 
     void HomeScreen::update(float deltaTime) {
+        // Manage mouse cursor visibility
+        bool shouldShowCursor = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
+        window_.setMouseCursorVisible(shouldShowCursor);
+
         if (state_ == State::Boot) {
             float time = introClock_.getElapsedTime().asSeconds();
 
@@ -117,40 +150,97 @@ namespace corezone {
                 loadingClock_.restart();
             }
         }
+
+        // Update menu and settings
+        menu_.update(deltaTime);
+        if (settings_.isVisible()) {
+            settings_.update();
+        }
+        else {
+            // Force stop dragging when settings are not visible
+            settings_.resetState();
+        }
     }
 
     void HomeScreen::handleInput(const sf::Event& event) {
         if (state_ != State::Menu) return;
 
+        // Handle mouse events for Settings first
+        if (settings_.isVisible()) {
+            if (event.is<sf::Event::MouseButtonPressed>()) {
+                const auto* mouse = event.getIf<sf::Event::MouseButtonPressed>();
+                if (mouse->button == sf::Mouse::Button::Left) {
+                    auto mousePos = window_.mapPixelToCoords({ mouse->position.x, mouse->position.y });
+                    settings_.handleMousePress(mousePos);
+                }
+            }
+            else if (event.is<sf::Event::MouseButtonReleased>()) {
+                const auto* mouse = event.getIf<sf::Event::MouseButtonReleased>();
+                if (mouse->button == sf::Mouse::Button::Left) {
+                    settings_.handleMouseRelease();
+                }
+            }
+        }
+
+        // If menu is open (including settings), let it handle all input
+        if (menu_.getState() != Menu::MenuState::Closed) {
+            menu_.handleInput(event);
+            return;
+        }
+
+        // Handle ESC to open menu when nothing is open
+        if (event.is<sf::Event::KeyPressed>()) {
+            const auto* key = event.getIf<sf::Event::KeyPressed>();
+            if (key->code == sf::Keyboard::Key::Escape) {
+                menu_.open();
+                selectSnd_.play();
+                return;
+            }
+        }
+
+        // Otherwise handle normal game menu input
         if (event.is<sf::Event::KeyPressed>()) {
             const auto* key = event.getIf<sf::Event::KeyPressed>();
             switch (key->code) {
 
             case sf::Keyboard::Key::Down:
             case sf::Keyboard::Key::S:
-                menu_.selectNext();
-                selectSnd_.play();   // navigate beep on top of bg music
+                gameMenu_.selectNext();
+                selectSnd_.play();
                 break;
 
             case sf::Keyboard::Key::Up:
             case sf::Keyboard::Key::W:
-                menu_.selectPrev();
-                selectSnd_.play();   // navigate beep on top of bg music
+                gameMenu_.selectPrev();
+                selectSnd_.play();
                 break;
 
             case sf::Keyboard::Key::Enter:
             case sf::Keyboard::Key::Space:
-                launchSnd_.play();   // launch sound on top of bg music
+                launchSnd_.play();
                 startLoading();
-                break;
-
-            case sf::Keyboard::Key::Escape:
-                menu_.selectPrev();
-                selectSnd_.play();   // navigate beep on top of bg music
                 break;
 
             default: break;
             }
+        }
+    }
+
+    void HomeScreen::handleMouseMove(sf::Vector2f mousePos) {
+        if (state_ != State::Menu) return;
+
+        // Only handle mouse move if menu is open or settings are visible
+        if (menu_.getState() != Menu::MenuState::Closed || settings_.isVisible()) {
+            menu_.handleMouseMove(mousePos);
+        }
+    }
+
+    void HomeScreen::handleMouseClick(sf::Vector2f mousePos) {
+        if (state_ != State::Menu) return;
+
+        // Only handle mouse click if menu is open or settings are visible
+        if (menu_.getState() != Menu::MenuState::Closed || settings_.isVisible()) {
+            menu_.handleMouseClick(mousePos);
         }
     }
 
@@ -192,6 +282,12 @@ namespace corezone {
             renderCredit();
             if (flashActive_) renderFlash();
         }
+
+        // Draw menu on top
+        menu_.draw();
+
+        // Draw settings on top
+        settings_.draw();
     }
 
     void HomeScreen::renderBackground() {
@@ -316,12 +412,12 @@ namespace corezone {
 
     void HomeScreen::renderMenu() {
         if (!fontLoaded_) return;
-        const auto& items = menu_.getItems();
+        const auto& items = gameMenu_.getItems();
         float startY = static_cast<float>(window_.getSize().y) / 2.0f - 65.0f;   // moved up
 
         for (size_t i = 0; i < items.size(); ++i) {
             std::string display = items[i];
-            if (static_cast<int>(i) == menu_.getSelectedIndex()) {
+            if (static_cast<int>(i) == gameMenu_.getSelectedIndex()) {
                 display = "> " + items[i] + " <";
             }
 
@@ -329,7 +425,7 @@ namespace corezone {
             text.setCharacterSize(26);
             text.setLetterSpacing(3.0f);
 
-            if (static_cast<int>(i) == menu_.getSelectedIndex()) {
+            if (static_cast<int>(i) == gameMenu_.getSelectedIndex()) {
                 float blink = std::sin(blinkClock_.getElapsedTime().asSeconds() * 8.0f);
                 text.setFillColor(blink > 0.0f ? sf::Color(255, 255, 255) : sf::Color(180, 180, 180));
             }
@@ -422,10 +518,23 @@ namespace corezone {
     }
 
     void HomeScreen::startLoading() {
-        loadingName_ = menu_.getSelected();
+        loadingName_ = gameMenu_.getSelected();
         loadingMode_ = true;
+        launchRequested_ = true;
         flashActive_ = true;
         loadingClock_.restart();
+    }
+
+    bool HomeScreen::consumeLaunchRequest(std::string& gameName) {
+        if (!launchRequested_) {
+            return false;
+        }
+
+        gameName = loadingName_;
+        launchRequested_ = false;
+        loadingMode_ = false;
+        loadingName_.clear();
+        return true;
     }
 
 } // namespace corezone

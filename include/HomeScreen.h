@@ -2,19 +2,21 @@
 #define HOMESCREEN_H
 
 #include <SFML/Graphics.hpp>
-#include <SFML/Audio.hpp>        // ← added for sound/music
+#include <SFML/Audio.hpp>        //for sound/music
 #include <vector>
 #include <string>
+#include "Menu.h"
+#include "Settings.h"
 
 namespace corezone {
 
-    class Menu {
+    class GameMenu {
     private:
         std::vector<std::string> items_;
         int selectedIndex_ = 0;
 
     public:
-        Menu();
+        GameMenu();
         void selectNext();
         void selectPrev();
         const std::string& getSelected() const;
@@ -29,7 +31,9 @@ namespace corezone {
         bool fontLoaded_ = false;
         sf::Font iconFont_;
 
+        GameMenu gameMenu_;
         Menu menu_;
+        Settings settings_;
 
         // Clocks
         sf::Clock introClock_;
@@ -47,6 +51,7 @@ namespace corezone {
         bool flashActive_ = false;
         bool loadingMode_ = false;
         std::string loadingName_;
+        bool launchRequested_ = false;
         int dotCount_ = 0;
 
         float introOpacity_ = 255.0f;
@@ -54,9 +59,9 @@ namespace corezone {
         // ── AUDIO ─────────────────────────────────────────────────────────────
         sf::Music       bgMusic_;           // looping background music
         sf::SoundBuffer selectBuf_;         // navigate/select beep buffer
-        sf::Sound       selectSnd_{selectBuf_};  // navigate/select beep player
+        sf::Sound       selectSnd_{ selectBuf_ };  // navigate/select beep player
         sf::SoundBuffer launchBuf_;         // launch sound buffer
-        sf::Sound       launchSnd_{launchBuf_};  // launch sound player
+        sf::Sound       launchSnd_{ launchBuf_ };  // launch sound player
         bool            bgMusicStarted_ = false;  // guard so music starts once
         // ─────────────────────────────────────────────────────────────────────
 
@@ -65,6 +70,9 @@ namespace corezone {
         void initialize();
         void update(float deltaTime);
         void handleInput(const sf::Event& event);
+        void handleMouseMove(sf::Vector2f mousePos);
+        void handleMouseClick(sf::Vector2f mousePos);
+        bool consumeLaunchRequest(std::string& gameName);
         void draw();
 
     private:
