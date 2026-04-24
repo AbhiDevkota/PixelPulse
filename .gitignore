@@ -3,5 +3,5 @@
 *.suo
 build/
 out/
-./Saved/
-# Added this cause my this project is at Document/CoreZone/ so. Only affects my local machine. :)
+Saved/
+# Added /Saved cause my this project is at Document/CoreZone/ so. Only affects my local machine. :)
