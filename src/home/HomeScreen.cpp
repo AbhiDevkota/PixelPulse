@@ -385,7 +385,7 @@ namespace corezone {
 
     void HomeScreen::renderTitle() {
         if (!fontLoaded_) return;
-        sf::Text title(font_, "CORE ZONE");
+        sf::Text title(font_, "Pixel Pulse");
         title.setCharacterSize(58);
         title.setLetterSpacing(3.0f);  // reduced from 8.0f,  was too wide
 

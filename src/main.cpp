@@ -10,7 +10,7 @@ int main() {
 
     sf::RenderWindow window(
         mode,
-        "CORE ZONE",
+        "Pixel Pulse",
         sf::Style::None
     );
 
