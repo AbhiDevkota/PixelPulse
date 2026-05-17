@@ -24,7 +24,6 @@ int main() {
 
     corezone::HomeScreen home(window, "fonts/regular.ttf");
     home.initialize();
-    runSnake(window);
     sf::Clock clock;
 
     while (window.isOpen()) {
