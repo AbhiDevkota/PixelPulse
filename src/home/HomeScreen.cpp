@@ -107,6 +107,16 @@ namespace corezone {
         // Initialize settings (loads saved values)
         settings_.initialize();
         // ─────────────────────────────────────────────────────────────────────
+
+        //  CUSTOM CURSOR 
+        if (cursorTexture_.loadFromFile("assets/customs/regular_cursor.png")) {
+            cursorSprite_ = new sf::Sprite(cursorTexture_);
+            cursorSprite_->setScale({1.40f, 1.40f});  // Adjust this to resize cursor (0.5 = half size)
+            std::cout << "✓ Custom cursor loaded\n";
+        }
+        else {
+            std::cerr << "✗ Custom cursor not found: assets/customs/regular_cursor.png\n";
+        }
     }
 
     void HomeScreen::initialize() {}
@@ -114,7 +124,13 @@ namespace corezone {
     void HomeScreen::update(float deltaTime) {
         // Manage mouse cursor visibility
         bool shouldShowCursor = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
-        window_.setMouseCursorVisible(shouldShowCursor);
+        window_.setMouseCursorVisible(false);  // Always hide default cursor
+
+        // Update custom cursor position
+        if (shouldShowCursor && cursorSprite_) {
+            auto mousePos = sf::Mouse::getPosition(window_);
+            cursorSprite_->setPosition({static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)});
+        }
 
         if (state_ == State::Boot) {
             float time = introClock_.getElapsedTime().asSeconds();
@@ -293,6 +309,12 @@ namespace corezone {
 
         // Draw settings on top
         settings_.draw();
+
+        // Draw custom cursor on top of everything
+        bool shouldShowCursor = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
+        if (shouldShowCursor && cursorSprite_) {
+            window_.draw(*cursorSprite_);
+        }
     }
 
     void HomeScreen::renderBackground() {
@@ -511,7 +533,7 @@ namespace corezone {
 
     void HomeScreen::renderCredit() {
         if (!fontLoaded_) return;
-        sf::Text credit(font_, "*Developed by ZONE BREACHER");
+        sf::Text credit(font_, "Developed by ZONE BREACHER");
         credit.setCharacterSize(13);
         credit.setFillColor(sf::Color(100, 100, 100));
         credit.setStyle(sf::Text::Italic);
