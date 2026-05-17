@@ -18,11 +18,11 @@ This is the Retro style version of the gaming console with a collection of class
 ## Team 
 | Member | Game |
 | -------- | ------- |
-|[Aashutosh KC](https://github.com/Aashutosh-kc)| Snake |
-|[Abhi Devkota](https://github.com/AbhiDevkota)| Menu / Homescreen |
-|[Prabin Dhungana](https://github.com/Aashutosh-kc) | Cricket |
-|[Samyam Khadka](https://github.com/Samyam1070)| Rocket Shooter |
-|[Sunim Fuyal](https://github.com/sunim4125)| Dino game |
+| <a href="https://github.com/Aashutosh-kc" style="color:white; text-decoration:none;">Aashutosh KC</a> | Snake |
+| <a href="https://github.com/AbhiDevkota" style="color:white; text-decoration:none;">Abhi Devkota</a> | Menu / Homescreen |
+| <a href="https://github.com/PrabinDhungana" style="color:white; text-decoration:none;">Prabin Dhungana</a> | Cricket |
+| <a href="https://github.com/Samyam1070" style="color:white; text-decoration:none;">Samyam Khadka</a> | Rocket Shooter |
+| <a href="https://github.com/sunim4125" style="color:white; text-decoration:none;">Sunim Fuyal</a> | Dino game |
 ## How to Run
 1. Clone the repo
 ```bash
