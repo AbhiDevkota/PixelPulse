@@ -64,6 +64,11 @@ namespace corezone {
         bool            bgMusicStarted_ = false;  // guard so music starts once
         // ─────────────────────────────────────────────────────────────────────
 
+        // CUSTOM CURSOR
+        sf::Texture cursorTexture_;
+        sf::Sprite* cursorSprite_ = nullptr;
+        
+
     public:
         HomeScreen(sf::RenderWindow& window, const std::string& fontPath);
         void initialize();
