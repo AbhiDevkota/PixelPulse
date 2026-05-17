@@ -1,5 +1,5 @@
 # Pixel Pulse 
-This is the Retro style version of the gaming console with a collection of classic mini games 
+This is the Retro style version of the gaming console with a collection of classic mini games. 
 ## Games 
 - Snake
 - Flappy bird
