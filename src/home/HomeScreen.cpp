@@ -6,7 +6,13 @@
 namespace corezone {
 
     GameMenu::GameMenu() {
-        items_ = { "UDD JETHA UDD", "SNAKE", "CHESS", "CAR CHASE" };
+        items_ = {
+            "SNAKE", 
+            "FLAPPY BIRD", 
+            "ROCKET SHOOTER", 
+            "CRICKET",
+			"DINO RUN"
+        };
     }
 
     void GameMenu::selectNext() {
