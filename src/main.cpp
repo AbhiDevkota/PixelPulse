@@ -1,6 +1,6 @@
 #include "HomeScreen.h"
 #include <SFML/Graphics.hpp>
-
+void runSnake(sf::RenderWindow& window);
 int main() {
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     //sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
@@ -24,7 +24,7 @@ int main() {
 
     corezone::HomeScreen home(window, "fonts/regular.ttf");
     home.initialize();
-
+    runSnake(window);
     sf::Clock clock;
 
     while (window.isOpen()) {
