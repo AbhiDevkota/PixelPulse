@@ -1,6 +1,7 @@
-# Pixel Pulse 
 
-![App Icon](assets/preview/icon_concept1.png)
+# <img src="assets/preview/icon_concept1.png" width="30"/> Pixel Pulse 
+
+
 
 This is the Retro style version of the gaming console with a collection of classic mini games. 
 ## Games 
@@ -18,11 +19,11 @@ This is the Retro style version of the gaming console with a collection of class
 ## Team 
 | Member | Game |
 | -------- | ------- |
-| <a href="https://github.com/Aashutosh-kc" style="color:white; text-decoration:none;">Aashutosh KC</a> | Snake |
-| <a href="https://github.com/AbhiDevkota" style="color:white; text-decoration:none;">Abhi Devkota</a> | Menu / Homescreen |
-| <a href="https://github.com/PrabinDhungana" style="color:white; text-decoration:none;">Prabin Dhungana</a> | Cricket |
-| <a href="https://github.com/Samyam1070" style="color:white; text-decoration:none;">Samyam Khadka</a> | Rocket Shooter |
-| <a href="https://github.com/sunim4125" style="color:white; text-decoration:none;">Sunim Fuyal</a> | Dino game |
+| <a href="https://github.com/Aashutosh-kc">Aashutosh KC</a> | Snake |
+| <a href="https://github.com/AbhiDevkota">Abhi Devkota</a> | Menu / Homescreen |
+| <a href="https://github.com/PrabinDhungana000">Prabin Dhungana</a> | Cricket |
+| <a href="https://github.com/Samyam1070">Samyam Khadka</a> | Rocket Shooter |
+| <a href="https://github.com/sunim4125">Sunim Fuyal</a> | Dino game |
 ## How to Run
 1. Clone the repo
 ```bash
