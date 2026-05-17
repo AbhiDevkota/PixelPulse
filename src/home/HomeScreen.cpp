@@ -111,6 +111,7 @@ namespace corezone {
         //  CUSTOM CURSOR 
         if (cursorTexture_.loadFromFile("assets/customs/regular_cursor.png")) {
             cursorSprite_ = new sf::Sprite(cursorTexture_);
+            cursorSprite_->setScale({0.09f, 0.09f});  // Adjust this to resize cursor (0.5 = half size)
             std::cout << "✓ Custom cursor loaded\n";
         }
         else {
