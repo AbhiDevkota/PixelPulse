@@ -5,6 +5,7 @@ This is the Retro style version of the gaming console with a collection of class
 - Flappy bird
 - Rocket Shooter
 - Cricket game
+- Dino game
 ## Preview
 ![Menu Preview](src/snake/menu-preview.png)
 ## Built With
