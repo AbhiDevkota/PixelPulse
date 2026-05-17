@@ -1,12 +1,13 @@
 # Pixel Pulse 
-This is the Retro style version of the gaming console with a collection of classic mini games 
+This is the Retro style version of the gaming console with a collection of classic mini games. 
 ## Games 
 - Snake
 - Flappy bird
 - Rocket Shooter
 - Cricket game
+- Dino game
 ## Preview
-![Menu Preview](src/snake/menu-preview.png)
+![Menu Preview](assets/preview/homescreen-preview.png)
 ## Built With
 ![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)
 ![SFML](https://img.shields.io/badge/SFML-8CC445?style=for-the-badge&logo=sfml&logoColor=white)
