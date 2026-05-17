@@ -1,4 +1,7 @@
 # Pixel Pulse 
+
+![App Icon](assets/preview/icon_concept1.png)
+
 This is the Retro style version of the gaming console with a collection of classic mini games. 
 ## Games 
 - Snake
@@ -24,6 +27,10 @@ This is the Retro style version of the gaming console with a collection of class
 1. Clone the repo
 ```bash
 git clone https://github.com/AbhiDevkota/PixelPulse.git
+```
+
+```bash
+cd PixelPulse
 ```
 2. Open `CMakeLists.txt` in Visual Studio and let CMake configure it 
 3. Select **CoreZone.exe** as startup item
