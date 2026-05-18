@@ -134,7 +134,7 @@ namespace corezone {
             cursorSprite_->setPosition({static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)});
         }
 
-        // ── CONTROLLER NAVIGATION (JOYSTICK & D-PAD) ───────────────────────────────
+        // ── CONTROLLER NAVIGATION (JOYSTICK & D-PAD)
         if (state_ == State::Menu && menu_.getState() == Menu::MenuState::Closed && !settings_.isVisible()) {
             float delay = joystickDelayClock_.getElapsedTime().asSeconds();
             
@@ -175,13 +175,12 @@ namespace corezone {
                 }
             }
         }
-        // ─────────────────────────────────────────────────────────────────────────
 
         if (state_ == State::Boot) {
             float time = introClock_.getElapsedTime().asSeconds();
 
             if (time < 1.8f) {
-                introText_ = "Developed by ZONE BREACHER";
+                introText_ = "Developed By ZONE BREACHER";
                 introOpacity_ = 255.0f;
             }
             else if (time < 2.2f) {
@@ -235,7 +234,8 @@ namespace corezone {
         // Switch to keyboard/mouse mode on any key or mouse event
         if (event.is<sf::Event::KeyPressed>() ||
             event.is<sf::Event::MouseButtonPressed>() ||
-            event.is<sf::Event::MouseMoved>()) {
+            event.is<sf::Event::MouseMoved>() ||
+            event.is<sf::Event::MouseWheelScrolled>()) {
             lastInputDevice_ = InputDevice::KeyboardMouse;
         }
         // Switch to controller mode on any joystick event
@@ -244,7 +244,6 @@ namespace corezone {
                  event.is<sf::Event::JoystickConnected>()) {
             lastInputDevice_ = InputDevice::Controller;
         }
-        // ─────────────────────────────────────────────────────────────────────────
 
         // Handle mouse events for Settings first
         if (settings_.isVisible()) {
@@ -263,7 +262,23 @@ namespace corezone {
             }
         }
 
-        // ── CONTROLLER BUTTON EVENTS ─────────────────────────────────────────────
+        // MOUSE WHEEL SCROLL NAVIGATION
+        if (event.is<sf::Event::MouseWheelScrolled>()) {
+            const auto* scroll = event.getIf<sf::Event::MouseWheelScrolled>();
+
+            // Scroll Up
+            if (scroll->delta > 0.f) {
+                gameMenu_.selectPrev();
+                selectSnd_.play();
+            }
+            // Scroll Down
+            else if (scroll->delta < 0.f) {
+                gameMenu_.selectNext();
+                selectSnd_.play();
+            }
+        }
+
+        //CONTROLLER BUTTON EVENTS
         if (event.is<sf::Event::JoystickButtonPressed>()) {
             const auto* joy = event.getIf<sf::Event::JoystickButtonPressed>();
             unsigned int button = joy->button;
@@ -287,7 +302,6 @@ namespace corezone {
                 }
             }
         }
-        // ─────────────────────────────────────────────────────────────────────────
 
         // If menu is open (including settings), let it handle all input
         if (menu_.getState() != Menu::MenuState::Closed) {
