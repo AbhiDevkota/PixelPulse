@@ -132,6 +132,49 @@ namespace corezone {
             cursorSprite_->setPosition({static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)});
         }
 
+        // ── CONTROLLER NAVIGATION (JOYSTICK & D-PAD) ───────────────────────────────
+        if (state_ == State::Menu && menu_.getState() == Menu::MenuState::Closed && !settings_.isVisible()) {
+            float delay = joystickDelayClock_.getElapsedTime().asSeconds();
+            
+            if (delay > 0.2f) {  // 200ms delay between navigation moves
+                bool moved = false;
+
+                // Check all connected joysticks
+                for (unsigned int i = 0; i < sf::Joystick::Count; ++i) {
+                    if (!sf::Joystick::isConnected(i)) continue;
+
+                    // Left Joystick Y-axis (axis 1)
+                    float yAxis = sf::Joystick::getAxisPosition(i, sf::Joystick::Axis::Y);
+                    
+                    // D-Pad Y-axis (POV, axis 7 on Xbox, axis 7 on PS4)
+                    float dpadY = 0.f;
+                    if (sf::Joystick::hasAxis(i, sf::Joystick::Axis::PovY)) {
+                        dpadY = sf::Joystick::getAxisPosition(i, sf::Joystick::Axis::PovY);
+                    }
+
+                    // Navigate Up
+                    if (yAxis < -50.f || dpadY > 50.f) {
+                        gameMenu_.selectPrev();
+                        selectSnd_.play();
+                        moved = true;
+                        break;
+                    }
+                    // Navigate Down
+                    else if (yAxis > 50.f || dpadY < -50.f) {
+                        gameMenu_.selectNext();
+                        selectSnd_.play();
+                        moved = true;
+                        break;
+                    }
+                }
+
+                if (moved) {
+                    joystickDelayClock_.restart();
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────────
+
         if (state_ == State::Boot) {
             float time = introClock_.getElapsedTime().asSeconds();
 
@@ -202,6 +245,32 @@ namespace corezone {
                 }
             }
         }
+
+        // ── CONTROLLER BUTTON EVENTS ─────────────────────────────────────────────
+        if (event.is<sf::Event::JoystickButtonPressed>()) {
+            const auto* joy = event.getIf<sf::Event::JoystickButtonPressed>();
+            unsigned int button = joy->button;
+
+            // A button on Xbox (0) / X button on PS (1)
+            bool isConfirm = (button == 0);  // Xbox A
+
+            // Start button on Xbox (7) / Options on PS (9)
+            bool isStart = (button == 7);
+
+            if (menu_.getState() == Menu::MenuState::Closed && !settings_.isVisible()) {
+                if (isConfirm) {
+                    launchSnd_.play();
+                    startLoading();
+                    return;
+                }
+                if (isStart) {
+                    menu_.open();
+                    selectSnd_.play();
+                    return;
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────────
 
         // If menu is open (including settings), let it handle all input
         if (menu_.getState() != Menu::MenuState::Closed) {
