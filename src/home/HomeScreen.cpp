@@ -122,11 +122,13 @@ namespace corezone {
     void HomeScreen::initialize() {}
 
     void HomeScreen::update(float deltaTime) {
-        // Manage mouse cursor visibility
-        bool shouldShowCursor = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
-        window_.setMouseCursorVisible(false);  // Always hide default cursor
+        // Manage mouse cursor visibility based on input device
+        bool menuOrSettingsOpen = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
+        bool shouldShowCursor = menuOrSettingsOpen && (lastInputDevice_ == InputDevice::KeyboardMouse);
 
-        // Update custom cursor position
+        window_.setMouseCursorVisible(false);  // Always hide default system cursor
+
+        // Update custom cursor position only when using keyboard/mouse
         if (shouldShowCursor && cursorSprite_) {
             auto mousePos = sf::Mouse::getPosition(window_);
             cursorSprite_->setPosition({static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)});
@@ -228,6 +230,21 @@ namespace corezone {
 
     void HomeScreen::handleInput(const sf::Event& event) {
         if (state_ != State::Menu) return;
+
+        // ── INPUT DEVICE DETECTION ───────────────────────────────────────────────
+        // Switch to keyboard/mouse mode on any key or mouse event
+        if (event.is<sf::Event::KeyPressed>() ||
+            event.is<sf::Event::MouseButtonPressed>() ||
+            event.is<sf::Event::MouseMoved>()) {
+            lastInputDevice_ = InputDevice::KeyboardMouse;
+        }
+        // Switch to controller mode on any joystick event
+        else if (event.is<sf::Event::JoystickButtonPressed>() ||
+                 event.is<sf::Event::JoystickMoved>() ||
+                 event.is<sf::Event::JoystickConnected>()) {
+            lastInputDevice_ = InputDevice::Controller;
+        }
+        // ─────────────────────────────────────────────────────────────────────────
 
         // Handle mouse events for Settings first
         if (settings_.isVisible()) {
@@ -379,8 +396,9 @@ namespace corezone {
         // Draw settings on top
         settings_.draw();
 
-        // Draw custom cursor on top of everything
-        bool shouldShowCursor = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
+        // Draw custom cursor on top of everything (only when using keyboard/mouse)
+        bool menuOrSettingsOpen = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
+        bool shouldShowCursor = menuOrSettingsOpen && (lastInputDevice_ == InputDevice::KeyboardMouse);
         if (shouldShowCursor && cursorSprite_) {
             window_.draw(*cursorSprite_);
         }

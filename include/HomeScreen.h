@@ -74,6 +74,10 @@ namespace corezone {
         bool joystickDownPressed_ = false;  // D-Pad Down state
         bool joystickAPressed_ = false;     // A/X button state
         bool joystickStartPressed_ = false; // Start/Options button state
+
+        // Input device detection
+        enum class InputDevice { KeyboardMouse, Controller };
+        InputDevice lastInputDevice_ = InputDevice::KeyboardMouse;
         // ─────────────────────────────────────────────────────────────────────
         
 
