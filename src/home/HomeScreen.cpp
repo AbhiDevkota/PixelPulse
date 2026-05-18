@@ -537,7 +537,7 @@ namespace corezone {
 
             sf::Text text(font_, display);
             text.setCharacterSize(26);
-            text.setLetterSpacing(3.0f);
+            text.setLetterSpacing(1.50f);
 
             if (static_cast<int>(i) == gameMenu_.getSelectedIndex()) {
                 float blink = std::sin(blinkClock_.getElapsedTime().asSeconds() * 8.0f);
@@ -549,7 +549,7 @@ namespace corezone {
 
             auto bounds = text.getLocalBounds();
             float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
-            float y = startY + static_cast<float>(i) * 38.0f;   // less space
+            float y = startY + static_cast<float>(i) * 56.0f;           // spacing between game names
 
             text.setPosition({ x, y });
             window_.draw(text);
