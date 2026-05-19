@@ -122,21 +122,65 @@ namespace corezone {
     void HomeScreen::initialize() {}
 
     void HomeScreen::update(float deltaTime) {
-        // Manage mouse cursor visibility
-        bool shouldShowCursor = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
-        window_.setMouseCursorVisible(false);  // Always hide default cursor
+        // Manage mouse cursor visibility based on input device
+        bool menuOrSettingsOpen = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
+        bool shouldShowCursor = menuOrSettingsOpen && (lastInputDevice_ == InputDevice::KeyboardMouse);
 
-        // Update custom cursor position
+        window_.setMouseCursorVisible(false);  // Always hide default system cursor
+
+        // Update custom cursor position only when using keyboard/mouse
         if (shouldShowCursor && cursorSprite_) {
             auto mousePos = sf::Mouse::getPosition(window_);
             cursorSprite_->setPosition({static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)});
+        }
+
+        // ── CONTROLLER NAVIGATION (JOYSTICK & D-PAD)
+        if (state_ == State::Menu && menu_.getState() == Menu::MenuState::Closed && !settings_.isVisible()) {
+            float delay = joystickDelayClock_.getElapsedTime().asSeconds();
+            
+            if (delay > 0.2f) {  // 200ms delay between navigation moves
+                bool moved = false;
+
+                // Check all connected joysticks
+                for (unsigned int i = 0; i < sf::Joystick::Count; ++i) {
+                    if (!sf::Joystick::isConnected(i)) continue;
+
+                    // Left Joystick Y-axis (axis 1)
+                    float yAxis = sf::Joystick::getAxisPosition(i, sf::Joystick::Axis::Y);
+                    
+                    // D-Pad Y-axis (POV, axis 7 on Xbox, axis 7 on PS4)
+                    float dpadY = 0.f;
+                    if (sf::Joystick::hasAxis(i, sf::Joystick::Axis::PovY)) {
+                        dpadY = sf::Joystick::getAxisPosition(i, sf::Joystick::Axis::PovY);
+                    }
+
+                    // Navigate Up
+                    if (yAxis < -50.f || dpadY > 50.f) {
+                        gameMenu_.selectPrev();
+                        selectSnd_.play();
+                        moved = true;
+                        break;
+                    }
+                    // Navigate Down
+                    else if (yAxis > 50.f || dpadY < -50.f) {
+                        gameMenu_.selectNext();
+                        selectSnd_.play();
+                        moved = true;
+                        break;
+                    }
+                }
+
+                if (moved) {
+                    joystickDelayClock_.restart();
+                }
+            }
         }
 
         if (state_ == State::Boot) {
             float time = introClock_.getElapsedTime().asSeconds();
 
             if (time < 1.8f) {
-                introText_ = "Developed by ZONE BREACHER";
+                introText_ = "Developed By ZONE BREACHER";
                 introOpacity_ = 255.0f;
             }
             else if (time < 2.2f) {
@@ -186,6 +230,21 @@ namespace corezone {
     void HomeScreen::handleInput(const sf::Event& event) {
         if (state_ != State::Menu) return;
 
+        // ── INPUT DEVICE DETECTION ───────────────────────────────────────────────
+        // Switch to keyboard/mouse mode on any key or mouse event
+        if (event.is<sf::Event::KeyPressed>() ||
+            event.is<sf::Event::MouseButtonPressed>() ||
+            event.is<sf::Event::MouseMoved>() ||
+            event.is<sf::Event::MouseWheelScrolled>()) {
+            lastInputDevice_ = InputDevice::KeyboardMouse;
+        }
+        // Switch to controller mode on any joystick event
+        else if (event.is<sf::Event::JoystickButtonPressed>() ||
+                 event.is<sf::Event::JoystickMoved>() ||
+                 event.is<sf::Event::JoystickConnected>()) {
+            lastInputDevice_ = InputDevice::Controller;
+        }
+
         // Handle mouse events for Settings first
         if (settings_.isVisible()) {
             if (event.is<sf::Event::MouseButtonPressed>()) {
@@ -199,6 +258,47 @@ namespace corezone {
                 const auto* mouse = event.getIf<sf::Event::MouseButtonReleased>();
                 if (mouse->button == sf::Mouse::Button::Left) {
                     settings_.handleMouseRelease();
+                }
+            }
+        }
+
+        // MOUSE WHEEL SCROLL NAVIGATION
+        if (event.is<sf::Event::MouseWheelScrolled>()) {
+            const auto* scroll = event.getIf<sf::Event::MouseWheelScrolled>();
+
+            // Scroll Up
+            if (scroll->delta > 0.f) {
+                gameMenu_.selectPrev();
+                selectSnd_.play();
+            }
+            // Scroll Down
+            else if (scroll->delta < 0.f) {
+                gameMenu_.selectNext();
+                selectSnd_.play();
+            }
+        }
+
+        //CONTROLLER BUTTON EVENTS
+        if (event.is<sf::Event::JoystickButtonPressed>()) {
+            const auto* joy = event.getIf<sf::Event::JoystickButtonPressed>();
+            unsigned int button = joy->button;
+
+            // A button on Xbox (0) / X button on PS (1)
+            bool isConfirm = (button == 0);  // Xbox A
+
+            // Start button on Xbox (7) / Options on PS (9)
+            bool isStart = (button == 7);
+
+            if (menu_.getState() == Menu::MenuState::Closed && !settings_.isVisible()) {
+                if (isConfirm) {
+                    launchSnd_.play();
+                    startLoading();
+                    return;
+                }
+                if (isStart) {
+                    menu_.open();
+                    selectSnd_.play();
+                    return;
                 }
             }
         }
@@ -310,8 +410,9 @@ namespace corezone {
         // Draw settings on top
         settings_.draw();
 
-        // Draw custom cursor on top of everything
-        bool shouldShowCursor = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
+        // Draw custom cursor on top of everything (only when using keyboard/mouse)
+        bool menuOrSettingsOpen = (menu_.getState() != Menu::MenuState::Closed) || settings_.isVisible();
+        bool shouldShowCursor = menuOrSettingsOpen && (lastInputDevice_ == InputDevice::KeyboardMouse);
         if (shouldShowCursor && cursorSprite_) {
             window_.draw(*cursorSprite_);
         }
@@ -450,7 +551,7 @@ namespace corezone {
 
             sf::Text text(font_, display);
             text.setCharacterSize(26);
-            text.setLetterSpacing(3.0f);
+            text.setLetterSpacing(1.50f);
 
             if (static_cast<int>(i) == gameMenu_.getSelectedIndex()) {
                 float blink = std::sin(blinkClock_.getElapsedTime().asSeconds() * 8.0f);
@@ -462,7 +563,7 @@ namespace corezone {
 
             auto bounds = text.getLocalBounds();
             float x = (static_cast<float>(window_.getSize().x) - bounds.size.x) / 2.0f;
-            float y = startY + static_cast<float>(i) * 38.0f;   // less space
+            float y = startY + static_cast<float>(i) * 56.0f;           // spacing between game names
 
             text.setPosition({ x, y });
             window_.draw(text);
