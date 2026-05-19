@@ -64,6 +64,23 @@ namespace corezone {
         bool            bgMusicStarted_ = false;  // guard so music starts once
         // ─────────────────────────────────────────────────────────────────────
 
+        // CUSTOM CURSOR
+        sf::Texture cursorTexture_;
+        sf::Sprite* cursorSprite_ = nullptr;
+
+        // ── CONTROLLER SUPPORT ─────────────────────────────────────────────────
+        sf::Clock joystickDelayClock_;      // Delay between navigation moves
+        bool joystickUpPressed_ = false;    // D-Pad Up state
+        bool joystickDownPressed_ = false;  // D-Pad Down state
+        bool joystickAPressed_ = false;     // A/X button state
+        bool joystickStartPressed_ = false; // Start/Options button state
+
+        // Input device detection
+        enum class InputDevice { KeyboardMouse, Controller };
+        InputDevice lastInputDevice_ = InputDevice::KeyboardMouse;
+        // ─────────────────────────────────────────────────────────────────────
+        
+
     public:
         HomeScreen(sf::RenderWindow& window, const std::string& fontPath);
         void initialize();

@@ -84,6 +84,11 @@ namespace corezone {
         void activateSettings();
         void selectMainItem(int index);
 
+        // ── Controller support ─────────────────────────────────────────────────
+        sf::Clock joystickDelayClock_;
+        void handleControllerNavigation();
+        // ─────────────────────────────────────────────────────────────────────────
+
     public:
         Menu(sf::RenderWindow& window, const sf::Font& font);
 
