@@ -35,4 +35,4 @@ cd PixelPulse
 ```
 2. Open `CMakeLists.txt` in Visual Studio and let CMake configure it 
 3. Select **CoreZone.exe** as startup item
-4. Hit the green play buttons
+4. Hit the green play button
