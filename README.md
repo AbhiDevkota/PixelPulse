@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-This is the Retro style version of the gaming console.
-=======
-
 # <img src="assets/preview/icon_concept1.png" width="30"/> Pixel Pulse 
 
 
