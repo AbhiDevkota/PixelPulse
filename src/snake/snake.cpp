@@ -1,4 +1,7 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Window/Joystick.hpp>
+
+
 void runSnake(sf::RenderWindow& window) {
 
 	const int CELL_SIZE = 20;
@@ -50,6 +53,18 @@ void runSnake(sf::RenderWindow& window) {
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
 			direction = { 1,0 };
 
+		if (sf::Joystick::isConnected(0)) //IF controoler is detected, uses DPAD for the movement of the snake
+		{
+			if (sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovX) < -50)
+				direction = { -1, 0 };
+			if (sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovX) > 50)
+				direction = { 1, 0 };
+			if (sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovY) > 50)
+				direction = { 0, -1 };
+			if (sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovY) < -50)
+				direction = { 0, 1 };
+		}
+		
 
 		if (clock.getElapsedTime().asSeconds() >= moveInterval) {
 			position += direction;
