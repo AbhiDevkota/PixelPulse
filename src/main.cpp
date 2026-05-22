@@ -24,8 +24,8 @@ int main() {
 
     corezone::HomeScreen home(window, "fonts/regular.ttf");
     home.initialize();
-    runSnake(window);
-    return 0;
+    
+    
     sf::Clock clock;
 
     while (window.isOpen()) {
@@ -49,7 +49,13 @@ int main() {
 
         float dt = clock.restart().asSeconds();
         home.update(dt);
-
+        // Added by aashutosh to select game and run it
+        if (home.isGameReady()) {
+            std::string game = home.getSelectedGame();
+            home.resetGame();
+            if (game == "SNAKE") runSnake(window);
+        }
+        //Up to here
         window.clear();
         home.draw();
         window.display();

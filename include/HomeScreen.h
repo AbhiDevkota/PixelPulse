@@ -89,7 +89,11 @@ namespace corezone {
         void handleMouseMove(sf::Vector2f mousePos);
         void handleMouseClick(sf::Vector2f mousePos);
         void draw();
-
+        //Added by Aashutosh to run game after selection
+        bool isGameReady() const { return readyToLaunch_; }
+        std::string getSelectedGame() const { return loadingName_; }
+        void resetGame() { loadingMode_ = false; readyToLaunch_ = false; loadingName_ = ""; }
+        //Up to here
     private:
         void renderBackground();
         void renderIntro();
@@ -100,6 +104,9 @@ namespace corezone {
         void renderControls();
         void renderCredit();
         void startLoading();
+        //Added by Aashutosh for game selection testing
+        bool readyToLaunch_ = false;
+        //Up to here
     };
 
 } // namespace corezone
