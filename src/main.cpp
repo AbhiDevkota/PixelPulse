@@ -1,5 +1,8 @@
 #include "HomeScreen.h"
 #include <SFML/Graphics.hpp>
+#include <iostream>
+
+void runCricket(sf::RenderWindow& window);
 
 int main() {
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
@@ -49,11 +52,12 @@ int main() {
         float dt = clock.restart().asSeconds();
         home.update(dt);
 
-        if(home.isGameReady(){
+        if(home.isGameReady() ) {
 			std::string game = home.getSelectedGame();
             home.resetGame();
 
-        if (game == "Cricket") {
+        if (game == "CRICKET") {
+			std::cout << "Launched Cricket" << std::endl; //For the Debug Console added by Abhi Dev.
             runCricket(window);
         }
         }
