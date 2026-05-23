@@ -4,7 +4,7 @@
 #include<ctime>
 #include<deque>
 void runSnake(sf::RenderWindow& window) {
-
+	bool gameOver = false;
 	const int CELL_SIZE = 20;
 	auto size = window.getSize();
 	const int COLS = size.x / CELL_SIZE;
@@ -51,7 +51,16 @@ void runSnake(sf::RenderWindow& window) {
 				auto key = e->getIf<sf::Event::KeyPressed>()->code;
 				if (key == sf::Keyboard::Key::Escape)
 					window.close();
+				if (key == sf::Keyboard::Key::R && gameOver) {
+					body.clear();
+					body.push_front({ 5, 5 });
+					direction = { 1, 0 };
+					score = 0;
+					gameOver = false;
+					foodPos = { std::rand() % COLS, std::rand() % ROWS };
+				}
 			}
+			
 		}
 
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
@@ -76,11 +85,11 @@ void runSnake(sf::RenderWindow& window) {
 		}
 
 
-		if (clock.getElapsedTime().asSeconds() >= moveInterval) {
+		if (!gameOver && clock.getElapsedTime().asSeconds() >= moveInterval) {
 			sf::Vector2i newHead = body.front() + direction;
 			for (auto& segment : body){
 				if (newHead == segment) {
-					window.close();
+					gameOver = true;
 				}
 			}
 			body.push_front(newHead);
@@ -88,7 +97,7 @@ void runSnake(sf::RenderWindow& window) {
 			clock.restart();
 
 			if (newHead.x < 0 || newHead.y < 0 || newHead.x >= COLS || newHead.y >= ROWS)
-				window.close();
+				gameOver = true;
 			if (foodPos == newHead) {
 				foodPos = { std::rand() % COLS, std::rand() % ROWS };
 				body.push_back(body.back());
@@ -101,6 +110,18 @@ void runSnake(sf::RenderWindow& window) {
 			});
 		
 		window.clear(sf::Color(10, 10, 10));
+		if (gameOver) {
+			scoreText.setCharacterSize(32);
+			scoreText.setString("Game Over! Score: " + std::to_string(score) + "\nPress R to Restart");
+			sf::FloatRect textBounds = scoreText.getLocalBounds();
+			scoreText.setPosition({
+				static_cast<float>(window.getSize().x / 2) - textBounds.size.x / 2,
+				static_cast<float>(window.getSize().y / 2) - textBounds.size.y / 2
+				});
+			window.draw(scoreText);
+			window.display();
+			continue;
+		}
 		scoreText.setString("Score : " + std::to_string(score));
 		window.draw(scoreText);
 		window.draw(food);
