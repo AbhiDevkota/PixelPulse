@@ -29,7 +29,7 @@ add_executable(CoreZone
     ${SRC_FILES}
     ${HEADER_FILES}
     CoreZone.rc
- "src/cricket/Cricket.cpp" "include/cricket/Ball.h")
+ "src/cricket/Cricket.cpp" "include/cricket/Ball.h" "src/cricket/Ball.cpp")
 
 if (MSVC)
     target_compile_options(CoreZone PRIVATE /W4)   # removed /WX so warnings don't kill build
