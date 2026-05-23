@@ -15,6 +15,8 @@ class ScoreBoard {
 
 		bool isGameOver() const;
 
+		void update(float dt);		//update the timer for last shot text and hide it after certain time
+
 		void draw(sf::RenderWindow& window);
 
 	private:
