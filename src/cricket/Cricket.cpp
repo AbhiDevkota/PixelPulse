@@ -72,12 +72,104 @@ void CricketGame::update(float dt){
 
 			//CONTROL POINT 1 "This is the control point 1 for the speed control of the ball created by the Abhi Dev."
 			float speedX = -320.f - (std::rand() % 100); //Random speed between -320 and -420
+			float speedY = -200.f - (std::rand() % 100); //Random speed between -200 and -280
+
+			ball.launch(speedX, speedY);
+			state = GameState::PLAYING;		//this change the state to playing so this helps in collision detection
+
+
 
 		}
+		break;
+
+
+	case GameState::PLAYING:
+		ball.update(dt);
+		bat.update(dt);
+		scoreBoard.update(dt);		//This make it change all the ball, bat and scoreboard to update in delta time period at playing state
+		checkCollision();
+		checkWicket();
+		break;
+
+	case GameState::OUT:
+		scoreBoard.update(dt);		//Update scoreboard
+		outTimer -= dt;	
+		if(outTimer<=0.f){
+			if (scoreBoard.isGameOver()) {
+				state = GameState::GAME_OVER;
+			}
+			else {
+				startNextDelivery();
+			}
+		}
+		break;
+
+	case GameState::GAME_OVER:
+		scoreBoard.update(dt);		//Update scoreboard to show final score
 		break;
 	}
 }
 
-void runCricket(sf::RenderWindow& window) {
 
+void CricketGame::checkCollision(){
+	if(bat.isSwinging()){
+		return;
+	}
+	if(bat.getBounds().findIntersection(ball.getBounds())){
+		float timing = bat.getTimingScore();
+		scoreBoard.addRun(timing);
+
+		startNextDelivery();		//Start Next Delivery after the collision
+	}
+}
+
+
+void CricketGame::checkWicket(){
+	if(!ball.isMoving()){
+		scoreBoard.addWicket();
+		state = GameState::OUT;
+		outTimer = outDuration;		//Reset the out timer to show "OUT!" text for certain duration
+		ball.reset();
+
+	}
+}
+
+
+void CricketGame::startNextDelivery(){
+	ball.reset();
+	state = GameState::WAITING;
+	waitTimer = waitDuration;
+}
+
+void CricketGame::draw(sf::RenderWindow& window){
+	drawBackground(window);
+
+	if(state != GameState::GAME_OVER){
+		ball.draw(window);
+		bat.draw(window);
+		scoreBoard.draw(window);
+
+	}
+	else{
+		drawGameOver(window);
+	}
+}
+
+void CricketGame::drawGameOver(sf::RenderWindow& window){
+	window.draw(sky);
+	finalScoreText.setString("FINAL SCORE: " + std::to_string(scoreBoard.getRuns()) + " RUNS");
+	
+	sf::FloatRect fb = finalScoreText.getLocalBounds();
+	finalScoreText.setOrigin({ fb.size.x / 2.f, fb.size.y / 2.f });
+
+	sf::Vector2u size = window.getSize();
+	finalScoreText.setPosition({ static_cast<float>(size.x)/2.f ,static_cast<float>(size.y)/2.f});
+
+	window.draw(gameOverText);
+	window.draw(finalScoreText);
+	window.draw(exitHintText);
+}
+
+bool CricketGame::isDone() const{
+	return state == GameState::GAME_OVER;
 }

@@ -30,9 +30,9 @@ class ScoreBoard {
 
 		sf::Font font;
 
-		sf::Text runsText;		//RUNS :
-		sf::Text wicketsText;		//WICKETS : X/X
-		sf::Text lastShotText; 		//Last Shot like "SIX!" or "OUT!" or "1 RUN" etc
+		sf::Text runsText{font};		//RUNS :
+		sf::Text wicketsText{font};		//WICKETS : X/X
+		sf::Text lastShotText{font}; 		//Last Shot like "SIX!" or "OUT!" or "1 RUN" etc
 		float lastShotTimer = 0.f;    //The duration to show last shot text
 
 };

@@ -54,9 +54,9 @@ class CricketGame {
 		sf::RectangleShape sky;
 
 		sf::Font font;
-		sf::Text gameOverText;
-		sf::Text finalScoreText;
-		sf::Text exitHintText;
+		sf::Text gameOverText{font};
+		sf::Text finalScoreText{font};
+		sf::Text exitHintText{font};
 
 
 };
