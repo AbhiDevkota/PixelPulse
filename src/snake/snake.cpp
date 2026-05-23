@@ -17,15 +17,15 @@ void runSnake(sf::RenderWindow& window) {
 	sf::RectangleShape rect({
 		static_cast<float> (CELL_SIZE),
 		static_cast<float>(CELL_SIZE)
-	});
+		});
 
 	rect.setFillColor(sf::Color::White);
-	
+
 
 	sf::RectangleShape food({
 	static_cast<float> (CELL_SIZE),
 	static_cast<float> (CELL_SIZE)
-	});
+		});
 	food.setFillColor(sf::Color::Red);
 
 	sf::Clock clock;
@@ -35,7 +35,7 @@ void runSnake(sf::RenderWindow& window) {
 	scoreText.setFillColor(sf::Color::White);
 	scoreText.setPosition({ 100.f,100.f });
 	std::srand(static_cast<unsigned>(std::time(nullptr)));
-	sf::Vector2i foodPos(std::rand() % COLS, std::rand() % ROWS );
+	sf::Vector2i foodPos(std::rand() % COLS, std::rand() % ROWS);
 	float moveInterval = 0.2f;
 
 	sf::Vector2i direction(1, 0);
@@ -74,10 +74,15 @@ void runSnake(sf::RenderWindow& window) {
 			if (sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovY) < -50)
 				direction = { 0, 1 };
 		}
-		
+
 
 		if (clock.getElapsedTime().asSeconds() >= moveInterval) {
 			sf::Vector2i newHead = body.front() + direction;
+			for (auto& segment : body){
+				if (newHead == segment) {
+					window.close();
+				}
+			}
 			body.push_front(newHead);
 			body.pop_back();
 			clock.restart();
