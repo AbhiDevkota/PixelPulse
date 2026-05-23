@@ -2,7 +2,7 @@
 #include <SFML/Window/Joystick.hpp>
 #include<cstdlib>
 #include<ctime>
-
+#include<deque>
 void runSnake(sf::RenderWindow& window) {
 
 	const int CELL_SIZE = 20;
@@ -10,13 +10,17 @@ void runSnake(sf::RenderWindow& window) {
 	const int COLS = size.x / CELL_SIZE;
 	const int ROWS = size.y / CELL_SIZE;
 
+	std::deque < sf::Vector2i > body;
+	body.push_front({ 5,5 });
+
+
 	sf::RectangleShape rect({
 		static_cast<float> (CELL_SIZE),
 		static_cast<float>(CELL_SIZE)
 	});
 
 	rect.setFillColor(sf::Color::White);
-	sf::Vector2i position(5, 5);
+	
 
 	sf::RectangleShape food({
 	static_cast<float> (CELL_SIZE),
@@ -67,27 +71,32 @@ void runSnake(sf::RenderWindow& window) {
 		
 
 		if (clock.getElapsedTime().asSeconds() >= moveInterval) {
-			position += direction;
+			sf::Vector2i newHead = body.front() + direction;
+			body.push_front(newHead);
+			body.pop_back();
 			clock.restart();
 
-			if (position.x < 0 || position.y < 0 || position.x >= COLS || position.y >= ROWS)
+			if (newHead.x < 0 || newHead.y < 0 || newHead.x >= COLS || newHead.y >= ROWS)
 				window.close();
-			if (foodPos == position)
+			if (foodPos == newHead) {
 				foodPos = { std::rand() % COLS, std::rand() % ROWS };
+				body.push_back(body.back());
+			}
 		}
 		food.setPosition({
 			static_cast<float>(foodPos.x * CELL_SIZE),
 			 static_cast<float>(foodPos.y * CELL_SIZE)
 			});
-		rect.setPosition(
-			{
-			static_cast<float>(position.x * CELL_SIZE),
-			static_cast<float>(position.y * CELL_SIZE)
-			}
-		);
+		
 		window.clear(sf::Color(10, 10, 10));
 		window.draw(food);
-		window.draw(rect);
+		for (auto& segment : body) {
+			rect.setPosition({
+				static_cast<float>(segment.x * CELL_SIZE),
+				static_cast<float>(segment.y * CELL_SIZE)
+				});
+			window.draw(rect);
+		}
 		window.display();
 	}
 }
