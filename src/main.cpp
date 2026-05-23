@@ -1,8 +1,7 @@
 #include "HomeScreen.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
-
-void runCricket(sf::RenderWindow& window);
+#include "cricket/Cricket.h"
 
 int main() {
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
