@@ -49,6 +49,15 @@ int main() {
         float dt = clock.restart().asSeconds();
         home.update(dt);
 
+        if(home.isGameReady(){
+			std::string game = home.getSelectedGame();
+            home.resetGame();
+
+        if (game == "Cricket") {
+            runCricket(window);
+        }
+        }
+
         window.clear();
         home.draw();
         window.display();
