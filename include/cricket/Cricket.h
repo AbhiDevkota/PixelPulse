@@ -61,4 +61,7 @@ class CricketGame {
 
 };
 
+// Function to run the Cricket game
+void runCricket(sf::RenderWindow& window);
+
 #endif

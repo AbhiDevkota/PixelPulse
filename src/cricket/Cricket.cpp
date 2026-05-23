@@ -23,7 +23,9 @@ CricketGame::CricketGame(sf::RenderWindow& window)
 		ground.setFillColor(sf::Color(45,90,45)); //Green colour for the ground
 		ground.setPosition({ 0.f, size.y * 0.70f });
 
-		font.openFromFile("fonts/regular.ttf");
+		if (!font.openFromFile("fonts/regular.ttf")) {
+			std::cerr << "Error: Failed to load font from fonts/regular.ttf" << std::endl;
+		}
 
 		gameOverText.setFont(font);
 		gameOverText.setString("!! GAME OVER !!");
@@ -115,7 +117,14 @@ void CricketGame::checkCollision(){
 	if(bat.isSwinging()){
 		return;
 	}
-	if(bat.getBounds().findIntersection(ball.getBounds())){
+	sf::FloatRect batBounds = bat.getBounds();
+	sf::FloatRect ballBounds = ball.getBounds();
+
+	// AABB collision detection
+	if (!(batBounds.position.x + batBounds.size.x < ballBounds.position.x ||
+		  ballBounds.position.x + ballBounds.size.x < batBounds.position.x ||
+		  batBounds.position.y + batBounds.size.y < ballBounds.position.y ||
+		  ballBounds.position.y + ballBounds.size.y < batBounds.position.y)) {
 		float timing = bat.getTimingScore();
 		scoreBoard.addRun(timing);
 
@@ -139,6 +148,11 @@ void CricketGame::startNextDelivery(){
 	ball.reset();
 	state = GameState::WAITING;
 	waitTimer = waitDuration;
+}
+
+void CricketGame::drawBackground(sf::RenderWindow& window){
+	window.draw(sky);
+	window.draw(ground);
 }
 
 void CricketGame::draw(sf::RenderWindow& window){
@@ -172,4 +186,71 @@ void CricketGame::drawGameOver(sf::RenderWindow& window){
 
 bool CricketGame::isDone() const{
 	return state == GameState::GAME_OVER;
+}
+
+// Function to run the Cricket game
+void runCricket(sf::RenderWindow& window) {
+	CricketGame game(window);
+	sf::Clock clock;
+
+	while (window.isOpen()) {
+		// Handle events
+		while (const auto event = window.pollEvent()) {
+			if (!event.has_value()) continue;
+
+			// Close window
+			if (event->is<sf::Event::Closed>()) {
+				window.close();
+				return;
+			}
+
+			// Return to home screen on ESC
+			if (event->is<sf::Event::KeyPressed>()) {
+				const auto* keyEvent = event->getIf<sf::Event::KeyPressed>();
+				if (keyEvent && keyEvent->code == sf::Keyboard::Key::Escape) {
+					std::cout << "Returning to home screen..." << std::endl;
+					return;
+				}
+			}
+
+			// Pass input to game
+			game.handleInput(*event);
+		}
+
+		// Update game
+		float dt = clock.restart().asSeconds();
+		game.update(dt);
+
+		// Check if game is over
+		if (game.isDone()) {
+			// Wait for ESC key to return to home
+			while (window.isOpen()) {
+				while (const auto event = window.pollEvent()) {
+					if (!event.has_value()) continue;
+
+					if (event->is<sf::Event::Closed>()) {
+						window.close();
+						return;
+					}
+
+					if (event->is<sf::Event::KeyPressed>()) {
+						const auto* keyEvent = event->getIf<sf::Event::KeyPressed>();
+						if (keyEvent && keyEvent->code == sf::Keyboard::Key::Escape) {
+							std::cout << "Returning to home screen..." << std::endl;
+							return;
+						}
+					}
+				}
+
+				window.clear();
+				game.draw(window);
+				window.display();
+			}
+		}
+
+		// Draw
+		window.clear();
+		game.draw(window);
+		window.display();
+	}
 }

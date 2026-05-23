@@ -45,3 +45,7 @@ bool Ball::isMoving() const{		//check if the ball is moving. If moving then fine
 bool Ball::isPastBat() const{		//check if the ball is past the bat or not if not give out
 	return shape.getPosition().x < pastBatX && moving;
 }
+
+sf::FloatRect Ball::getBounds() const {
+	return shape.getGlobalBounds();
+}
