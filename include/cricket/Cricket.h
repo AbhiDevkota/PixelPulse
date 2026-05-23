@@ -2,7 +2,63 @@
 #define CRICKET_H
 
 #include <SFML/Graphics.hpp>
+#include "cricket/Ball.h"
+#include "cricket/Bat.h"
+#include "cricket/ScoreBoard.h"
 
-void runCricket(sf::RenderWindow& window);
+enum class GameState{
+	
+	/*
+	* enum chnage the given name or value to numerical value.
+	* for eg, Waiting = 1, Playing =2, and so on
+	* and the difference between enum and enum class is that in enum class the values are scoped to the enum and cannot be implicitly converted to int, which can help prevent naming conflicts and improve type safety.
+	*/
+	
+
+	WAITING,	//time between deliver of the ball
+	PLAYING,	//ball in air
+	OUT,		//hit the wicket
+	GAME_OVER	//no wickets left
+};
+
+class CricketGame {
+	public:
+		CricketGame(sf::RenderWindow& window);
+		void handleInput(const sf::Event& event);
+		void update(float dt);
+		void draw(sf::RenderWindow& window);
+
+		bool isDone() const;	//For the exit of the game
+	
+	
+	private:
+		void startNextDelivery();
+		void checkCollision();
+		void checkWicket();
+		void drawBackground(sf::RenderWindow& window);
+		void drawGameOver(sf::RenderWindow& window);
+
+		Ball ball;		//Game Physical Object
+		Bat bat;
+		ScoreBoard scoreBoard;
+
+		GameState state = GameState::WAITING;
+
+		float waitTimer = 0.f; //Timer before each delivery
+		float waitDuration = 1.8f; //1.8 sec delay between deliveries
+
+		float outTimer = 0.f; //Timer to show "OUT!" text
+		float outDuration = 1.5f; //Duration after getting out or hiting wicket
+
+		sf::RectangleShape ground;
+		sf::RectangleShape sky;
+
+		sf::Font font;
+		sf::Text gameOverText;
+		sf::Text finalScoreText;
+		sf::Text exitHintText;
+
+
+};
 
 #endif
