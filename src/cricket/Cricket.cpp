@@ -12,17 +12,17 @@ CricketGame::CricketGame(sf::RenderWindow& window)
 	{
 		std::srand(static_cast<unsigned int>(std::time(nullptr))); //Seed generator (random number generator on basic bhanni ho bhane)
 		
-		sf::Vector2u size = window.getSize();	//get size and the it is vecotr component. like 2500 X 1600 then X compo is 2500 and Y compo is 1600
+		sf::Vector2u size = window.getSize();
 
-
-		sky.setSize({ static_cast<float> (size.x),size.y * 0.70f });		//Sky take 70% space of the screen
-		sky.setFillColor(sf::Color(135, 206, 235)); //Sky blue color, or change to (30,30,30)
-		sky.setPosition({ 0.f,0.f });
-
-
-		ground.setSize({ static_cast<float>(size.x), size.y * 0.30f });		//Ground take 30% space of the screen
-		ground.setFillColor(sf::Color(45,90,45)); //Green colour for the ground
-		ground.setPosition({ 0.f, size.y * 0.70f });
+		if (!backgroundTexture.loadFromFile(background_path)) {
+			std::cerr << "Error: Failed to load background texture from " << background_path << std::endl;
+		}
+		
+		sf::Vector2u texSize = backgroundTexture.getSize();
+		float scaleX = static_cast<float>(size.x) / static_cast<float>(texSize.x);
+		float scaleY = static_cast<float>(size.y) / static_cast<float>(texSize.y);
+		backgroundSprite.setScale({ scaleX, scaleY });
+		backgroundSprite.setPosition({ 0.f, 0.f });
 
 		if (!font.openFromFile(font_path)) {
 			std::cerr << "Error: Failed to load font from " << font_path << std::endl;
@@ -158,8 +158,7 @@ void CricketGame::startNextDelivery(){
 }
 
 void CricketGame::drawBackground(sf::RenderWindow& window){
-	window.draw(sky);
-	window.draw(ground);
+	window.draw(backgroundSprite);
 }
 
 void CricketGame::draw(sf::RenderWindow& window){
@@ -177,7 +176,6 @@ void CricketGame::draw(sf::RenderWindow& window){
 }
 
 void CricketGame::drawGameOver(sf::RenderWindow& window){
-	window.draw(sky);
 	finalScoreText.setString("FINAL SCORE: " + std::to_string(scoreBoard.getRuns()) + " RUNS");
 	
 	sf::FloatRect fb = finalScoreText.getLocalBounds();

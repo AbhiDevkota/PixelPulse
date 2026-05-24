@@ -30,6 +30,7 @@ class CricketGame {
 
 		bool isDone() const;	//For the exit of the game
 		const std::string font_path = "fonts/regular.ttf";	//path of the fonts
+		const std::string background_path = "assets/cricket/background.png";	//background image location
 	
 	
 	private:
@@ -51,8 +52,8 @@ class CricketGame {
 		float outTimer = 0.f; //Timer to show "OUT!" text
 		float outDuration = 1.5f; //Duration after getting out or hiting wicket
 
-		sf::RectangleShape ground;
-		sf::RectangleShape sky;
+		sf::Texture backgroundTexture;
+		sf::Sprite backgroundSprite{ backgroundTexture };
 
 		sf::Font font;
 		sf::Text gameOverText{font};
