@@ -17,7 +17,14 @@ CricketGame::CricketGame(sf::RenderWindow& window)
 		if (!backgroundTexture.loadFromFile(background_path)) {
 			std::cerr << "Error: Failed to load background texture from " << background_path << std::endl;
 		}
-		
+
+		backgroundSprite.setTexture(backgroundTexture);  // set AFTER load
+		backgroundSprite.setTextureRect(sf::IntRect(     // explicitly set the rect
+			{ 0, 0 },
+			{ static_cast<int>(backgroundTexture.getSize().x),
+			 static_cast<int>(backgroundTexture.getSize().y) }
+		));
+
 		sf::Vector2u texSize = backgroundTexture.getSize();
 		float scaleX = static_cast<float>(size.x) / static_cast<float>(texSize.x);
 		float scaleY = static_cast<float>(size.y) / static_cast<float>(texSize.y);
@@ -121,7 +128,7 @@ void CricketGame::update(float dt){
 
 
 void CricketGame::checkCollision(){
-	if(bat.isSwinging()){
+	if(!bat.isSwinging()){
 		return;
 	}
 	sf::FloatRect batBounds = bat.getBounds();
@@ -176,6 +183,7 @@ void CricketGame::draw(sf::RenderWindow& window){
 }
 
 void CricketGame::drawGameOver(sf::RenderWindow& window){
+	window.draw(backgroundSprite);
 	finalScoreText.setString("FINAL SCORE: " + std::to_string(scoreBoard.getRuns()) + " RUNS");
 	
 	sf::FloatRect fb = finalScoreText.getLocalBounds();

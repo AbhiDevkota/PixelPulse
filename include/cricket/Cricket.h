@@ -53,7 +53,7 @@ class CricketGame {
 		float outDuration = 1.5f; //Duration after getting out or hiting wicket
 
 		sf::Texture backgroundTexture;
-		sf::Sprite backgroundSprite{ backgroundTexture };
+		sf::Sprite backgroundSprite{backgroundTexture};  // Initialize with texture in SFML 3.0
 
 		sf::Font font;
 		sf::Text gameOverText{font};
