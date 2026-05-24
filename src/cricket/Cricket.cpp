@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <SFML/Window/Joystick.hpp>
 
 CricketGame::CricketGame(sf::RenderWindow& window)
 	: ball()
@@ -58,6 +59,13 @@ void CricketGame::handleInput(const sf::Event& event){
 	if(const auto* key = event.getIf<sf::Event::KeyPressed>()){
 		if (key->code == sf::Keyboard::Key::Space) {
 			if(state == GameState::PLAYING){	//Check of the state of the game is in PLAYING state
+				bat.swing();
+			}
+		}
+	}
+	if(sf::Joystick::isConnected(0)){
+		if(sf::Joystick::getButtonCount(0) >= 5){
+			if(state == GameState::PLAYING){
 				bat.swing();
 			}
 		}
