@@ -7,7 +7,7 @@
 CricketGame::CricketGame(sf::RenderWindow& window)
 	: ball()
 	, bat()
-	, scoreBoard("fonts/regular.ttf")
+	, scoreBoard(font_path)
 
 	{
 		std::srand(static_cast<unsigned int>(std::time(nullptr))); //Seed generator (random number generator on basic bhanni ho bhane)
@@ -24,8 +24,8 @@ CricketGame::CricketGame(sf::RenderWindow& window)
 		ground.setFillColor(sf::Color(45,90,45)); //Green colour for the ground
 		ground.setPosition({ 0.f, size.y * 0.70f });
 
-		if (!font.openFromFile("fonts/regular.ttf")) {
-			std::cerr << "Error: Failed to load font from fonts/regular.ttf" << std::endl;
+		if (!font.openFromFile(font_path)) {
+			std::cerr << "Error: Failed to load font from " << font_path << std::endl;
 		}
 
 		gameOverText.setFont(font);
@@ -63,15 +63,14 @@ void CricketGame::handleInput(const sf::Event& event){
 			}
 		}
 	}
-	if(sf::Joystick::isConnected(0)){
-		if(sf::Joystick::getButtonCount(0) >= 5){
+	if(sf::Joystick::isConnected(0)){		//Controller Support
+		if(sf::Joystick::isButtonPressed(0,0)){		//5 = Xbox A button
 			if(state == GameState::PLAYING){
 				bat.swing();
 			}
 		}
 	}
 }
-
 
 void CricketGame::update(float dt){
 	switch(state){
@@ -220,6 +219,12 @@ void runCricket(sf::RenderWindow& window) {
 					return;
 				}
 			}
+			if (sf::Joystick::isConnected(0)) {
+				if (sf::Joystick::isButtonPressed(0, 7)) {
+					std::cout << "Returning to Homescreeen Pressed by Controller" << std::endl;
+					return;
+				}
+			}
 
 			// Pass input to game
 			game.handleInput(*event);
@@ -245,6 +250,12 @@ void runCricket(sf::RenderWindow& window) {
 						const auto* keyEvent = event->getIf<sf::Event::KeyPressed>();
 						if (keyEvent && keyEvent->code == sf::Keyboard::Key::Escape) {
 							std::cout << "Returning to home screen..." << std::endl;
+							return;
+						}
+					}
+					if(sf::Joystick::isConnected(0)){
+						if (sf::Joystick::isButtonPressed(0, 7)) {
+							std::cout << "Returning to Homescreeen Pressed by Controller" << std::endl;
 							return;
 						}
 					}

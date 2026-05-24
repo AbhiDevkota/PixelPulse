@@ -29,6 +29,7 @@ class CricketGame {
 		void draw(sf::RenderWindow& window);
 
 		bool isDone() const;	//For the exit of the game
+		const std::string font_path = "fonts/regular.ttf";	//path of the fonts
 	
 	
 	private:
