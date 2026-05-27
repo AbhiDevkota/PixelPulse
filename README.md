@@ -15,6 +15,12 @@ This is the Retro style version of the gaming console with a collection of class
 ![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)
 ![SFML](https://img.shields.io/badge/SFML-8CC445?style=for-the-badge&logo=sfml&logoColor=white)
 ![CMake](https://img.shields.io/badge/CMake-064F8C?style=for-the-badge&logo=cmake&logoColor=white)
+
+## Requirements
+- Visual Studio 2022
+- CMake 3.28+
+- Git
+
 ## Team 
 | Member | Game |
 | -------- | ------- |
@@ -24,6 +30,7 @@ This is the Retro style version of the gaming console with a collection of class
 | <a href="https://github.com/Samyam1070">Samyam Khadka</a> | Rocket Shooter |
 | <a href="https://github.com/sunim4125">Sunim Fuyal</a> | Dino game |
 ## How to Run
+
 1. Clone the repo
 ```bash
 git clone https://github.com/AbhiDevkota/PixelPulse.git
