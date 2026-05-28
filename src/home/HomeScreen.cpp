@@ -10,7 +10,7 @@ namespace corezone {
             "SNAKE", 
             "FLAPPY BIRD", 
             "ROCKET SHOOTER", 
-            "CRICKET",
+            "GPL 4",
 			"DINO RUN"
         };
     }

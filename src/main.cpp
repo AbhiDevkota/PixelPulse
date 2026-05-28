@@ -55,8 +55,8 @@ int main() {
 			std::string game = home.getSelectedGame();
             home.resetGame();
 
-        if (game == "CRICKET") {
-			std::cout << "Launched Cricket" << std::endl; //For the Debug Console added by Abhi Dev.
+        if (game == "GPL 4") {
+			std::cout << "Launched Cricket aka GPL 4" << std::endl; //For the Debug Console added by Abhi Dev.
             runCricket(window);
         }
         }
