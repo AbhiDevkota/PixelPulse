@@ -5,11 +5,14 @@
 #include<deque>
 void runSnake(sf::RenderWindow& window) {
 	bool gameOver = false;
-	const int CELL_SIZE = 20;
+	const int CELL_SIZE = 32;
 	auto size = window.getSize();
-	const int COLS = size.x / CELL_SIZE;
-	const int ROWS = size.y / CELL_SIZE;
-
+	const int PLAY_WIDTH = 800;
+	const int PLAY_HEIGHT = 800;
+	const int COLS = PLAY_WIDTH / CELL_SIZE;
+	const int ROWS = PLAY_HEIGHT / CELL_SIZE;
+	const int OFFSETX = (size.x - PLAY_WIDTH) / 2;
+	const int OFFSETY = (size.y - PLAY_HEIGHT) / 2; 
 	std::deque < sf::Vector2i > body;
 	body.push_front({ 5,5 });
 
@@ -28,6 +31,17 @@ void runSnake(sf::RenderWindow& window) {
 		});
 	food.setFillColor(sf::Color::Red);
 
+	sf::RectangleShape border({
+		static_cast<float>(PLAY_WIDTH),
+		static_cast<float>(PLAY_HEIGHT)
+		});
+	border.setFillColor(sf::Color::Transparent);
+	border.setOutlineColor(sf::Color::Green);
+	border.setOutlineThickness(2.f);
+	border.setPosition({
+		static_cast<float>(OFFSETX),
+		static_cast<float>(OFFSETY)
+		});
 	sf::Clock clock;
 	sf::Font font;
 	font.openFromFile("fonts/regular.ttf");
@@ -105,11 +119,13 @@ void runSnake(sf::RenderWindow& window) {
 			}
 		}
 		food.setPosition({
-			static_cast<float>(foodPos.x * CELL_SIZE),
-			 static_cast<float>(foodPos.y * CELL_SIZE)
+			static_cast<float>(OFFSETX + foodPos.x * CELL_SIZE),
+			 static_cast<float>(OFFSETY + foodPos.y * CELL_SIZE)
 			});
 		
 		window.clear(sf::Color(10, 10, 10));
+
+		window.draw(border);
 		if (gameOver) {
 			scoreText.setCharacterSize(32);
 			scoreText.setString("Game Over! Score: " + std::to_string(score) + "\nPress R to Restart");
@@ -129,8 +145,8 @@ void runSnake(sf::RenderWindow& window) {
 		window.draw(food);
 		for (auto& segment : body) {
 			rect.setPosition({
-				static_cast<float>(segment.x * CELL_SIZE),
-				static_cast<float>(segment.y * CELL_SIZE)
+				static_cast<float>(OFFSETX + segment.x * CELL_SIZE),
+				static_cast<float>(OFFSETY + segment.y * CELL_SIZE)
 				});
 			window.draw(rect);
 		}
