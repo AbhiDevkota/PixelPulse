@@ -123,6 +123,8 @@ void runSnake(sf::RenderWindow& window) {
 			continue;
 		}
 		scoreText.setString("Score : " + std::to_string(score));
+		scoreText.setCharacterSize(24);
+		scoreText.setPosition({ 10.f, 10.f });
 		window.draw(scoreText);
 		window.draw(food);
 		for (auto& segment : body) {
