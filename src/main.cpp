@@ -1,6 +1,6 @@
 #include "HomeScreen.h"
 #include <SFML/Graphics.hpp>
-
+void runDino(sf::RenderWindow& window);
 int main() {
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     //sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
