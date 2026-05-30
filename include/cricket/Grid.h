@@ -32,26 +32,6 @@
 *    Size  : 330 x 280
 *    setPosition({ 120.f, 300.f });
 *    setSize({ 330.f, 280.f });
-*
-*  HOW TO PLUG IN:
-*  ---------------
-*  1. Cricket.h private:
-*       DebugGrid debugGrid;
-*
-*  2. Constructor end:
-*       debugGrid.init(window, font_path);
-*
-*  3. handleInput(event, window) — top of function:
-*       debugGrid.handleInput(event, window);
-*       if (debugGrid.isOpen()) return;
-*
-*  4. update(dt, window) — top of function:
-*       debugGrid.update(window);
-*       if (debugGrid.isOpen()) return;
-*
-*  5. draw(window) — LAST line:
-*       debugGrid.draw(window);
-* =====================================================================
 */
 
 struct SelectedRegion {

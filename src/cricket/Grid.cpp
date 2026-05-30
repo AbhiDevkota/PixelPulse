@@ -4,11 +4,9 @@
 #include <iomanip>
 
 
-
 static std::string coordStr(int x, int y) {
     return "(" + std::to_string(x) + ", " + std::to_string(y) + ")";
 }
-
 
 DebugGrid::DebugGrid() {}
 
@@ -80,7 +78,7 @@ void DebugGrid::init(sf::RenderWindow& window, const std::string& fontPath) {
 
     buildGrid(window);
 
-    std::cout << "[GRID] Debug grid initialized. Press F5 in-game to open." << std::endl;
+    std::cout << "[GRID] Debug grid initialized. Press F5 to open (pauses game + shows cursor)." << std::endl;
 }
 
 void DebugGrid::buildGrid(sf::RenderWindow& window) {
@@ -135,12 +133,23 @@ void DebugGrid::buildGrid(sf::RenderWindow& window) {
     }
 }
 
+
 void DebugGrid::handleInput(const sf::Event& event, sf::RenderWindow& window) {
+
+    // ── F5 toggle ────────────────────────────
     if (const auto* key = event.getIf<sf::Event::KeyPressed>()) {
         if (key->code == sf::Keyboard::Key::F5) {
             open = !open;
-            if (open)  std::cout << "[GRID] Debug overlay opened." << std::endl;
-            else       std::cout << "[GRID] Debug overlay closed." << std::endl;
+            if (open) {
+                window.setMouseCursorVisible(true);   // show system cursor in debug mode
+                std::cout << "[GRID] Debug overlay opened. Game paused." << std::endl;
+            }
+            else {
+                window.setMouseCursorVisible(false);  // restore hidden cursor for game
+                selection.active = false;             // clear selection on close
+                dragging = false;
+                std::cout << "[GRID] Debug overlay closed. Game resumed." << std::endl;
+            }
             return;
         }
 
@@ -149,7 +158,10 @@ void DebugGrid::handleInput(const sf::Event& event, sf::RenderWindow& window) {
         // ESC closes
         if (key->code == sf::Keyboard::Key::Escape) {
             open = false;
-            std::cout << "[GRID] Debug overlay closed." << std::endl;
+            window.setMouseCursorVisible(false);      // restore hidden cursor
+            selection.active = false;
+            dragging = false;
+            std::cout << "[GRID] Debug overlay closed. Game resumed." << std::endl;
             return;
         }
 
@@ -173,7 +185,7 @@ void DebugGrid::handleInput(const sf::Event& event, sf::RenderWindow& window) {
 
     if (!open) return;
 
-	//Mouse Drag Selection
+    // ── Mouse drag ───────────────────────────
     if (const auto* mb = event.getIf<sf::Event::MouseButtonPressed>()) {
         if (mb->button == sf::Mouse::Button::Left) {
             dragging = true;
@@ -203,6 +215,7 @@ void DebugGrid::handleInput(const sf::Event& event, sf::RenderWindow& window) {
         }
     }
 }
+
 
 void DebugGrid::update(sf::RenderWindow& window) {
     if (!open) return;
@@ -248,6 +261,7 @@ void DebugGrid::updateMouseLabel(sf::RenderWindow& window) {
     );
 }
 
+
 std::string DebugGrid::buildSelectionString() {
     std::ostringstream ss;
     ss << "[GRID] Selected Region:\n"
@@ -278,6 +292,8 @@ void DebugGrid::copyToClipboard(sf::RenderWindow& window, const std::string& tex
     sf::Clipboard::setString(text);
     std::cout << "[GRID] Copied to clipboard." << std::endl;
 }
+
+
 
 void DebugGrid::draw(sf::RenderWindow& window) {
     if (!open) return;
