@@ -31,6 +31,28 @@ void runSnake(sf::RenderWindow& window) {
 		});
 	food.setFillColor(sf::Color::Red);
 
+	sf::Texture offsetTexture;
+	offsetTexture.loadFromFile("assets/snake/offset.png");
+	offsetTexture.setRepeated(true);
+	sf::Sprite offsetSprite(offsetTexture);
+	offsetSprite.setTextureRect(sf::IntRect(
+		{0,0},
+		{(int)size.x,(int)size.y}
+	));
+	offsetSprite.setPosition({0.f,0.f});
+
+	sf::Texture grassTexture;
+	grassTexture.loadFromFile("assets/snake/grass.png");
+	grassTexture.setRepeated(true);
+	sf::Sprite grassSprite(grassTexture);
+	grassSprite.setTextureRect(sf::IntRect(
+		{0,0},
+		{ PLAY_HEIGHT,PLAY_WIDTH }
+	));
+	grassSprite.setPosition({
+		static_cast<float>(OFFSETX),
+		static_cast<float>(OFFSETY)});
+
 	sf::RectangleShape border({
 		static_cast<float>(PLAY_WIDTH),
 		static_cast<float>(PLAY_HEIGHT)
@@ -42,6 +64,9 @@ void runSnake(sf::RenderWindow& window) {
 		static_cast<float>(OFFSETX),
 		static_cast<float>(OFFSETY)
 		});
+
+
+
 	sf::Clock clock;
 	sf::Font font;
 	font.openFromFile("fonts/regular.ttf");
@@ -124,7 +149,8 @@ void runSnake(sf::RenderWindow& window) {
 			});
 		
 		window.clear(sf::Color(10, 10, 10));
-
+		window.draw(offsetSprite);
+		window.draw(grassSprite);
 		window.draw(border);
 		if (gameOver) {
 			scoreText.setCharacterSize(32);

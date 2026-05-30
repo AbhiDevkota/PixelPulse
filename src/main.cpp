@@ -1,6 +1,7 @@
 #include "HomeScreen.h"
 #include <SFML/Graphics.hpp>
 void runSnake(sf::RenderWindow& window);
+
 int main() {
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     //sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
@@ -54,8 +55,11 @@ int main() {
             std::string game = home.getSelectedGame();
             home.resetGame();
             if (game == "SNAKE") runSnake(window);
+            
         }
         //Up to here
+        
+
         window.clear();
         home.draw();
         window.display();
