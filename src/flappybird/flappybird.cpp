@@ -15,7 +15,7 @@ void runFlappyBird(sf::RenderWindow& window) {
 
     //bird
     sf::Texture birdTexture;
-    if (!birdTexture.loadFromFile("assets/Popat.png")) return;
+    if (!birdTexture.loadFromFile("assets/Flappy/Popat.png")) return;
     sf::Sprite popat(birdTexture);
     float birdScaleX = (float)window.getSize().x / birdTexture.getSize().x * 0.05f;
     float birdScaleY = (float)window.getSize().y / birdTexture.getSize().y * 0.1f;
@@ -24,7 +24,7 @@ void runFlappyBird(sf::RenderWindow& window) {
 
     //background
     sf::Texture bgTexture;
-    if (!bgTexture.loadFromFile("assets/Background.png")) return;
+    if (!bgTexture.loadFromFile("assets/Flappy/Background.png")) return;
     sf::Sprite background(bgTexture);
     float scaleX = (float)window.getSize().x / bgTexture.getSize().x;
     float scaleY = (float)window.getSize().y / bgTexture.getSize().y;
@@ -33,14 +33,14 @@ void runFlappyBird(sf::RenderWindow& window) {
  
     //pipes
     sf::Texture upTexture;
-    if (!upTexture.loadFromFile("assets/Up.png")) return;
+    if (!upTexture.loadFromFile("assets/Flappy/Up.png")) return;
     sf::Sprite pipeUp(upTexture);
     float pipeScaleX = (float)window.getSize().x / upTexture.getSize().x * 0.15f;
     float pipeScaleY = (float)window.getSize().y / upTexture.getSize().y * 0.4f;
     pipeUp.setScale({ pipeScaleX, pipeScaleY });        //bottom pipe size
 
     sf::Texture downTexture;
-    if (!downTexture.loadFromFile("assets/Down.png")) return;
+    if (!downTexture.loadFromFile("assets/Flappy/Down.png")) return;
     sf::Sprite pipeDown(downTexture);
     pipeDown.setScale({ pipeScaleX, pipeScaleY });      //top pipe size
 
@@ -69,7 +69,6 @@ void runFlappyBird(sf::RenderWindow& window) {
 				vy = -400.f;                   //jump velocity
 			}
             
-            
         }
 
 		//update
@@ -91,6 +90,8 @@ void runFlappyBird(sf::RenderWindow& window) {
             vy = 0.f;
         }
        
+        
+
 
         //draw
 
