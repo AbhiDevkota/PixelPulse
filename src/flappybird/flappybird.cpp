@@ -43,7 +43,9 @@ void runFlappyBird(sf::RenderWindow& window) {
     pipeDown.setPosition({ pipeX, gapY - gapSize / 2.f - pipeDown.getGlobalBounds().size.y });
     pipeUp.setPosition({ pipeX, gapY + gapSize / 2.f });
 
-    
+    //physics
+    float vy = 0.f;                      //bird velocity
+    float gravity = 1000.f;              //gravity
 
     sf::Clock clock;
 
@@ -55,10 +57,21 @@ void runFlappyBird(sf::RenderWindow& window) {
             if (event->is<sf::Event::Closed>())
                 window.close();
 
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space)) {
+				vy = -400.f;                   //jump velocity
+			}
+            
             
         }
 
+		//update
+		vy += gravity * dt;                 //vertical velocity affected by gravity
+        popat.move({ 0.f, vy * dt });      //bird position
+
         
+
+       
+
         //draw
 
         window.clear();
