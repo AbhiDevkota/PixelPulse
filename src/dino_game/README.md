@@ -9,3 +9,7 @@ This is a game that is part of the Pixel Pulse Arcade Zone project.
 # Team
 |[Sunim Fuyal](https://github.com/sunim4125)|
 
+## Requirements
+- Visual Studio 2022
+- CMake 3.28+
+- Git

@@ -64,6 +64,23 @@ namespace corezone {
         bool            bgMusicStarted_ = false;  // guard so music starts once
         // ─────────────────────────────────────────────────────────────────────
 
+        // CUSTOM CURSOR
+        sf::Texture cursorTexture_;
+        sf::Sprite* cursorSprite_ = nullptr;
+
+        // ── CONTROLLER SUPPORT ─────────────────────────────────────────────────
+        sf::Clock joystickDelayClock_;      // Delay between navigation moves
+        bool joystickUpPressed_ = false;    // D-Pad Up state
+        bool joystickDownPressed_ = false;  // D-Pad Down state
+        bool joystickAPressed_ = false;     // A/X button state
+        bool joystickStartPressed_ = false; // Start/Options button state
+
+        // Input device detection
+        enum class InputDevice { KeyboardMouse, Controller };
+        InputDevice lastInputDevice_ = InputDevice::KeyboardMouse;
+        // ─────────────────────────────────────────────────────────────────────
+        
+
     public:
         HomeScreen(sf::RenderWindow& window, const std::string& fontPath);
         void initialize();
@@ -72,7 +89,11 @@ namespace corezone {
         void handleMouseMove(sf::Vector2f mousePos);
         void handleMouseClick(sf::Vector2f mousePos);
         void draw();
-
+        //Added by Aashutosh to run game after selection
+        bool isGameReady() const { return readyToLaunch_; }
+        std::string getSelectedGame() const { return loadingName_; }
+        void resetGame() { loadingMode_ = false; readyToLaunch_ = false; loadingName_ = ""; }
+        //Up to here
     private:
         void renderBackground();
         void renderIntro();
@@ -83,6 +104,9 @@ namespace corezone {
         void renderControls();
         void renderCredit();
         void startLoading();
+        //Added by Aashutosh for game selection testing
+        bool readyToLaunch_ = false;
+        //Up to here
     };
 
 } // namespace corezone

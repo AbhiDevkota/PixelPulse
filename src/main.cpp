@@ -1,6 +1,10 @@
 #include "HomeScreen.h"
 #include <SFML/Graphics.hpp>
+
 void runDino(sf::RenderWindow& window);
+
+void runSnake(sf::RenderWindow& window);
+
 int main() {
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     //sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
@@ -25,6 +29,7 @@ int main() {
     corezone::HomeScreen home(window, "fonts/regular.ttf");
     home.initialize();
 
+
     sf::Clock clock;
 
     while (window.isOpen()) {
@@ -48,7 +53,14 @@ int main() {
 
         float dt = clock.restart().asSeconds();
         home.update(dt);
-
+        // Added by aashutosh to select game and run it
+        if (home.isGameReady()) {
+            std::string game = home.getSelectedGame();
+            home.resetGame();
+            if (game == "SNAKE") runSnake(window);
+            if (game == "DINO RUN") runDino(window);
+        }
+        //Up to here
         window.clear();
         home.draw();
         window.display();

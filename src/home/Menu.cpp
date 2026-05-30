@@ -199,6 +199,40 @@ namespace corezone {
             settings_->handleInput(event);
         }
 
+        // ── CONTROLLER BUTTON EVENTS ───────────────────────────────────────────
+        if (event.is<sf::Event::JoystickButtonPressed>()) {
+            const auto* joy = event.getIf<sf::Event::JoystickButtonPressed>();
+            unsigned int button = joy->button;
+
+            // A button (Xbox: 0) / X button (PS: 1) - Confirm
+            bool isConfirm = (button == 0);
+
+            // B button (Xbox: 1) / Circle button (PS: 2) - Back
+            bool isBack = (button == 1);
+
+            if (state_ == MenuState::MainMenu) {
+                if (isConfirm) {
+                    selectMainItem(hoveredIndex_);
+                    return;
+                }
+                if (isBack) {
+                    close();
+                    return;
+                }
+            }
+            else if (state_ == MenuState::Settings) {
+                if (isBack) {
+                    activateMainMenu();
+                    return;
+                }
+                if (isConfirm && settingsHoveredIndex_ == 0) {
+                    activateMainMenu();
+                    return;
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────────
+
         if (!event.is<sf::Event::KeyPressed>()) return;
         const auto* key = event.getIf<sf::Event::KeyPressed>();
 
@@ -355,7 +389,118 @@ namespace corezone {
 
     // ── Update ───────────────────────────────────────────────────────────────
 
+    void Menu::handleControllerNavigation() {
+        if (state_ == MenuState::Closed) return;
+
+        float delay = joystickDelayClock_.getElapsedTime().asSeconds();
+        if (delay < 0.15f) return;  // 150ms delay between moves
+
+        bool moved = false;
+
+        // Check all connected joysticks
+        for (unsigned int i = 0; i < sf::Joystick::Count; ++i) {
+            if (!sf::Joystick::isConnected(i)) continue;
+
+            // Left Joystick Y-axis (axis 1)
+            float yAxis = sf::Joystick::getAxisPosition(i, sf::Joystick::Axis::Y);
+
+            // D-Pad Y-axis (PovY)
+            float dpadY = 0.f;
+            if (sf::Joystick::hasAxis(i, sf::Joystick::Axis::PovY)) {
+                dpadY = sf::Joystick::getAxisPosition(i, sf::Joystick::Axis::PovY);
+            }
+
+            // D-Pad X-axis (PovX) for settings slider adjustment
+            float dpadX = 0.f;
+            if (sf::Joystick::hasAxis(i, sf::Joystick::Axis::PovX)) {
+                dpadX = sf::Joystick::getAxisPosition(i, sf::Joystick::Axis::PovX);
+            }
+
+            // Left Joystick X-axis (axis 0) for settings slider adjustment
+            float xAxis = sf::Joystick::getAxisPosition(i, sf::Joystick::Axis::X);
+
+            // ── Main Menu Navigation ─────────────────────────────────────────
+            if (state_ == MenuState::MainMenu) {
+                int n = static_cast<int>(mainMenuItems_.size());
+
+                // Navigate Up
+                if (yAxis < -50.f || dpadY > 50.f) {
+                    mainMenuItems_[hoveredIndex_].setHovered(false);
+                    hoveredIndex_ = (hoveredIndex_ - 1 + n) % n;
+                    mainMenuItems_[hoveredIndex_].setHovered(true);
+                    moved = true;
+                    break;
+                }
+                // Navigate Down
+                else if (yAxis > 50.f || dpadY < -50.f) {
+                    mainMenuItems_[hoveredIndex_].setHovered(false);
+                    hoveredIndex_ = (hoveredIndex_ + 1) % n;
+                    mainMenuItems_[hoveredIndex_].setHovered(true);
+                    moved = true;
+                    break;
+                }
+            }
+            // ── Settings Navigation ───────────────────────────────────────────
+            else if (state_ == MenuState::Settings) {
+                // Navigate between sliders (Up/Down)
+                if (yAxis < -50.f || dpadY > 50.f) {
+                    settingsHoveredIndex_ = 1 - settingsHoveredIndex_;
+                    moved = true;
+                    break;
+                }
+                else if (yAxis > 50.f || dpadY < -50.f) {
+                    settingsHoveredIndex_ = 1 - settingsHoveredIndex_;
+                    moved = true;
+                    break;
+                }
+
+                // Adjust volume (Left/Right)
+                if (xAxis < -50.f || dpadX < -50.f) {
+                    // Decrease volume
+                    if (settings_) {
+                        if (settingsHoveredIndex_ == 0) {
+                            float v = std::max(0.f, settings_->getMasterVolume() - 3.f);
+                            settings_->setMasterVolume(v);
+                            if (onMasterVolumeChange) onMasterVolumeChange(v);
+                        }
+                        else {
+                            float v = std::max(0.f, settings_->getEffectVolume() - 3.f);
+                            settings_->setEffectVolume(v);
+                            if (onEffectVolumeChange) onEffectVolumeChange(v);
+                        }
+                    }
+                    moved = true;
+                    break;
+                }
+                else if (xAxis > 50.f || dpadX > 50.f) {
+                    // Increase volume
+                    if (settings_) {
+                        if (settingsHoveredIndex_ == 0) {
+                            float v = std::min(100.f, settings_->getMasterVolume() + 3.f);
+                            settings_->setMasterVolume(v);
+                            if (onMasterVolumeChange) onMasterVolumeChange(v);
+                        }
+                        else {
+                            float v = std::min(100.f, settings_->getEffectVolume() + 3.f);
+                            settings_->setEffectVolume(v);
+                            if (onEffectVolumeChange) onEffectVolumeChange(v);
+                        }
+                    }
+                    moved = true;
+                    break;
+                }
+            }
+        }
+
+        if (moved) {
+            joystickDelayClock_.restart();
+        }
+    }
+
     void Menu::update(float deltaTime) {
+        // Handle controller navigation
+        handleControllerNavigation();
+
         for (auto& item : mainMenuItems_)    item.update(deltaTime);
         for (auto& item : settingsMenuItems_) item.update(deltaTime);
 

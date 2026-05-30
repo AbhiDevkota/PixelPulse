@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.28)
-project(CoreZone LANGUAGES CXX)
+project(PixelPulse LANGUAGES CXX)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
@@ -65,11 +65,17 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Icons")
     message(STATUS "✅ Icons copied to build/bin/Icons/")
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/assets" DESTINATION "${CMAKE_BINARY_DIR}/bin")
+    message(STATUS "✅ Assets copied to build/bin/assets/")
+endif()
+
 # Also copy after every build (backup)
 add_custom_command(TARGET CoreZone POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/fonts"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/audios"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/Icons"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/assets"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/fonts"
         "$<TARGET_FILE_DIR:CoreZone>/fonts"
@@ -79,6 +85,9 @@ add_custom_command(TARGET CoreZone POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/Icons"
         "$<TARGET_FILE_DIR:CoreZone>/Icons"
-    COMMENT "Copying fonts, audios & icons to executable directory"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        "$<TARGET_FILE_DIR:CoreZone>/assets"
+    COMMENT "Copying fonts, audios, icons & assets to executable directory"
     VERBATIM
 )
