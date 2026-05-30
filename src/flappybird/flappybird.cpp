@@ -43,10 +43,13 @@ void runFlappyBird(sf::RenderWindow& window) {
     pipeDown.setPosition({ pipeX, gapY - gapSize / 2.f - pipeDown.getGlobalBounds().size.y });
     pipeUp.setPosition({ pipeX, gapY + gapSize / 2.f });
 
+    
 
+    sf::Clock clock;
 
     while (window.isOpen()) {
 
+		float dt = clock.restart().asSeconds();     //get time between frames as sf::time and convert it to seconds as float
        
         while (auto event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>())
