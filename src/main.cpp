@@ -1,5 +1,7 @@
 #include "HomeScreen.h"
 #include <SFML/Graphics.hpp>
+void runFlappyBird(sf::RenderWindow& window);
+
 
 int main() {
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
@@ -24,6 +26,8 @@ int main() {
 
     corezone::HomeScreen home(window, "fonts/regular.ttf");
     home.initialize();
+    runFlappyBird(window);
+
 
     sf::Clock clock;
 
