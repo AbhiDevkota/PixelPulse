@@ -68,8 +68,20 @@ void runFlappyBird(sf::RenderWindow& window) {
 		vy += gravity * dt;                 //vertical velocity affected by gravity
         popat.move({ 0.f, vy * dt });      //bird position
 
-        
+        //popat boundary
 
+        float birdH = popat.getGlobalBounds().size.y;
+        float birdY = popat.getPosition().y;
+
+        if (birdY < 0.f) {
+            popat.setPosition({ popat.getPosition().x, 0.f });     //prevent bird from going above the screen
+            vy = 0.f;                      //stop vertical movement
+        }
+
+        if (birdH + birdY > window.getSize().y) {
+            popat.setPosition({ popat.getPosition().x, window.getSize().y - birdH });
+            vy = 0.f;
+        }
        
 
         //draw
