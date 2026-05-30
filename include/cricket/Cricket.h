@@ -36,7 +36,6 @@ class CricketGame {
 	
 	private:
 		void startNextDelivery();
-		void startNextDelivery();
 		void checkCollision();
 		void checkWicket();
 		void drawBackground(sf::RenderWindow& window);
