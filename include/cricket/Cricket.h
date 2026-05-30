@@ -5,6 +5,7 @@
 #include "cricket/Ball.h"
 #include "cricket/Bat.h"
 #include "cricket/ScoreBoard.h"
+#include "cricket/Grid.h"
 
 enum class GameState{
 	
@@ -24,8 +25,8 @@ enum class GameState{
 class CricketGame {
 	public:
 		CricketGame(sf::RenderWindow& window);
-		void handleInput(const sf::Event& event);
-		void update(float dt);
+		void handleInput(const sf::Event& event, sf::RenderWindow& window);
+		void update(float dt, sf::RenderWindow& window);
 		void draw(sf::RenderWindow& window);
 
 		bool isDone() const;	//For the exit of the game
@@ -34,6 +35,7 @@ class CricketGame {
 	
 	
 	private:
+		void startNextDelivery();
 		void startNextDelivery();
 		void checkCollision();
 		void checkWicket();
@@ -59,6 +61,7 @@ class CricketGame {
 		sf::Text gameOverText{font};
 		sf::Text finalScoreText{font};
 		sf::Text exitHintText{font};
+		DebugGrid debugGrid;
 
 
 };

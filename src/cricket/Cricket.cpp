@@ -58,11 +58,13 @@ CricketGame::CricketGame(sf::RenderWindow& window)
 		exitHintText.setPosition({static_cast<float>(size.x) / 2.f, static_cast<float>(size.y)/2.f+60.f});
 
 		startNextDelivery();
+		debugGrid.init(window, font_path);
 }
 
 //Input Handeler 
 
-void CricketGame::handleInput(const sf::Event& event){
+void CricketGame::handleInput(const sf::Event& event, sf::RenderWindow& window){
+	debugGrid.handleInput(event, window);
 	if(const auto* key = event.getIf<sf::Event::KeyPressed>()){
 		if (key->code == sf::Keyboard::Key::Space) {
 			if(state == GameState::PLAYING){	//Check of the state of the game is in PLAYING state
@@ -79,7 +81,7 @@ void CricketGame::handleInput(const sf::Event& event){
 	}
 }
 
-void CricketGame::update(float dt){
+void CricketGame::update(float dt, sf::RenderWindow& window){
 	switch(state){
 	case GameState::WAITING:
 		waitTimer -= dt;
@@ -92,9 +94,6 @@ void CricketGame::update(float dt){
 
 			ball.launch(speedX, speedY);
 			state = GameState::PLAYING;		//this change the state to playing so this helps in collision detection
-
-
-
 		}
 		break;
 
@@ -124,6 +123,7 @@ void CricketGame::update(float dt){
 		scoreBoard.update(dt);		//Update scoreboard to show final score
 		break;
 	}
+	debugGrid.update(window);
 }
 
 
@@ -180,6 +180,7 @@ void CricketGame::draw(sf::RenderWindow& window){
 	else{
 		drawGameOver(window);
 	}
+	debugGrid.draw(window);
 }
 
 void CricketGame::drawGameOver(sf::RenderWindow& window){
@@ -233,12 +234,12 @@ void runCricket(sf::RenderWindow& window) {
 			}
 
 			// Pass input to game
-			game.handleInput(*event);
+			game.handleInput(*event, window);
 		}
 
 		// Update game
 		float dt = clock.restart().asSeconds();
-		game.update(dt);
+		game.update(dt, window);
 
 		// Check if game is over
 		if (game.isDone()) {
