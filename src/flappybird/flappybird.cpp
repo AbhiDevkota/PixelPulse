@@ -29,6 +29,7 @@ void runFlappyBird(sf::RenderWindow& window) {
         window.clear();
         window.draw(background);
         
+
         window.display();
     }
 }
