@@ -2,6 +2,7 @@
 
 void runFlappyBird(sf::RenderWindow& window) {
 
+    
 
     // background
     sf::Texture bgTexture;
@@ -11,6 +12,7 @@ void runFlappyBird(sf::RenderWindow& window) {
     float scaleY = (float)window.getSize().y / bgTexture.getSize().y;
     background.setScale({ scaleX, scaleY });
 
+ 
 
     while (window.isOpen()) {
 
