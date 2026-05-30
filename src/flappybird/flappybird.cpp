@@ -1,6 +1,14 @@
+#include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 
 void runFlappyBird(sf::RenderWindow& window) {
+
+    //background music
+    sf::Music music;
+    if (!music.openFromFile("audios/Neverfelt.mp3")) return;
+    music.setLooping(true);  
+    music.play();         
+    
 
     float cellW = (float)window.getSize().x / 12.f;
     float cellH = (float)window.getSize().y / 16.f;
