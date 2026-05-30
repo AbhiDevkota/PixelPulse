@@ -12,7 +12,7 @@ void runFlappyBird(sf::RenderWindow& window) {
     float birdScaleX = (float)window.getSize().x / birdTexture.getSize().x * 0.05f;
     float birdScaleY = (float)window.getSize().y / birdTexture.getSize().y * 0.1f;
     popat.setScale({ birdScaleX, birdScaleY });
-    popat.setPosition({ cellW * 2.f, cellH * 8.f });
+    popat.setPosition({ cellW * 2.f, cellH * 8.f });           //popat position
 
     //background
     sf::Texture bgTexture;
@@ -20,7 +20,7 @@ void runFlappyBird(sf::RenderWindow& window) {
     sf::Sprite background(bgTexture);
     float scaleX = (float)window.getSize().x / bgTexture.getSize().x;
     float scaleY = (float)window.getSize().y / bgTexture.getSize().y;
-    background.setScale({ scaleX, scaleY });
+	background.setScale({ scaleX, scaleY });                //background size
 
  
     //pipes
@@ -29,19 +29,21 @@ void runFlappyBird(sf::RenderWindow& window) {
     sf::Sprite pipeUp(upTexture);
     float pipeScaleX = (float)window.getSize().x / upTexture.getSize().x * 0.15f;
     float pipeScaleY = (float)window.getSize().y / upTexture.getSize().y * 0.4f;
-    pipeUp.setScale({ pipeScaleX, pipeScaleY });
+    pipeUp.setScale({ pipeScaleX, pipeScaleY });        //bottom pipe size
 
     sf::Texture downTexture;
     if (!downTexture.loadFromFile("assets/Down.png")) return;
     sf::Sprite pipeDown(downTexture);
-    pipeDown.setScale({ pipeScaleX, pipeScaleY });
+    pipeDown.setScale({ pipeScaleX, pipeScaleY });      //top pipe size
 
-    float pipeX = cellW * 12.f;
-    float gapY = cellH * 8.f;
-    float gapSize = cellH * 4.f;
+    float pipeX = cellW * 12.f;            //pipe starts from the right edge of the screen
+    float gapY = cellH * 8.f;              //gap center
+    float gapSize = cellH * 4.f;           //gap size
 
     pipeDown.setPosition({ pipeX, gapY - gapSize / 2.f - pipeDown.getGlobalBounds().size.y });
     pipeUp.setPosition({ pipeX, gapY + gapSize / 2.f });
+
+
 
     while (window.isOpen()) {
 
@@ -54,7 +56,8 @@ void runFlappyBird(sf::RenderWindow& window) {
         }
 
         
-        
+        //draw
+
         window.clear();
         window.draw(background);
         window.draw(pipeDown);
