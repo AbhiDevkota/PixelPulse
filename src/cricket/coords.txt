@@ -1,0 +1,6 @@
+[GRID] Selected Region:
+  Start : (997, 977)
+  End   : (1450, 1375)
+  Size  : 453 x 398
+  setPosition({ 997.f, 977.f });
+  setSize({ 453.f, 398.f });
