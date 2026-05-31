@@ -138,7 +138,7 @@ void DebugGrid::handleInput(const sf::Event& event, sf::RenderWindow& window) {
 
     // ── F5 toggle ────────────────────────────
     if (const auto* key = event.getIf<sf::Event::KeyPressed>()) {
-        if (key->code == sf::Keyboard::Key::F5) {
+        if (key->code == sf::Keyboard::Key::F5 || key->code == sf::Keyboard::Key::Grave) {
             open = !open;
             if (open) {
                 window.setMouseCursorVisible(true);   // show system cursor in debug mode
