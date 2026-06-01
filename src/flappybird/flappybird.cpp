@@ -64,7 +64,9 @@ void runFlappyBird(sf::RenderWindow& window) {
         while (auto event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>())
                 window.close();
-
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape)) {
+                window.close();                
+            }
 			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space)) {
 				vy = -400.f;                   //jump velocity
 			}
@@ -90,7 +92,19 @@ void runFlappyBird(sf::RenderWindow& window) {
             vy = 0.f;
         }
        
-        
+        if (birdH + birdY > window.getSize().y) {
+            popat.setPosition({ popat.getPosition().x, window.getSize().y - birdH });
+            vy = 0.f;
+        }
+
+        pipeX -= cellW * 3.f * dt;
+        pipeDown.setPosition({ pipeX, gapY - gapSize / 2.f - pipeDown.getGlobalBounds().size.y });
+        pipeUp.setPosition({ pipeX, gapY + gapSize / 2.f });
+
+        if (pipeX + pipeUp.getGlobalBounds().size.x < 0.f)
+            pipeX = cellW * 12.f;
+
+
 
 
         //draw
