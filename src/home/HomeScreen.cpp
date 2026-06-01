@@ -215,6 +215,10 @@ namespace corezone {
                 dotCount_ = (dotCount_ + 1) % 4;
                 loadingClock_.restart();
             }
+            //Added by Aashutosh for game selection 
+            if (dotCount_ == 3)
+                readyToLaunch_ = true;
+            //Upto here
         }
 
         // Update menu and settings
