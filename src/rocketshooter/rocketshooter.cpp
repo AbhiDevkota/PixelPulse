@@ -2,15 +2,23 @@
 #include <SFML/Graphics.hpp>
 #include <cstdlib>
 
-using namespace std;
+void runRocketShooter(sf::RenderWindow& window) {
+    const int CELL_SIZE = 32;
+    auto size = window.getSize();
+	const int COLS = size.x / CELL_SIZE;
+	const int ROWS = size.y / CELL_SIZE;
 
-void RocketShooter(sf::RenderWindow& window) {
-    cout << "Initial phase: RocketShooter!" << endl;
-    // Create the rocket green rectangle
-    sf::RectangleShape rocket({ 40.f, 70.f });
-    rocket.setFillColor(sf::Color::Green); // Fixed: Changed ':' to '::'
-    rocket.setPosition({ 220.f, 500.f });
-    // Game loop
+    sf::RectangleShape rocket({ 
+		static_cast<float>(CELL_SIZE),
+		static_cast<float>(CELL_SIZE)
+        });
+    rocket.setFillColor(sf::Color::Red);
+
+	sf::Vector2i rocketPos = { COLS / 2, ROWS - 2 };
+
+    sf::Clock clock;
+    auto moveInterval = 0.2f;
+    
     while (window.isOpen()) {
         
         while (auto e = window.pollEvent()) {
@@ -18,8 +26,16 @@ void RocketShooter(sf::RenderWindow& window) {
 				window.close();
 			}
         }
-        // Rendering
-        window.clear(sf::Color::Black);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
+			rocketPos.x--;
+            
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
+			rocketPos.x++;
+        rocket.setPosition({
+           static_cast<float>(rocketPos.x * CELL_SIZE),
+           static_cast<float>(rocketPos.y * CELL_SIZE)
+            });
+       window.clear(sf::Color(10, 10, 10));
         window.draw(rocket);
         window.display();
     }
