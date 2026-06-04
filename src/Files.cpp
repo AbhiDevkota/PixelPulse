@@ -9,7 +9,6 @@
 namespace corezone {
 
 	//Assests implementation
-
 	const std::string AssetPath::ASSETS_DIR = "assets/";
 	const std::string AssetPath::FONTS_DIR = "fonts/";
 	const std::string AssetPath::AUDIOS_DIR = "audios/";
@@ -94,8 +93,9 @@ namespace corezone {
 	//file mgt implementation
 
 	const std::string FileManager::DEFAULT_CONFIG_FILE = "config/settings.cfg";
+	const std::string FileManager::AUDIO_CONFIG_FILE = "config/audio.cfg";
 
-	FileManager::FileManager() : configFilePath_(DEFAULT_CONFIG_FILE) {
+	FileManager::FileManager() : configFilePath_(DEFAULT_CONFIG_FILE), audioConfigFilePath_(AUDIO_CONFIG_FILE) {
 	}
 
 	bool FileManager::initialize() {
@@ -313,6 +313,112 @@ namespace corezone {
 	bool FileManager::resetConfig() {
 		configData_.clear();
 		return deleteFile(configFilePath_);
+	}
+
+	bool FileManager::saveVolumeData(const std::string& volumeType, float volume){
+		float clampedVolume = std::max(0.0f, std::min(100.0f, volume));
+		audioData_[volumeType] = clampedVolume;
+		return true;
+	}
+
+	bool FileManager::loadVolumeData(const std::string& volumeType, float& volume) {
+		auto it = audioData_.find(volumeType);
+		if (it != audioData_.end()) {
+			volume = it->second;
+			return true;
+		}
+		volume = 70.0f;
+		return false;
+	}
+
+	float FileManager::getVolumeData(const std::string& volumeType, float defaultVolume) const {
+		auto it = audioData_.find(volumeType);
+		if (it != audioData_.end()) {
+			return it->second;
+		}
+		return defaultVolume;
+	}
+
+	void FileManager::setVolumeData(const std::string& volumeType, float volume) {
+		float clampedVolume = std::max(0.0f, std::min(100.0f, volume));
+		audioData_[volumeType] = clampedVolume;
+	}
+
+	bool FileManager::saveAllVolumeData() {
+		try {
+			std::stringstream buffer;
+
+			// Write header
+			buffer << "# PixelPulse Audio Configuration File" << std::endl;
+			buffer << "# Volume levels (0-100)" << std::endl;
+			buffer << std::endl;
+
+			//Write all volume entries
+			for (const auto& [volumeType, volume] : audioData_) {
+				buffer << volumeType << "=" << volume << std::endl;
+			}
+
+			return writeFile(audioConfigFilePath_, buffer.str());
+		}
+		catch (const std::exception& e) {
+			std::cerr << "Error saving audio config: " << e.what() << std::endl;
+			return false;
+		}
+	}
+
+	bool FileManager::loadAllVolumeData() {
+		try {
+			std::string content;
+			if (!readFile(audioConfigFilePath_, content)) {
+				return false;
+			}
+
+			audioData_.clear();
+
+			std::stringstream stream(content);
+			std::string line;
+
+			while (std::getline(stream, line)) {
+				// Skip comments and empty lines
+				if (line.empty() || line[0] == '#') {
+					continue;
+				}
+
+				// Parse key=value
+				size_t delimPos = line.find('=');
+				if (delimPos != std::string::npos) {
+					std::string key = line.substr(0, delimPos);
+					std::string valueStr = line.substr(delimPos + 1);
+
+					// Trim whitespace
+					key.erase(0, key.find_first_not_of(" \t\r\n"));
+					key.erase(key.find_last_not_of(" \t\r\n") + 1);
+					valueStr.erase(0, valueStr.find_first_not_of(" \t\r\n"));
+					valueStr.erase(valueStr.find_last_not_of(" \t\r\n") + 1);
+
+					try {
+						float volume = std::stof(valueStr);
+						// Clamp volume between 0 and 100
+						volume = std::max(0.0f, std::min(100.0f, volume));
+						audioData_[key] = volume;
+					}
+					catch (const std::exception& e) {
+						std::cerr << "Error parsing volume value for " << key << ": " << e.what() << std::endl;
+					}
+				}
+			}
+
+			return true;
+		}
+		catch (const std::exception& e) {
+			std::cerr << "Error loading audio config: " << e.what() << std::endl;
+			return false;
+		}
+	}
+
+	bool FileManager::resetVolumeData() {
+		audioData_.clear();
+		return deleteFile(audioConfigFilePath_);
 	}
 
 	bool FileManager::saveGameData(const std::string& gameName, const std::string& gameData) {
