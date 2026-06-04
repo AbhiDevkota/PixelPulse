@@ -78,6 +78,7 @@ namespace corezone {
 		void setVolumeData(const std::string& volumeType, float volume);
 		bool saveAllVolumeData();
 		bool loadAllVolumeData();
+		bool resetVolumeData();
 		const std::unordered_map<std::string, float>& getAllVolumeData() const { return audioData_; }
 
 		//game save data mgt
