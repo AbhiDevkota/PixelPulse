@@ -1,4 +1,4 @@
-# <img src="assets\rocket\Gemini_Generated_Image_947r3k947r3k947r.png" width="30"/> ROCKET SHOOTER
+# <img src="assets\rocket\rocket_icon.png" width="30"/> ROCKET SHOOTER
 
  
 This is a preview of the Rocket Shooter game inside the Pixel Pulse Arcade Zone.
