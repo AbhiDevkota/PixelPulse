@@ -7,6 +7,7 @@
 #include <string>
 #include "Menu.h"
 #include "Settings.h"
+#include "Files.h"
 
 namespace corezone {
 
@@ -81,7 +82,7 @@ namespace corezone {
         
 
     public:
-        HomeScreen(sf::RenderWindow& window, const std::string& fontPath);
+        HomeScreen(sf::RenderWindow& window, const std::string& fontPath, FileManager* fileManager);
         void initialize();
         void update(float deltaTime);
         void handleInput(const sf::Event& event);
@@ -90,6 +91,7 @@ namespace corezone {
         void draw();
 
     private:
+        FileManager* fileManager_ = nullptr;  //file pointer to point file mgt
         void renderBackground();
         void renderIntro();
         void renderFlash();

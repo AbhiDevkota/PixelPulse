@@ -27,8 +27,12 @@ namespace corezone {
         return items_[selectedIndex_];
     }
 
-    HomeScreen::HomeScreen(sf::RenderWindow& window, const std::string& fontPath)
-        : window_(window), gameMenu_(), menu_(window, font_), settings_(window, font_)
+    HomeScreen::HomeScreen(sf::RenderWindow& window, const std::string& fontPath, FileManager* fileManager)
+        : window_(window),
+        gameMenu_(),
+        menu_(window, font_),
+        settings_(window, font_),
+        fileManager_(fileManager)
     {
         if (font_.openFromFile(fontPath)) {
             fontLoaded_ = true;
@@ -117,7 +121,10 @@ namespace corezone {
         }
     }
 
-    void HomeScreen::initialize() {}
+    void HomeScreen::initialize() {
+        settings_.setFileManager(fileManager_);
+        settings_.initialize();
+    }
 
     void HomeScreen::update(float deltaTime) {
         // Manage mouse cursor visibility based on input device

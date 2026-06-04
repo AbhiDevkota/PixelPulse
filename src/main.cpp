@@ -34,7 +34,7 @@ int main() {
     }
 
     std::string fontPath = corezone::AssetPath::getFontPath("regular.ttf");
-    corezone::HomeScreen home(window, fontPath);
+    corezone::HomeScreen home(window, fontPath, &fileManager);
     home.initialize();
 
     sf::Clock clock;
