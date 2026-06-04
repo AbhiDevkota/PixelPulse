@@ -38,8 +38,11 @@ namespace corezone {
 	class FileManager {
 	private:
 		static const std::string DEFAULT_CONFIG_FILE;
+		static const std::string AUDIO_CONFIG_FILE;		//Audo 
 		std::string configFilePath_;
+		std::string audioConfigFilePath_;
 		std::unordered_map<std::string, std::string> configData_;
+		std::unordered_map<std::string, float> audioData_;
 
 	public:
 		FileManager();
@@ -67,6 +70,15 @@ namespace corezone {
 		bool saveConfig();
 		bool loadConfig();
 		bool resetConfig();
+
+		//Audio config mgt
+		bool saveVolumeData(const std::string& volumeType, float volume);
+		bool loadVolumeData(const std::string& volumeType, float& volume);
+		float getVolumeData(const std::string& volumeType, float defaultVolume = 70.0f) const;
+		void setVolumeData(const std::string& volumeType, float volume);
+		bool saveAllVolumeData();
+		bool loadAllVolumeData();
+		const std::unordered_map<std::string, float>& getAllVolumeData() const { return audioData_; }
 
 		//game save data mgt
 		bool saveGameData(const std::string& gameName, const std::string& gameData);
