@@ -123,6 +123,25 @@ namespace corezone {
 
     void HomeScreen::initialize() {
         settings_.setFileManager(fileManager_);
+
+        // Load saved volume data from FileManager
+        if (fileManager_ != nullptr) {
+            fileManager_->loadAllVolumeData();
+
+            // Get saved volumes with defaults of 70.0f
+            float masterVolume = fileManager_->getVolumeData("master_volume", 70.0f);
+            float effectVolume = fileManager_->getVolumeData("effect_volume", 70.0f);
+
+            // Apply loaded volumes to audio elements
+            bgMusic_.setVolume(masterVolume);
+            selectSnd_.setVolume(effectVolume);
+            launchSnd_.setVolume(effectVolume);
+
+            std::cout << "✓ Loaded saved volumes - Master: " << masterVolume 
+                      << "%, Effect: " << effectVolume << "%" << std::endl;
+        }
+
+        // Initialize settings with callbacks already wired up
         settings_.initialize();
     }
 
