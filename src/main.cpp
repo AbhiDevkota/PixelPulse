@@ -1,7 +1,8 @@
 #include "HomeScreen.h"
 #include <SFML/Graphics.hpp>
-void runFlappyBird(sf::RenderWindow& window);
 
+void runFlappyBird(sf::RenderWindow& window);
+void runSnake(sf::RenderWindow& window);
 
 int main() {
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
@@ -26,9 +27,6 @@ int main() {
 
     corezone::HomeScreen home(window, "fonts/regular.ttf");
     home.initialize();
-    runFlappyBird(window);
-
-
     sf::Clock clock;
 
     while (window.isOpen()) {
@@ -52,6 +50,15 @@ int main() {
 
         float dt = clock.restart().asSeconds();
         home.update(dt);
+        // Added by aashutosh to select game and run it
+        if (home.isGameReady()) {
+            std::string game = home.getSelectedGame();
+            home.resetGame();
+            if (game == "SNAKE") runSnake(window);
+			if (game == "FLAPPY BIRD") runFlappyBird(window);
+        }
+        //Up to here
+        
 
         window.clear();
         home.draw();
