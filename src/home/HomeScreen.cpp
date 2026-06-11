@@ -27,8 +27,12 @@ namespace corezone {
         return items_[selectedIndex_];
     }
 
-    HomeScreen::HomeScreen(sf::RenderWindow& window, const std::string& fontPath)
-        : window_(window), gameMenu_(), menu_(window, font_), settings_(window, font_)
+    HomeScreen::HomeScreen(sf::RenderWindow& window, const std::string& fontPath, FileManager* fileManager)
+        : window_(window),
+        gameMenu_(),
+        menu_(window, font_),
+        settings_(window, font_),
+        fileManager_(fileManager)
     {
         if (font_.openFromFile(fontPath)) {
             fontLoaded_ = true;
@@ -45,12 +49,11 @@ namespace corezone {
             std::cerr << "Icon font not found (fonts/DejaVuSans.ttf)\n";
         }
 
-        // ── AUDIO SETUP ───────────────────────────────────────────────────────
+        //AUDIO SETUP
 
-        // Background music — loops forever, starts when "Presenting You" fades out
         if (bgMusic_.openFromFile("audios/home/home_screen.wav")) {
             bgMusic_.setLooping(true);
-            bgMusic_.setVolume(70.f);   // Default volume, will be overridden by settings
+            bgMusic_.setVolume(70.f); //DEFAULT VOLUME WHICH CAN BE OBERWRITTEN THE VALUE OF THE SETTINGS
             std::cout << "✓ BG music loaded\n";
         }
         else {
@@ -77,7 +80,7 @@ namespace corezone {
             std::cerr << "✗ Launch sound not found: audios/home/launch_game.wav\n";
         }
 
-        // ── MENU SETUP ────────────────────────────────────────────────────────
+        //MENU SETUP
         menu_.setSettings(&settings_);
         menu_.onSettings = [this]() {
             settings_.show();
@@ -93,7 +96,7 @@ namespace corezone {
             launchSnd_.setVolume(volume);
         };
         
-        // Wire up Settings volume callbacks BEFORE initializing settings
+		//CALL SETTING VOLUME CHANGE CALLBACKS TO INITIALIZE THEM WITH THE CURRENT SETTINGS VALUES
         settings_.onMasterVolumeChange = [this](float volume) {
             bgMusic_.setVolume(volume);
             std::cout << "Master volume changed to: " << volume << "\n";
@@ -104,14 +107,13 @@ namespace corezone {
             std::cout << "Effect volume changed to: " << volume << "\n";
         };
         
-        // Initialize settings (loads saved values)
+        //loads saved values of master volume and effect volume to setting. 
         settings_.initialize();
-        // ─────────────────────────────────────────────────────────────────────
 
-        //  CUSTOM CURSOR 
+        //CURSOR
         if (cursorTexture_.loadFromFile("assets/customs/regular_cursor.png")) {
             cursorSprite_ = new sf::Sprite(cursorTexture_);
-            cursorSprite_->setScale({1.40f, 1.40f});  // Adjust this to resize cursor (0.5 = half size)
+            cursorSprite_->setScale({1.40f, 1.40f});  //To ADJUST THE SIZE OF THE CURSOR
             std::cout << "✓ Custom cursor loaded\n";
         }
         else {
@@ -119,7 +121,29 @@ namespace corezone {
         }
     }
 
-    void HomeScreen::initialize() {}
+    void HomeScreen::initialize() {
+        settings_.setFileManager(fileManager_);
+
+        // Load saved volume data from FileManager
+        if (fileManager_ != nullptr) {
+            fileManager_->loadAllVolumeData();
+
+            // Get saved volumes with defaults of 70.0f
+            float masterVolume = fileManager_->getVolumeData("master_volume", 70.0f);
+            float effectVolume = fileManager_->getVolumeData("effect_volume", 70.0f);
+
+            // Apply loaded volumes to audio elements
+            bgMusic_.setVolume(masterVolume);
+            selectSnd_.setVolume(effectVolume);
+            launchSnd_.setVolume(effectVolume);
+
+            std::cout << "✓ Loaded saved volumes - Master: " << masterVolume 
+                      << "%, Effect: " << effectVolume << "%" << std::endl;
+        }
+
+        // Initialize settings with callbacks already wired up
+        settings_.initialize();
+    }
 
     void HomeScreen::update(float deltaTime) {
         // Manage mouse cursor visibility based on input device
@@ -134,11 +158,11 @@ namespace corezone {
             cursorSprite_->setPosition({static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)});
         }
 
-        // ── CONTROLLER NAVIGATION (JOYSTICK & D-PAD)
+        //CONTROLLER NAVIGATION (JOYSTICK & D-PAD)
         if (state_ == State::Menu && menu_.getState() == Menu::MenuState::Closed && !settings_.isVisible()) {
             float delay = joystickDelayClock_.getElapsedTime().asSeconds();
             
-            if (delay > 0.2f) {  // 200ms delay between navigation moves
+            if (delay > 0.2f) {  //delay between the game selection
                 bool moved = false;
 
                 // Check all connected joysticks
@@ -201,7 +225,6 @@ namespace corezone {
                     bgMusic_.play();
                     bgMusicStarted_ = true;
                 }
-                // ─────────────────────────────────────────────────────────────
 
                 if (introOpacity_ <= 0.0f) {
                     state_ = State::Menu;
@@ -230,7 +253,7 @@ namespace corezone {
     void HomeScreen::handleInput(const sf::Event& event) {
         if (state_ != State::Menu) return;
 
-        // ── INPUT DEVICE DETECTION ───────────────────────────────────────────────
+		//INPUT DETECTION LOGIC FOR CONTROLLER AND THE KEYBOARD/MOUSE
         // Switch to keyboard/mouse mode on any key or mouse event
         if (event.is<sf::Event::KeyPressed>() ||
             event.is<sf::Event::MouseButtonPressed>() ||
