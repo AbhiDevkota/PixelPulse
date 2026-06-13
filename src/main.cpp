@@ -54,7 +54,11 @@ int main() {
         if (home.isGameReady()) {
             std::string game = home.getSelectedGame();
             home.resetGame();
-            if (game == "SNAKE") runSnake(window);
+            if (game == "SNAKE") {
+                home.pauseMusic();
+                runSnake(window);
+                home.resumeMusic();
+            }
             
         }
         //Up to here

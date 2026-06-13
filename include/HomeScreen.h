@@ -93,6 +93,9 @@ namespace corezone {
         bool isGameReady() const { return readyToLaunch_; }
         std::string getSelectedGame() const { return loadingName_; }
         void resetGame() { loadingMode_ = false; readyToLaunch_ = false; loadingName_ = ""; }
+        //This part is for audio handling on game launch
+        void pauseMusic() { bgMusic_.pause(); }
+        void resumeMusic() { bgMusic_.play(); }
         //Up to here
     private:
         void renderBackground();
