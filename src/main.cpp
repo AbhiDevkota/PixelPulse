@@ -1,8 +1,16 @@
 #include "HomeScreen.h"
+#include "Files.h"
 #include <SFML/Graphics.hpp>
+#include <iostream>
 void runSnake(sf::RenderWindow& window);
-
 int main() {
+	corezone::FileManager fileManager;
+    if(!fileManager.initialize()){
+        std::cerr << "Failed to init file mgt stystem" << std::endl;
+        return -1;
+    }
+	std::cout << "File mgt system initialized successfully" << std::endl;
+
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     //sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
 
@@ -19,11 +27,13 @@ int main() {
 
     // Load and set the application icon
     sf::Image icon;
-    if (icon.loadFromFile("Icons/icon_concept1.ico")) {
+    std::string iconPath = corezone::AssetPath::getIconPath("icon_concept1.ico");
+    if (icon.loadFromFile(iconPath)) {
         window.setIcon(icon);
     }
 
-    corezone::HomeScreen home(window, "fonts/regular.ttf");
+    std::string fontPath = corezone::AssetPath::getFontPath("regular.ttf");
+    corezone::HomeScreen home(window, fontPath, &fileManager);
     home.initialize();
     
     
