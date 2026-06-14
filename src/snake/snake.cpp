@@ -159,11 +159,9 @@ void runSnake(sf::RenderWindow& window) {
 		});
 	rect.setFillColor(sf::Color::White);
 
-	sf::RectangleShape foodShape({
-		static_cast<float>(CELL_SIZE),
-		static_cast<float>(CELL_SIZE)
-		});
-	foodShape.setFillColor(sf::Color::Red);
+	sf::Texture appleTexture;
+	appleTexture.loadFromFile("assets/snake/apple.png");
+	sf::Sprite appleSprite(appleTexture);
 
 	sf::SoundBuffer eatSoundBuffer;
 	sf::Sound eatSound(eatSoundBuffer);
@@ -231,7 +229,7 @@ void runSnake(sf::RenderWindow& window) {
 			}
 		}
 
-		foodShape.setPosition({
+		appleSprite.setPosition({
 			static_cast<float>(OFFSETX + snake.getFoodPosition().x * CELL_SIZE),
 			static_cast<float>(OFFSETY + snake.getFoodPosition().y * CELL_SIZE)
 			});
@@ -261,7 +259,7 @@ void runSnake(sf::RenderWindow& window) {
 		scoreText.setString("Score: " + std::to_string(score));
 		scoreText.setPosition({ 10.f, 10.f });
 		window.draw(scoreText);
-		window.draw(foodShape);
+		window.draw(appleSprite);
 
 		for (auto& segment : snake.getBody()) {
 			rect.setPosition({
