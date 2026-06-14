@@ -1,10 +1,21 @@
 #include "HomeScreen.h"
+#include "Files.h"
 #include <SFML/Graphics.hpp>
 
-void runFlappyBird(sf::RenderWindow& window);
-void runSnake(sf::RenderWindow& window);
 
+void runFlappyBird(sf::RenderWindow& window);
+
+#include <iostream>
+
+void runSnake(sf::RenderWindow& window);
 int main() {
+	corezone::FileManager fileManager;
+    if(!fileManager.initialize()){
+        std::cerr << "Failed to init file mgt stystem" << std::endl;
+        return -1;
+    }
+	std::cout << "File mgt system initialized successfully" << std::endl;
+
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     //sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
 
@@ -21,11 +32,13 @@ int main() {
 
     // Load and set the application icon
     sf::Image icon;
-    if (icon.loadFromFile("Icons/icon_concept1.ico")) {
+    std::string iconPath = corezone::AssetPath::getIconPath("icon_concept1.ico");
+    if (icon.loadFromFile(iconPath)) {
         window.setIcon(icon);
     }
 
-    corezone::HomeScreen home(window, "fonts/regular.ttf");
+    std::string fontPath = corezone::AssetPath::getFontPath("regular.ttf");
+    corezone::HomeScreen home(window, fontPath, &fileManager);
     home.initialize();
     sf::Clock clock;
 
@@ -54,8 +67,20 @@ int main() {
         if (home.isGameReady()) {
             std::string game = home.getSelectedGame();
             home.resetGame();
-            if (game == "SNAKE") runSnake(window);
-			if (game == "FLAPPY BIRD") runFlappyBird(window);
+    
+	
+
+            if (game == "FLAPPY BIRD") {
+                home.pauseMusic();
+                runFlappyBird(window);
+                home.resumeMusic();
+            }
+            if (game == "SNAKE") {
+                home.pauseMusic();
+                runSnake(window);
+                home.resumeMusic();
+            }
+            
         }
         //Up to here
         

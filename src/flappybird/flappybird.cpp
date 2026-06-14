@@ -1,7 +1,11 @@
 #include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
+#include <cstdlib>
+#include <ctime>
 
 void runFlappyBird(sf::RenderWindow& window) {
+
+    std::srand((unsigned int)std::time(nullptr));
 
     //background music
     sf::Music music;
@@ -24,7 +28,7 @@ void runFlappyBird(sf::RenderWindow& window) {
 
     //background
     sf::Texture bgTexture;
-    if (!bgTexture.loadFromFile("assets/Flappy/Background.png")) return;
+    if (!bgTexture.loadFromFile("assets/Flappy/Sky.png")) return;
     sf::Sprite background(bgTexture);
     float scaleX = (float)window.getSize().x / bgTexture.getSize().x;
     float scaleY = (float)window.getSize().y / bgTexture.getSize().y;
@@ -65,7 +69,7 @@ void runFlappyBird(sf::RenderWindow& window) {
             if (event->is<sf::Event::Closed>())
                 window.close();
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape)) {
-                window.close();                
+                return;
             }
 			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space)) {
 				vy = -400.f;                   //jump velocity
@@ -101,11 +105,26 @@ void runFlappyBird(sf::RenderWindow& window) {
         pipeDown.setPosition({ pipeX, gapY - gapSize / 2.f - pipeDown.getGlobalBounds().size.y });
         pipeUp.setPosition({ pipeX, gapY + gapSize / 2.f });
 
-        if (pipeX + pipeUp.getGlobalBounds().size.x < 0.f)
+        if (pipeX + pipeUp.getGlobalBounds().size.x < 0.f) {
             pipeX = cellW * 12.f;
 
+            // random vertical scale for new pipe height
+            float randomScaleY = pipeScaleY * (0.6f + (float)(std::rand() % 80) / 100.f); // 0.6x to 1.4x
+
+            pipeUp.setScale({ pipeScaleX, randomScaleY });
+            pipeDown.setScale({ pipeScaleX, randomScaleY });
+
+            pipeDown.setPosition({ pipeX, gapY - gapSize / 2.f - pipeDown.getGlobalBounds().size.y });
+            pipeUp.setPosition({ pipeX, gapY + gapSize / 2.f });
+        }
 
 
+
+        // collision detection - one line
+        if (popat.getGlobalBounds().findIntersection(pipeUp.getGlobalBounds()) ||
+            popat.getGlobalBounds().findIntersection(pipeDown.getGlobalBounds())) {
+            return; // game over - exits back to homescreen
+        }
 
         //draw
 

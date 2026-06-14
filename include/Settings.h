@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <functional>
+#include "Files.h"
 
 namespace corezone {
 
@@ -55,6 +56,7 @@ namespace corezone {
 
         sf::Font& font_;
         sf::RenderWindow& window_;
+        FileManager* fileManager_ = nullptr;  // Add FileManager pointer
 
         // UI State
         bool showSettings_ = false;
@@ -65,9 +67,14 @@ namespace corezone {
 
         void saveSettings();
         void loadSettings();
+        void saveVolumeSettings();  //save using FileManager
+        void loadVolumeSettings();  //load using FileManager
 
     public:
         Settings(sf::RenderWindow& window, const sf::Font& font);
+
+        // Wire up the FileManager instance
+        void setFileManager(FileManager* fm) { fileManager_ = fm; }
 
         void initialize();  // Call after wiring up callbacks
         void show() { showSettings_ = true; }
@@ -94,6 +101,6 @@ namespace corezone {
         std::function<void(float)> onEffectVolumeChange;
     };
 
-} // namespace corezone
+}
 
 #endif
