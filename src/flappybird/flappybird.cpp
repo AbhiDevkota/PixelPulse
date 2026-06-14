@@ -48,13 +48,27 @@ void runFlappyBird(sf::RenderWindow& window) {
     sf::Sprite pipeDown(downTexture);
     pipeDown.setScale({ pipeScaleX, pipeScaleY });      //top pipe size
 
+    
+
+    // anchor pipeDown by its top-left -> top stays fixed at y=0 when scaled
+    pipeDown.setOrigin({ 0.f, 0.f });
+
+    // anchor pipeUp by its bottom-left -> bottom stays fixed at screen bottom when scaled
+    pipeUp.setOrigin({ 0.f, (float)upTexture.getSize().y });
+
     float pipeX = cellW * 12.f;            //pipe starts from the right edge of the screen
     float gapY = cellH * 8.f;              //gap center
     float gapSize = cellH * 4.f;           //gap size
 
-    pipeDown.setPosition({ pipeX, gapY - gapSize / 2.f - pipeDown.getGlobalBounds().size.y });
-    pipeUp.setPosition({ pipeX, gapY + gapSize / 2.f });
+    // scale first pipe using the same formula as later spawns
+    float pipeDownHeight = gapY - gapSize / 2.f;
+    pipeDown.setScale({ pipeScaleX, pipeDownHeight / downTexture.getSize().y });
 
+    float pipeUpHeight = (float)window.getSize().y - (gapY + gapSize / 2.f);
+    pipeUp.setScale({ pipeScaleX, pipeUpHeight / upTexture.getSize().y });
+
+    pipeDown.setPosition({ pipeX, 0.f });
+    pipeUp.setPosition({ pipeX, (float)window.getSize().y });
     //physics
     float vy = 0.f;                      //bird velocity
     float gravity = 1000.f;              //gravity
@@ -101,21 +115,28 @@ void runFlappyBird(sf::RenderWindow& window) {
             vy = 0.f;
         }
 
-        pipeX -= cellW * 3.f * dt;
-        pipeDown.setPosition({ pipeX, gapY - gapSize / 2.f - pipeDown.getGlobalBounds().size.y });
-        pipeUp.setPosition({ pipeX, gapY + gapSize / 2.f });
+         pipeX -= cellW * 3.f * dt;
+        pipeDown.setPosition({ pipeX, 0.f });
+        pipeUp.setPosition({ pipeX, (float)window.getSize().y });
 
         if (pipeX + pipeUp.getGlobalBounds().size.x < 0.f) {
             pipeX = cellW * 12.f;
 
-            // random vertical scale for new pipe height
-            float randomScaleY = pipeScaleY * (0.6f + (float)(std::rand() % 80) / 100.f); // 0.6x to 1.4x
+            // pick a random gap centre (gap SIZE stays constant)
+            float minGapY = cellH * 4.f;
+            float maxGapY = cellH * 12.f;
+            gapY = minGapY + (float)(std::rand() % (int)(maxGapY - minGapY));
 
-            pipeUp.setScale({ pipeScaleX, randomScaleY });
-            pipeDown.setScale({ pipeScaleX, randomScaleY });
+            // pipeDown: from top of screen (y=0) to gap start
+            float pipeDownHeight = gapY - gapSize / 2.f;
+            pipeDown.setScale({ pipeScaleX, pipeDownHeight / downTexture.getSize().y });
 
-            pipeDown.setPosition({ pipeX, gapY - gapSize / 2.f - pipeDown.getGlobalBounds().size.y });
-            pipeUp.setPosition({ pipeX, gapY + gapSize / 2.f });
+            // pipeUp: from gap end to bottom of screen
+            float pipeUpHeight = (float)window.getSize().y - (gapY + gapSize / 2.f);
+            pipeUp.setScale({ pipeScaleX, pipeUpHeight / upTexture.getSize().y });
+
+            pipeDown.setPosition({ pipeX, 0.f });
+            pipeUp.setPosition({ pipeX, (float)window.getSize().y });
         }
 
 
