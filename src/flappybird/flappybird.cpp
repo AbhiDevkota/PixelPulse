@@ -86,7 +86,7 @@ void runFlappyBird(sf::RenderWindow& window) {
                 return;
             }
 			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space)) {
-				vy = -400.f;                   //jump velocity
+				vy = -600.f;                   //jump velocity
 			}
             
         }
