@@ -2,11 +2,6 @@
 #include <cmath>
 #include <iostream>
 #include <string>
-#include <fstream>
-#include <sstream>
-#include <filesystem>
-#include <windows.h>
-#include <shlobj.h>
 
 namespace corezone {
 
@@ -45,7 +40,7 @@ namespace corezone {
         float knobX = pos.x + (volume_ / maxVolume_) * BAR_WIDTH - 7.5f;
         knob_.setPosition({ knobX, pos.y - 5.f });
 
-        // Position label to the LEFT of the bar - INCREASE this number to move label MORE LEFT
+        // Position label to the LEFT of the bar
         labelText_.setPosition({ pos.x - 280.f, pos.y + 2.f });
 
         // Position volume percentage text to the right of the bar
@@ -118,13 +113,11 @@ namespace corezone {
         window.draw(volumeText_);
     }
 
-    // ─────────────────────────────────────────────────────────────────
-
     Settings::Settings(sf::RenderWindow& window, const sf::Font& font)
         : masterVolumeBar_(font, "Master Volume"),
-          effectVolumeBar_(font, "Effect Volume"),
-          font_(const_cast<sf::Font&>(font)),
-          window_(window) {
+        effectVolumeBar_(font, "Effect Volume"),
+        font_(const_cast<sf::Font&>(font)),
+        window_(window) {
 
         auto size = window_.getSize();
         float centerX = static_cast<float>(size.x) / 2.f;
@@ -143,20 +136,20 @@ namespace corezone {
             if (onMasterVolumeChange) {
                 onMasterVolumeChange(vol);
             }
-            saveSettings();
-        };
+            saveVolumeSettings();  // Use FileManager to save
+            };
 
         effectVolumeBar_.onVolumeChange = [this](float vol) {
             if (onEffectVolumeChange) {
                 onEffectVolumeChange(vol);
             }
-            saveSettings();
-        };
+            saveVolumeSettings();  // Use FileManager to save
+            };
     }
 
     void Settings::initialize() {
         // Load saved settings after callbacks are wired up
-        loadSettings();
+        loadVolumeSettings();  // Use FileManager to load
     }
 
     void Settings::handleInput(const sf::Event& event) {
@@ -194,7 +187,7 @@ namespace corezone {
 
     void Settings::handleMousePress(sf::Vector2f mousePos) {
         if (!showSettings_) return;
-        
+
         masterVolumeBar_.handleMousePress(mousePos);
         effectVolumeBar_.handleMousePress(mousePos);
     }
@@ -254,102 +247,56 @@ namespace corezone {
         effectVolumeBar_.setVolume(vol);
     }
 
-    void Settings::saveSettings() {
-        // Get Documents folder path
-        wchar_t* documentsPath = nullptr;
-        if (SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &documentsPath) != S_OK) {
-            std::cerr << "Failed to get Documents folder path\n";
+   //save voume settings
+    void Settings::saveVolumeSettings() {
+        if (fileManager_ == nullptr) {
+            std::cerr << "FileManager not initialized in Settings!" << std::endl;
             return;
         }
 
-        // Convert wide string to regular string
-        std::wstring wPath(documentsPath);
-        CoTaskMemFree(documentsPath);
-        std::string docPath(wPath.begin(), wPath.end());
+        float masterVol = masterVolumeBar_.getVolume();
+        float effectVol = effectVolumeBar_.getVolume();
 
-        // Create CoreZone/Saved directory path
-        std::string savePath = docPath + "\\CoreZone\\Saved";
-        
-        // Create directories if they don't exist
-        try {
-            std::filesystem::create_directories(savePath);
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Failed to create save directory: " << e.what() << "\n";
-            return;
-        }
+        fileManager_->saveVolumeData("master_volume", masterVol);
+        fileManager_->saveVolumeData("effect_volume", effectVol);
+        fileManager_->saveAllVolumeData();
 
-        // Save settings to file
-        std::string filePath = savePath + "\\saved.log";
-        std::ofstream file(filePath);
-        if (file.is_open()) {
-            file << "MasterVolume=" << masterVolumeBar_.getVolume() << "\n";
-            file << "EffectVolume=" << effectVolumeBar_.getVolume() << "\n";
-            file.close();
-            std::cout << "Settings saved to: " << filePath << "\n";
-        }
-        else {
-            std::cerr << "Failed to save settings to: " << filePath << "\n";
-        }
+        std::cout << "Volume settings saved - Master: " << masterVol
+            << ", Effect: " << effectVol << std::endl;
     }
 
-    void Settings::loadSettings() {
-        // Get Documents folder path
-        wchar_t* documentsPath = nullptr;
-        if (SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &documentsPath) != S_OK) {
-            std::cerr << "Failed to get Documents folder path\n";
-            return;
-        }
-
-        // Convert wide string to regular string
-        std::wstring wPath(documentsPath);
-        CoTaskMemFree(documentsPath);
-        std::string docPath(wPath.begin(), wPath.end());
-
-        // Build file path
-        std::string filePath = docPath + "\\CoreZone\\Saved\\saved.log";
-
-        // Check if file exists
-        if (!std::filesystem::exists(filePath)) {
-            std::cout << "No saved settings found, using defaults\n";
-            // Apply default volumes to audio
+	//Load Volume settings using FileManager
+    void Settings::loadVolumeSettings() {
+        if (fileManager_ == nullptr) {
+            std::cerr << "FileManager not initialized in Settings!" << std::endl;
+            // Apply default volumes
             if (onMasterVolumeChange) onMasterVolumeChange(masterVolumeBar_.getVolume());
             if (onEffectVolumeChange) onEffectVolumeChange(effectVolumeBar_.getVolume());
             return;
         }
 
-        // Load settings from file
-        std::ifstream file(filePath);
-        if (file.is_open()) {
-            std::string line;
-            while (std::getline(file, line)) {
-                size_t pos = line.find('=');
-                if (pos != std::string::npos) {
-                    std::string key = line.substr(0, pos);
-                    std::string value = line.substr(pos + 1);
+        float masterVol = fileManager_->getVolumeData("master_volume", 70.0f);
+        float effectVol = fileManager_->getVolumeData("effect_volume", 70.0f);
 
-                    try {
-                        float vol = std::stof(value);
-                        if (key == "MasterVolume") {
-                            masterVolumeBar_.setVolume(vol);
-                            if (onMasterVolumeChange) onMasterVolumeChange(vol);
-                        }
-                        else if (key == "EffectVolume") {
-                            effectVolumeBar_.setVolume(vol);
-                            if (onEffectVolumeChange) onEffectVolumeChange(vol);
-                        }
-                    }
-                    catch (const std::exception& e) {
-                        std::cerr << "Failed to parse volume value: " << e.what() << "\n";
-                    }
-                }
-            }
-            file.close();
-            std::cout << "Settings loaded from: " << filePath << "\n";
-        }
-        else {
-            std::cerr << "Failed to load settings from: " << filePath << "\n";
-        }
+        masterVolumeBar_.setVolume(masterVol);
+        effectVolumeBar_.setVolume(effectVol);
+
+        if (onMasterVolumeChange) onMasterVolumeChange(masterVol);
+        if (onEffectVolumeChange) onEffectVolumeChange(effectVol);
+
+        std::cout << "Volume settings loaded - Master: " << masterVol
+            << ", Effect: " << effectVol << std::endl;
     }
 
-} // namespace corezone
+    
+    void Settings::saveSettings() {
+        
+        saveVolumeSettings();
+    }
+
+    void Settings::loadSettings() {
+        
+        loadVolumeSettings();
+    }
+
+}
