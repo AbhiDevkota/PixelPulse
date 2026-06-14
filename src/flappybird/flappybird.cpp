@@ -115,7 +115,7 @@ void runFlappyBird(sf::RenderWindow& window) {
             vy = 0.f;
         }
 
-         pipeX -= cellW * 3.f * dt;
+        pipeX -= cellW * 3.f * dt;
         pipeDown.setPosition({ pipeX, 0.f });
         pipeUp.setPosition({ pipeX, (float)window.getSize().y });
 
@@ -141,7 +141,7 @@ void runFlappyBird(sf::RenderWindow& window) {
 
 
 
-        // collision detection - one line
+        // collision detection
         if (popat.getGlobalBounds().findIntersection(pipeUp.getGlobalBounds()) ||
             popat.getGlobalBounds().findIntersection(pipeDown.getGlobalBounds())) {
             return; // game over - exits back to homescreen
