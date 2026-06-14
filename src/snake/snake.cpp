@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include<SFML/audio.hpp>
 #include <cstdlib>
 #include <ctime>
 #include "Snake.h"
@@ -164,6 +165,12 @@ void runSnake(sf::RenderWindow& window) {
 		});
 	foodShape.setFillColor(sf::Color::Red);
 
+	sf::SoundBuffer eatSoundBuffer;
+	sf::Sound eatSound(eatSoundBuffer);
+	if (eatSoundBuffer.loadFromFile("assets/snake/food_crunch.mp3")) {
+		eatSound.setVolume(100.f);
+	}
+
 	sf::Font font;
 	font.openFromFile("fonts/regular.ttf");
 	sf::Text scoreText(font);
@@ -187,7 +194,7 @@ void runSnake(sf::RenderWindow& window) {
 			if (e->is<sf::Event::KeyPressed>()) {
 				auto key = e->getIf<sf::Event::KeyPressed>()->code;
 				if (key == sf::Keyboard::Key::Escape)
-					window.close();
+					return;
 				if (key == sf::Keyboard::Key::R && gameOver) {
 					snake.reset({ 5, 5 }, { 1, 0 });
 					score = 0;
@@ -218,6 +225,7 @@ void runSnake(sf::RenderWindow& window) {
 
 			if (snake.checkFoodCollision()) {
 				snake.respawnFood();
+				eatSound.play();
 				snake.grow();
 				score++;
 			}
