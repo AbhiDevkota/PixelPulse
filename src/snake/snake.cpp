@@ -72,8 +72,9 @@ void runSnake(sf::RenderWindow& window) {
 	bool gameOver = false;
 	const int CELL_SIZE = 32;
 	auto size = window.getSize();
-	const int PLAY_HEIGHT = 800;
-	const int PLAY_WIDTH = 800;
+	const int TARGET = static_cast<int>(std::min(size.x, size.y) * 0.78f);
+	const int PLAY_HEIGHT = (TARGET / CELL_SIZE) * CELL_SIZE;
+	const int PLAY_WIDTH = PLAY_HEIGHT;
 	const int COLS = PLAY_HEIGHT / CELL_SIZE;
 	const int ROWS = PLAY_WIDTH / CELL_SIZE;
 	const int OFFSETX = (size.x - PLAY_WIDTH) / 2;
@@ -174,7 +175,10 @@ void runSnake(sf::RenderWindow& window) {
 	sf::Text scoreText(font);
 	scoreText.setCharacterSize(24);
 	scoreText.setFillColor(sf::Color::White);
-	scoreText.setPosition({ 10.f, 10.f });
+	scoreText.setPosition({ 
+		static_cast<float>(OFFSETX),
+		static_cast<float>(OFFSETY - 2 * CELL_SIZE) 
+		});
 
 	sf::Clock clock;
 	std::srand(static_cast<unsigned>(std::time(nullptr)));
@@ -257,7 +261,10 @@ void runSnake(sf::RenderWindow& window) {
 
 		scoreText.setCharacterSize(24);
 		scoreText.setString("Score: " + std::to_string(score));
-		scoreText.setPosition({ 10.f, 10.f });
+		scoreText.setPosition({ 
+			static_cast<float>(OFFSETX),
+			static_cast<float>(OFFSETY - 2 * CELL_SIZE) 
+		});
 		window.draw(scoreText);
 		window.draw(appleSprite);
 
