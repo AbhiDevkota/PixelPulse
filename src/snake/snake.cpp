@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <ctime>
 #include "Snake.h"
-
+#include "Files.h"
 Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
 	: cols(cols), rows(rows) {
 	reset(startPos, startDir);
@@ -68,7 +68,13 @@ sf::Vector2i Snake::getHead() const {
 
 // ---------------- Game loop ----------------
 
-void runSnake(sf::RenderWindow& window) {
+void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
+
+	corezone::GameDataManager gameData(filemanager, "SNAKE");
+
+	int highScore = 0;
+	gameData.getHighScore(highScore);
+
 	bool isPaused = false;
 	bool gameOver = false;
 	const int CELL_SIZE = 32;
@@ -80,6 +86,8 @@ void runSnake(sf::RenderWindow& window) {
 	const int ROWS = PLAY_WIDTH / CELL_SIZE;
 	const int OFFSETX = (size.x - PLAY_WIDTH) / 2;
 	const int OFFSETY = (size.y - PLAY_HEIGHT) / 2;
+
+	int score = 0;
 
 	sf::Texture offsetTexture;
 	offsetTexture.loadFromFile("./assets/snake/offset.png");
@@ -185,7 +193,6 @@ void runSnake(sf::RenderWindow& window) {
 	std::srand(static_cast<unsigned>(std::time(nullptr)));
 
 	float moveInterval = 0.2f;
-	int score = 0;
 
 	// --- OOP: snake body, movement, and food all live in this one object ---
 	Snake snake({ 5, 5 }, { 1, 0 }, COLS, ROWS);
@@ -234,6 +241,11 @@ void runSnake(sf::RenderWindow& window) {
 				eatSound.play();
 				snake.grow();
 				score++;
+				if (score > highScore) {
+					highScore = score;
+					gameData.saveHighScore(highScore);
+				}
+
 			}
 		}
 
@@ -264,7 +276,7 @@ void runSnake(sf::RenderWindow& window) {
 		}
 
 		scoreText.setCharacterSize(24);
-		scoreText.setString("Score: " + std::to_string(score));
+		scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScore));
 		scoreText.setPosition({ 
 			static_cast<float>(OFFSETX),
 			static_cast<float>(OFFSETY - 2 * CELL_SIZE) 

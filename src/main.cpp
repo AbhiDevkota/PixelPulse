@@ -2,7 +2,7 @@
 #include "Files.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
-void runSnake(sf::RenderWindow& window);
+void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager);
 int main() {
 	corezone::FileManager fileManager;
     if(!fileManager.initialize()){
@@ -66,7 +66,7 @@ int main() {
             home.resetGame();
             if (game == "SNAKE") {
                 home.pauseMusic();
-                runSnake(window);
+                runSnake(window,fileManager);
                 home.resumeMusic();
             }
             
