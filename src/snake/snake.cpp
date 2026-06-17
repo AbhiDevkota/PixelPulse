@@ -69,6 +69,7 @@ sf::Vector2i Snake::getHead() const {
 // ---------------- Game loop ----------------
 
 void runSnake(sf::RenderWindow& window) {
+	bool isPaused = false;
 	bool gameOver = false;
 	const int CELL_SIZE = 32;
 	auto size = window.getSize();
@@ -203,6 +204,9 @@ void runSnake(sf::RenderWindow& window) {
 					gameOver = false;
 					snake.respawnFood();
 				}
+				if (key == sf::Keyboard::Key::Space) {
+					isPaused = !isPaused;
+				}
 			}
 		}
 
@@ -215,7 +219,7 @@ void runSnake(sf::RenderWindow& window) {
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
 			snake.setDirection({ 1, 0 });
 
-		if (!gameOver && clock.getElapsedTime().asSeconds() >= moveInterval) {
+		if (!gameOver && !isPaused && clock.getElapsedTime().asSeconds() >= moveInterval) {
 			snake.move();
 			clock.restart();
 
