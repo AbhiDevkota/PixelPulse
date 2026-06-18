@@ -19,6 +19,7 @@ void runRocketShooter(sf::RenderWindow& window) {
     const int COLS = size.x / CELL_SIZE;
     const int ROWS = size.y / CELL_SIZE;
 
+
     // --- Player Setup ---
     sf::RectangleShape rocket({ static_cast<float>(2*CELL_SIZE), static_cast<float>(2*CELL_SIZE) });
     rocket.setFillColor(sf::Color::Red);
@@ -39,10 +40,23 @@ void runRocketShooter(sf::RenderWindow& window) {
     sf::Clock deltaClock;
     sf::Clock obstacleSpawnClock;
     sf::Clock gameTickClock; // Handles fixed-interval movement for bullets/obstacles
+    //--- Background setup ---
+    sf::Texture backgroundTexture;
+    if (!backgroundTexture.loadFromFile("assets/BG_Rocket.png")) {
+        std::cerr << "Failed to load assets/BG_Rocket.png\n";
+        return;
+    }
+    sf::Sprite background(backgroundTexture);
+    sf::Vector2f bgNative = background.getLocalBounds().size;
+    background.setScale({
+        static_cast<float>(size.x) / bgNative.x,
+        static_cast<float>(size.y) / bgNative.y
+        });
 
     const float SLIDE_SPEED = 15.0f;       // Smooth interpolation speed
     const float SPAWN_INTERVAL = 1.5f;     // Spawn an obstacle every 1.5 seconds
     const float GAME_TICK_INTERVAL = 0.2f; // Obstacles drop and bullets rise every 0.2 seconds
+
 
     while (window.isOpen()) {
         // 1. Event Handling
@@ -53,6 +67,7 @@ void runRocketShooter(sf::RenderWindow& window) {
 
             if (auto keyPressed = e->getIf<sf::Event::KeyPressed>()) {
                 switch (keyPressed->code) {
+                case sf::Keyboard::Key::Escape: return; break;
                     // Player Movement
                 case sf::Keyboard::Key::A: rocketGridPos.x--; break;
                 case sf::Keyboard::Key::D: rocketGridPos.x++; break;
@@ -147,7 +162,7 @@ void runRocketShooter(sf::RenderWindow& window) {
 
         // 5. Rendering
         window.clear(sf::Color(10, 10, 10));
-
+        window.draw(background);
         // Draw Player
         window.draw(rocket);
 
