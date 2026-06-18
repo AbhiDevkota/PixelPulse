@@ -12,7 +12,10 @@ public:
 	float x;
 	float y;
 
-	float speed = 300.f;
+	float velocity_y = 0.f;
+	float gravity = 2000.f;
+	float jump_force = -800.f;
+	bool is_grounded = false;
 
 	sf::FloatRect getBounds() const {
 		return sf::FloatRect({ x, y - (h / 2.f) }, { w, h });
@@ -20,14 +23,24 @@ public:
 	
 	//update position
 	void Update(float dt, float ground_y) {
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::W)) {
-			y -= speed * dt;
+
+		velocity_y += gravity * dt;
+
+		y += velocity_y * dt;
+
+		if (y + h / 2.f >= ground_y) {
+			y = ground_y - h / 2.f; 
+			velocity_y = 0.f;       
+			is_grounded = true;    
 		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S)) {
-			y += speed * dt;
-			//limit position
-			if (y - h / 2.f < 0.f) y = h / 2.f;
-			else if (y + h / 2.f > ground_y) y = ground_y - h / 2.f;
+		else {
+			is_grounded = false;    
+		}
+
+		if (is_grounded && (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Space) ||
+			sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Up))) {
+			velocity_y = jump_force;
+			is_grounded = false;
 		}
 	}
 
@@ -243,7 +256,7 @@ void runDino(sf::RenderWindow& window) {
 
 					else if (auto pressed = event->getIf<sf::Event::KeyPressed>())
 					{
-						if (pressed->scancode == sf::Keyboard::Scan::Space)
+						if (pressed->scancode == sf::Keyboard::Scan::R)
 						{
 							obstacles.Reset();
 							player.y = static_cast<float>(ground.GetY()) - (player.h / 2.f);
