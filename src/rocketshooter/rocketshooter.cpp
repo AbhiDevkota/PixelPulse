@@ -1,5 +1,6 @@
 #include <iostream>
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <vector>
 #include <cstdlib>
 #include <ctime>
@@ -40,18 +41,17 @@ void runRocketShooter(sf::RenderWindow& window) {
     sf::Clock deltaClock;
     sf::Clock obstacleSpawnClock;
     sf::Clock gameTickClock; // Handles fixed-interval movement for bullets/obstacles
+
+
     //--- Background setup ---
-    sf::Texture backgroundTexture;
-    if (!backgroundTexture.loadFromFile("assets/BG_Rocket.png")) {
-        std::cerr << "Failed to load assets/BG_Rocket.png\n";
-        return;
-    }
-    sf::Sprite background(backgroundTexture);
-    sf::Vector2f bgNative = background.getLocalBounds().size;
-    background.setScale({
-        static_cast<float>(size.x) / bgNative.x,
-        static_cast<float>(size.y) / bgNative.y
-        });
+  //loadassets
+    sf::Texture spaceTexture;
+    spaceTexture.loadFromFile("assets/rocket/starsrocket.png");
+    spaceTexture.setRepeated(true);
+    sf::Sprite spaceSprite(spaceTexture);
+    spaceSprite.setTextureRect(sf::IntRect(
+        { 0,0 },
+        { (int)size.x, (int)size.y}));
 
     const float SLIDE_SPEED = 15.0f;       // Smooth interpolation speed
     const float SPAWN_INTERVAL = 1.5f;     // Spawn an obstacle every 1.5 seconds
@@ -162,7 +162,7 @@ void runRocketShooter(sf::RenderWindow& window) {
 
         // 5. Rendering
         window.clear(sf::Color(10, 10, 10));
-        window.draw(background);
+        window.draw(spaceSprite);
         // Draw Player
         window.draw(rocket);
 
