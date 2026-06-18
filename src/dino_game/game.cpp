@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include<SFML/Audio.hpp>
 #include <SFML/Window/Event.hpp>
 #include <iostream>
 #include <cstdlib>
@@ -7,6 +8,8 @@
 
 class Player {
 	sf::RectangleShape rectangle;
+	sf::SoundBuffer jumpSoundBuffer{ "assets/dinosaurs/jump.mp3" };
+	sf::Sound jumpSound{jumpSoundBuffer};
 
 public:
 	float w = 50.f;
@@ -42,6 +45,7 @@ public:
 
 		if (is_grounded && (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Space) ||
 			sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Up))) {
+			jumpSound.play();
 			velocity_y = jump_force;
 			is_grounded = false;
 		}
@@ -235,7 +239,6 @@ void runDino(sf::RenderWindow& window) {
 		sf::Text scoreText(font, "Score: 0", 30);
 		scoreText.setPosition({ 20.f, 20.f }); // Top left corner
 		scoreText.setFillColor(sf::Color::White);
-
 		//state
 		bool gameover = false;
 
