@@ -1,6 +1,8 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Window/Event.hpp>
 #include <iostream>
+#include <cstdlib>
+#include <ctime>
 
 class Player {
 	sf::RectangleShape rectangle;
@@ -64,7 +66,7 @@ class Obstacles {
 	};
 
 	//max obstacles
-	static constexpr int n = 10;
+	static constexpr int n = 20;
 
 	//array of Obstacles
 	Obstacle array[n];
@@ -104,7 +106,12 @@ public:
 		{
 			duration *= 0.95f;
 			timer = duration;
-			Spawn(spawn_x, spawn_y);
+
+			int num_obstacles = (rand() % 3) + 1;
+
+			for (int i = 0; i < num_obstacles; i++) {
+				Spawn(spawn_x + (i * w), spawn_y);
+			}
 		}
 
 		//move active obstacles
