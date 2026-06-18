@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <string>
 
 class Player {
 	sf::RectangleShape rectangle;
@@ -207,8 +208,8 @@ public:
 };
 
 void runDino(sf::RenderWindow& window) {
-
-		//create window
+		
+	srand(static_cast<unsigned>(time(nullptr)));
 		sf::ContextSettings settings;
 		settings.antiAliasingLevel = 0;
 
@@ -230,8 +231,15 @@ void runDino(sf::RenderWindow& window) {
 		auto bounds = text.getLocalBounds();
 		text.setOrigin({ bounds.position.x + 0.5f * bounds.size.x, 0.6f * text.getCharacterSize() });
 
+		//Score
+		sf::Text scoreText(font, "Score: 0", 30);
+		scoreText.setPosition({ 20.f, 20.f }); // Top left corner
+		scoreText.setFillColor(sf::Color::White);
+
 		//state
 		bool gameover = false;
+
+		float score = 0.f;
 
 		//start clock
 		sf::Clock clock;
@@ -267,6 +275,8 @@ void runDino(sf::RenderWindow& window) {
 						{
 							obstacles.Reset();
 							player.y = static_cast<float>(ground.GetY()) - (player.h / 2.f);
+							player.velocity_y = 0.f;
+							score = 0.f;
 							gameover = false;
 						}
 						else if (pressed->scancode == sf::Keyboard::Scan::Escape)
@@ -282,6 +292,10 @@ void runDino(sf::RenderWindow& window) {
 					player.Update(dt, ground.GetY());
 					obstacles.Update(dt, static_cast<float>(window.getSize().x), static_cast<float>(ground.GetY()));
 
+					//increase score
+					score += dt * 10.f;
+					scoreText.setString("Score: " + std::to_string(static_cast<int>(score)));
+
 					//check hit 
 					gameover = obstacles.CheckHit(player);
 				}
@@ -294,6 +308,10 @@ void runDino(sf::RenderWindow& window) {
 				player.Draw(window);
 				//draw obstacles
 				obstacles.Draw(window);
+
+				//draw scoretext
+				window.draw(scoreText);
+
 				if (gameover)
 				{
 					text.setPosition(window.getView().getSize() / 2.f);
