@@ -2,6 +2,9 @@
 #include <SFML/Graphics.hpp>
 #include <cstdlib>
 #include <ctime>
+#include <vector>
+#include <string>
+
 
 void runFlappyBird(sf::RenderWindow& window) {
 
@@ -9,9 +12,19 @@ void runFlappyBird(sf::RenderWindow& window) {
 
     //background music
     sf::Music music;
-    if (!music.openFromFile("audios/Neverfelt.mp3")) return;
+    if (!music.openFromFile("audios/Flappy/flappy.mp3")) return;
+    music.setVolume(50.f);    //set volume to 50%
     music.setLooping(true);  
-    music.play();         
+    music.play();
+
+	//Sound effect
+    sf::SoundBuffer jumpSoundBuffer;
+    if (!jumpSoundBuffer.loadFromFile("audios/Flappy/jumpsound.mp3")) return;
+    sf::Sound jumpSound(jumpSoundBuffer);
+    jumpSound.setVolume(50.f);
+    jumpSound.setLooping(true);
+    jumpSound.play();
+
     
 
     float cellW = (float)window.getSize().x / 12.f;
@@ -26,13 +39,19 @@ void runFlappyBird(sf::RenderWindow& window) {
     popat.setScale({ birdScaleX, birdScaleY });
     popat.setPosition({ cellW * 2.f, cellH * 8.f });           //popat position
 
-    //background
-    sf::Texture bgTexture;
-    if (!bgTexture.loadFromFile("assets/Flappy/Sky.png")) return;
-    sf::Sprite background(bgTexture);
-    float scaleX = (float)window.getSize().x / bgTexture.getSize().x;
-    float scaleY = (float)window.getSize().y / bgTexture.getSize().y;
-	background.setScale({ scaleX, scaleY });                //background size
+    //load all backgrounds once
+    std::vector<sf::Texture> bgTextures(4);
+    bgTextures[0].loadFromFile("assets/Flappy/Sky.png");
+    bgTextures[1].loadFromFile("assets/Flappy/Sky2.png");
+    bgTextures[2].loadFromFile("assets/Flappy/Sky3.png");
+    bgTextures[3].loadFromFile("assets/Flappy/Sky4.png");
+
+    //pick random background
+    int bgIndex = std::rand() % 4;
+    sf::Sprite background(bgTextures[bgIndex]);
+    float scaleX = (float)window.getSize().x / bgTextures[bgIndex].getSize().x;
+    float scaleY = (float)window.getSize().y / bgTextures[bgIndex].getSize().y;
+    background.setScale({ scaleX, scaleY });
 
  
     //pipes
@@ -69,6 +88,7 @@ void runFlappyBird(sf::RenderWindow& window) {
 
     pipeDown.setPosition({ pipeX, 0.f });
     pipeUp.setPosition({ pipeX, (float)window.getSize().y });
+
     //physics
     float vy = 0.f;                      //bird velocity
     float gravity = 1000.f;              //gravity
@@ -87,6 +107,7 @@ void runFlappyBird(sf::RenderWindow& window) {
             }
 			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space)) {
 				vy = -600.f;                   //jump velocity
+				jumpSound.play();              //play jump sound
 			}
             
         }
@@ -141,10 +162,30 @@ void runFlappyBird(sf::RenderWindow& window) {
 
 
 
-        // collision detection
         if (popat.getGlobalBounds().findIntersection(pipeUp.getGlobalBounds()) ||
             popat.getGlobalBounds().findIntersection(pipeDown.getGlobalBounds())) {
-            return; // game over - exits back to homescreen
+
+            // pick new random background on game over
+            bgIndex = std::rand() % 4;
+            background.setTexture(bgTextures[bgIndex]);
+            background.setScale({
+                (float)window.getSize().x / bgTextures[bgIndex].getSize().x,
+                (float)window.getSize().y / bgTextures[bgIndex].getSize().y
+                });
+
+            // reset bird
+            popat.setPosition({ cellW * 2.f, cellH * 8.f });
+            vy = 0.f;
+
+            // reset pipe
+            pipeX = cellW * 12.f;
+            gapY = cellH * 8.f;
+            pipeDown.setScale({ pipeScaleX, (gapY - gapSize / 2.f) / downTexture.getSize().y });
+            pipeUp.setScale({ pipeScaleX, ((float)window.getSize().y - (gapY + gapSize / 2.f)) / upTexture.getSize().y });
+            pipeDown.setPosition({ pipeX, 0.f });
+            pipeUp.setPosition({ pipeX, (float)window.getSize().y });
+
+            sf::sleep(sf::milliseconds(500));
         }
 
         //draw
