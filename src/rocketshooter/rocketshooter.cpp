@@ -42,6 +42,12 @@ void runRocketShooter(sf::RenderWindow& window) {
     sf::Clock obstacleSpawnClock;
     sf::Clock gameTickClock; // Handles fixed-interval movement for bullets/obstacles
 
+    //Music
+    sf::Music music;
+    music.openFromFile("audios/rocket/spacemusic.ogg");
+    music.setLooping(true);
+    music.setVolume(24.f);
+    music.play();
 
     //--- Background setup ---
   //loadassets
