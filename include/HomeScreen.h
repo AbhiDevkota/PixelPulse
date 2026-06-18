@@ -7,6 +7,7 @@
 #include <string>
 #include "Menu.h"
 #include "Settings.h"
+#include "Files.h"
 
 namespace corezone {
 
@@ -47,7 +48,7 @@ namespace corezone {
         State state_ = State::Boot;
 
         bool introVisible_ = true;
-        std::string introText_ = "Developed by GROUP X";
+        std::string introText_ = "Developed by GROUP ZONE BREACHERS";
         bool flashActive_ = false;
         bool loadingMode_ = false;
         std::string loadingName_;
@@ -55,14 +56,13 @@ namespace corezone {
 
         float introOpacity_ = 255.0f;
 
-        // ── AUDIO ─────────────────────────────────────────────────────────────
+        //AUDIO
         sf::Music       bgMusic_;           // looping background music
         sf::SoundBuffer selectBuf_;         // navigate/select beep buffer
         sf::Sound       selectSnd_{selectBuf_};  // navigate/select beep player
         sf::SoundBuffer launchBuf_;         // launch sound buffer
         sf::Sound       launchSnd_{launchBuf_};  // launch sound player
         bool            bgMusicStarted_ = false;  // guard so music starts once
-        // ─────────────────────────────────────────────────────────────────────
 
         // CUSTOM CURSOR
         sf::Texture cursorTexture_;
@@ -82,7 +82,7 @@ namespace corezone {
         
 
     public:
-        HomeScreen(sf::RenderWindow& window, const std::string& fontPath);
+        HomeScreen(sf::RenderWindow& window, const std::string& fontPath, FileManager* fileManager);
         void initialize();
         void update(float deltaTime);
         void handleInput(const sf::Event& event);
@@ -93,8 +93,12 @@ namespace corezone {
         bool isGameReady() const { return readyToLaunch_; }
         std::string getSelectedGame() const { return loadingName_; }
         void resetGame() { loadingMode_ = false; readyToLaunch_ = false; loadingName_ = ""; }
+        //This part is for audio handling on game launch
+        void pauseMusic() { bgMusic_.pause(); }
+        void resumeMusic() { bgMusic_.play(); }
         //Up to here
     private:
+        FileManager* fileManager_ = nullptr;  //file pointer to point file mgt
         void renderBackground();
         void renderIntro();
         void renderFlash();

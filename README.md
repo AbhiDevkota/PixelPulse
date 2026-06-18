@@ -42,4 +42,12 @@ cd PixelPulse
 2. Open `CMakeLists.txt` in Visual Studio and let CMake configure it 
 3. Select **CoreZone.exe** as startup item
 4. Hit the green play button
+<<<<<<< HEAD
 >>>>>>> e970aafcab14eb4a7feee278b9500bca7e49d36c
+=======
+
+## Working Methods
+Here is the working Method of some part of code:
+1. [File Managements](wiki/file_management.md):
+   This is the explanation of the code and the working mechanism of the File Management system in our game which is responsible for the save/load data, manage assets, font, icons etc. 
+>>>>>>> a7e18261557193eb03cda4253ec19d6e6d9f1bba
