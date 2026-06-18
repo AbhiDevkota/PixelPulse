@@ -61,6 +61,16 @@ int main() {
         float dt = clock.restart().asSeconds();
         home.update(dt);
 
+        if (home.isGameReady()) {
+            std::string game = home.getSelectedGame();
+            home.resetGame();
+            if (game == "PAC MAN")
+            {
+                //runPacMan(window);
+                std::cout << "Started PAC MAN from menu" << std::endl;
+            }
+        }
+
         window.clear();
         home.draw();
         window.display();
