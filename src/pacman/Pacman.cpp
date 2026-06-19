@@ -9,9 +9,7 @@ void runPacMan(sf::RenderWindow& window) {
 	}
 }
 
-Pacman::Pacman(sf::RenderWindow& window) : window_(window) {
-}
-
+Pacman::Pacman(sf::RenderWindow& window) : window_(window) {}
 
 bool Pacman::initialize() {
 	return loadAssets();
@@ -36,7 +34,7 @@ bool Pacman::loadAssets() {
 		}
 	}
 	
-	// Setup player sprite
+	// Setup player sprite with initial texture
 	playerSprite_.setTexture(playerTextures_[2][0]);
 	playerSprite_.setScale(sf::Vector2f(0.5f, 0.5f));
 	
@@ -45,28 +43,28 @@ bool Pacman::loadAssets() {
 	playerSprite_.setPosition(playerPos_);
 	
 	// Load font
-	font_ = std::make_unique<sf::Font>();
+	font_ = new sf::Font();
 	if (!font_->openFromFile("fonts/regular.ttf")) {
 		std::cerr << "Failed to load font" << std::endl;
 	}
 	
 	// Setup UI
-	scoreText_ = std::make_unique<sf::Text>(*font_);
+	scoreText_ = new sf::Text(*font_);
 	scoreText_->setString("Score: 0");
 	scoreText_->setCharacterSize(24);
 	scoreText_->setFillColor(sf::Color::White);
 	scoreText_->setPosition(sf::Vector2f(10, 10));
 	
-	livesText_ = std::make_unique<sf::Text>(*font_);
+	livesText_ = new sf::Text(*font_);
 	livesText_->setString("Lives: 3");
 	livesText_->setCharacterSize(24);
 	livesText_->setFillColor(sf::Color::White);
 	livesText_->setPosition(sf::Vector2f(10, 40));
 	
 	// Load sounds
-	chompBuffer_ = std::make_unique<sf::SoundBuffer>();
+	chompBuffer_ = new sf::SoundBuffer();
 	if (chompBuffer_->loadFromFile("audios/pacman/food_chomp.wav")) {
-		chompSound_ = std::make_unique<sf::Sound>(*chompBuffer_);
+		chompSound_ = new sf::Sound(*chompBuffer_);
 	}
 	
 	totalDots_ = map_.getTotalDots();

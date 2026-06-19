@@ -19,7 +19,7 @@ enum class TileType {
 
 struct Tile {
 	TileType type = TileType::EMPTY;
-	std::unique_ptr<sf::Sprite> sprite;
+	sf::Sprite* sprite = nullptr;
 	bool hasDot = false;
 	bool hasPowerPellet = false;
 };
@@ -27,7 +27,7 @@ struct Tile {
 class Map {
 public:
 	Map() = default;
-	~Map() = default;
+	~Map();
 
 	bool load(const std::string& mapPath);
 	void render(sf::RenderWindow& window);
@@ -50,9 +50,10 @@ private:
 	sf::Vector2f playerSpawnPos_;
 	
 	// Wall textures
-	std::unordered_map<char, std::unique_ptr<sf::Texture>> wallTextures_;
-	std::unique_ptr<sf::Texture> dotTexture_;
-	std::unique_ptr<sf::Texture> powerPelletTexture_;
+	std::unordered_map<char, sf::Texture*> wallTextures_;
+	sf::Texture* dotTexture_ = nullptr;
+	sf::Texture* powerPelletTexture_ = nullptr;
+	sf::Texture* emptyTexture_ = nullptr;
 	
 	bool loadTextures();
 	TileType charToTileType(char c) const;

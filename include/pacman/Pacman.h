@@ -58,14 +58,14 @@ private:
 	int dotsCollected_ = 0;
 	int totalDots_ = 0;
 	
-	// UI
-	std::unique_ptr<sf::Font> font_;
-	std::unique_ptr<sf::Text> scoreText_;
-	std::unique_ptr<sf::Text> livesText_;
+	// UI - raw pointers for SFML 3.x
+	sf::Font* font_ = nullptr;
+	sf::Text* scoreText_ = nullptr;
+	sf::Text* livesText_ = nullptr;
 	
 	// Audio
-	std::unique_ptr<sf::SoundBuffer> chompBuffer_;
-	std::unique_ptr<sf::Sound> chompSound_;
+	sf::SoundBuffer* chompBuffer_ = nullptr;
+	sf::Sound* chompSound_ = nullptr;
 	
 	// Assets
 	bool loadAssets();

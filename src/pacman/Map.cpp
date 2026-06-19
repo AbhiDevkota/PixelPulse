@@ -3,6 +3,21 @@
 #include <sstream>
 #include <iostream>
 
+Map::~Map() {
+	for (auto& pair : wallTextures_) {
+		delete pair.second;
+	}
+	delete dotTexture_;
+	delete powerPelletTexture_;
+	delete emptyTexture_;
+	
+	for (auto& row : tiles_) {
+		for (auto& tile : row) {
+			delete tile.sprite;
+		}
+	}
+}
+
 bool Map::load(const std::string& mapPath) {
 	if (!loadTextures()) {
 		std::cerr << "Failed to load map textures" << std::endl;
@@ -36,7 +51,8 @@ bool Map::load(const std::string& mapPath) {
 			Tile& tile = tiles_[y][x];
 			tile.type = charToTileType(c);
 			
-			tile.sprite = std::make_unique<sf::Sprite>();
+			// Create sprite with empty texture as placeholder
+			tile.sprite = new sf::Sprite(*emptyTexture_);
 			tile.sprite->setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
 			
 			if (tile.type == TileType::DOT) {
@@ -62,16 +78,25 @@ bool Map::load(const std::string& mapPath) {
 }
 
 bool Map::loadTextures() {
-	dotTexture_ = std::make_unique<sf::Texture>();
+	// Create empty texture for placeholder
+	emptyTexture_ = new sf::Texture();
+	sf::Image emptyImg;
+	emptyImg.create(sf::Vector2u(tileSize_, tileSize_), sf::Color::Transparent);
+	emptyTexture_->loadFromImage(emptyImg);
+	
+	// Load dot texture
+	dotTexture_ = new sf::Texture();
 	if (!dotTexture_->loadFromFile("assets/pacman/edibles/food.png")) {
 		return false;
 	}
 	
-	powerPelletTexture_ = std::make_unique<sf::Texture>();
+	// Load power pellet
+	powerPelletTexture_ = new sf::Texture();
 	if (!powerPelletTexture_->loadFromFile("assets/pacman/edibles/power_pellet.png")) {
 		return false;
 	}
 	
+	// Load wall textures
 	std::unordered_map<char, std::string> wallFiles = {
 		{'!', "assets/pacman/walls/right-top.png"},
 		{'@', "assets/pacman/walls/horizontal.png"},
@@ -88,9 +113,11 @@ bool Map::loadTextures() {
 	};
 	
 	for (const auto& [key, path] : wallFiles) {
-		auto tex = std::make_unique<sf::Texture>();
+		sf::Texture* tex = new sf::Texture();
 		if (tex->loadFromFile(path)) {
-			wallTextures_[key] = std::move(tex);
+			wallTextures_[key] = tex;
+		} else {
+			delete tex;
 		}
 	}
 	
@@ -145,5 +172,6 @@ void Map::removeDot(int x, int y) {
 		tiles_[y][x].hasDot = false;
 		tiles_[y][x].hasPowerPellet = false;
 		tiles_[y][x].type = TileType::EMPTY;
+		tiles_[y][x].sprite->setTexture(*emptyTexture_);
 	}
 }
