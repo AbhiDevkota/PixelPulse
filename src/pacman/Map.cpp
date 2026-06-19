@@ -8,71 +8,67 @@ bool Map::load(const std::string& mapPath) {
 		std::cerr << "Failed to load map textures" << std::endl;
 		return false;
 	}
-	
+
 	std::ifstream file(mapPath);
 	if (!file.is_open()) {
 		std::cerr << "Failed to open map: " << mapPath << std::endl;
 		return false;
 	}
-	
+
 	std::vector<std::string> lines;
 	std::string line;
 	while (std::getline(file, line)) {
 		lines.push_back(line);
 	}
 	file.close();
-	
+
 	if (lines.empty()) return false;
-	
+
 	height_ = lines.size();
 	width_ = lines[0].length();
-	
+
 	tileTypes_.resize(height_, std::vector<TileType>(width_, TileType::EMPTY));
 	hasDot_.resize(height_, std::vector<bool>(width_, false));
 	hasPowerPellet_.resize(height_, std::vector<bool>(width_, false));
-	sprites_.reserve(height_);
-	
+	sprites_.resize(height_);
+
 	totalDots_ = 0;
-	
+
 	for (int y = 0; y < height_; y++) {
-		std::vector<sf::Sprite> row;
-		row.reserve(width_);
-		
+		// Every column gets a slot (default-empty optional) so indices stay aligned with x
+		sprites_[y].resize(width_);
+
 		for (int x = 0; x < width_ && x < lines[y].length(); x++) {
 			char c = lines[y][x];
 			TileType type = charToTileType(c);
 			tileTypes_[y][x] = type;
-			
+
 			// SFML 3: sprite must be constructed with a texture
-			std::optional<sf::Sprite> spriteOpt;
-			
 			if (type == TileType::DOT) {
 				hasDot_[y][x] = true;
-				spriteOpt.emplace(dotTexture_);
-				(*spriteOpt).setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
+				sprites_[y][x].emplace(dotTexture_);
+				sprites_[y][x]->setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
 				totalDots_++;
-			} else if (type == TileType::POWER_PELLET) {
+			}
+			else if (type == TileType::POWER_PELLET) {
 				hasPowerPellet_[y][x] = true;
-				spriteOpt.emplace(powerPelletTexture_);
-				(*spriteOpt).setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
+				sprites_[y][x].emplace(powerPelletTexture_);
+				sprites_[y][x]->setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
 				totalDots_++;
-			} else if (type == TileType::WALL) {
+			}
+			else if (type == TileType::WALL) {
 				auto it = wallTextures_.find(c);
 				if (it != wallTextures_.end()) {
-					spriteOpt.emplace(it->second);
-					(*spriteOpt).setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
+					sprites_[y][x].emplace(it->second);
+					sprites_[y][x]->setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
 				}
-			} else if (type == TileType::PLAYER_SPAWN) {
+			}
+			else if (type == TileType::PLAYER_SPAWN) {
 				playerSpawnPos_ = sf::Vector2f(x * tileSize_, y * tileSize_);
 			}
-			
-			if (spriteOpt) {
-				row.push_back(std::move(*spriteOpt));
-			}
 		}
-		sprites_.push_back(std::move(row));
 	}
-	
+
 	return true;
 }
 
@@ -80,11 +76,11 @@ bool Map::loadTextures() {
 	if (!dotTexture_.loadFromFile("assets/pacman/edibles/food.png")) {
 		return false;
 	}
-	
+
 	if (!powerPelletTexture_.loadFromFile("assets/pacman/edibles/power_pellet.png")) {
 		return false;
 	}
-	
+
 	std::unordered_map<char, std::string> wallFiles = {
 		{'!', "assets/pacman/walls/right-top.png"},
 		{'@', "assets/pacman/walls/horizontal.png"},
@@ -99,39 +95,39 @@ bool Map::loadTextures() {
 		{'5', "assets/pacman/walls/left-bottom.png"},
 		{'6', "assets/pacman/walls/right-bottom.png"}
 	};
-	
+
 	for (const auto& [key, path] : wallFiles) {
 		sf::Texture tex;
 		if (tex.loadFromFile(path)) {
 			wallTextures_[key] = std::move(tex);
 		}
 	}
-	
+
 	return true;
 }
 
 TileType Map::charToTileType(char c) const {
 	switch (c) {
-		case ' ':
-		case '-':
-			return TileType::EMPTY;
-		case 'o':
-			return TileType::POWER_PELLET;
-		case '*':
-			return TileType::DOT;
-		case 'b':
-		case 'p':
-		case 'i':
-		case 'c':
-			return TileType::GHOST_SPAWN;
-		case 'f':
-			return TileType::PLAYER_SPAWN;
-		default:
-			if (c == '!' || c == '@' || c == '#' || c == '$' || c == '%' || c == '^' ||
-			    (c >= '1' && c <= '6')) {
-				return TileType::WALL;
-			}
-			return TileType::EMPTY;
+	case ' ':
+	case '-':
+		return TileType::EMPTY;
+	case 'o':
+		return TileType::POWER_PELLET;
+	case '*':
+		return TileType::DOT;
+	case 'b':
+	case 'p':
+	case 'i':
+	case 'c':
+		return TileType::GHOST_SPAWN;
+	case 'f':
+		return TileType::PLAYER_SPAWN;
+	default:
+		if (c == '!' || c == '@' || c == '#' || c == '$' || c == '%' || c == '^' ||
+			(c >= '1' && c <= '6')) {
+			return TileType::WALL;
+		}
+		return TileType::EMPTY;
 	}
 }
 
@@ -139,8 +135,8 @@ void Map::render(sf::RenderWindow& window) {
 	for (int y = 0; y < height_; y++) {
 		for (int x = 0; x < width_; x++) {
 			TileType type = tileTypes_[y][x];
-			if (type == TileType::WALL || hasDot_[y][x] || hasPowerPellet_[y][x]) {
-				window.draw(sprites_[y][x]);
+			if ((type == TileType::WALL || hasDot_[y][x] || hasPowerPellet_[y][x]) && sprites_[y][x]) {
+				window.draw(*sprites_[y][x]);
 			}
 		}
 	}
