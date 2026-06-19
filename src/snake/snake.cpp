@@ -1,8 +1,9 @@
 #include <SFML/Graphics.hpp>
+#include<SFML/audio.hpp>
 #include <cstdlib>
 #include <ctime>
 #include "Snake.h"
-
+#include "Files.h"
 Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
 	: cols(cols), rows(rows) {
 	reset(startPos, startDir);
@@ -67,16 +68,26 @@ sf::Vector2i Snake::getHead() const {
 
 // ---------------- Game loop ----------------
 
-void runSnake(sf::RenderWindow& window) {
+void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
+
+	corezone::GameDataManager gameData(filemanager, "SNAKE");
+
+	int highScore = 0;
+	gameData.getHighScore(highScore);
+
+	bool isPaused = false;
 	bool gameOver = false;
 	const int CELL_SIZE = 32;
 	auto size = window.getSize();
-	const int PLAY_HEIGHT = 800;
-	const int PLAY_WIDTH = 800;
+	const int TARGET = static_cast<int>(std::min(size.x, size.y) * 0.78f);
+	const int PLAY_HEIGHT = (TARGET / CELL_SIZE) * CELL_SIZE;
+	const int PLAY_WIDTH = PLAY_HEIGHT;
 	const int COLS = PLAY_HEIGHT / CELL_SIZE;
 	const int ROWS = PLAY_WIDTH / CELL_SIZE;
 	const int OFFSETX = (size.x - PLAY_WIDTH) / 2;
 	const int OFFSETY = (size.y - PLAY_HEIGHT) / 2;
+
+	int score = 0;
 
 	sf::Texture offsetTexture;
 	offsetTexture.loadFromFile("./assets/snake/offset.png");
@@ -158,24 +169,30 @@ void runSnake(sf::RenderWindow& window) {
 		});
 	rect.setFillColor(sf::Color::White);
 
-	sf::RectangleShape foodShape({
-		static_cast<float>(CELL_SIZE),
-		static_cast<float>(CELL_SIZE)
-		});
-	foodShape.setFillColor(sf::Color::Red);
+	sf::Texture appleTexture;
+	appleTexture.loadFromFile("assets/snake/apple.png");
+	sf::Sprite appleSprite(appleTexture);
+
+	sf::SoundBuffer eatSoundBuffer;
+	sf::Sound eatSound(eatSoundBuffer);
+	if (eatSoundBuffer.loadFromFile("assets/snake/food_crunch.mp3")) {
+		eatSound.setVolume(100.f);
+	}
 
 	sf::Font font;
 	font.openFromFile("fonts/regular.ttf");
 	sf::Text scoreText(font);
 	scoreText.setCharacterSize(24);
 	scoreText.setFillColor(sf::Color::White);
-	scoreText.setPosition({ 10.f, 10.f });
+	scoreText.setPosition({ 
+		static_cast<float>(OFFSETX),
+		static_cast<float>(OFFSETY - 2 * CELL_SIZE) 
+		});
 
 	sf::Clock clock;
 	std::srand(static_cast<unsigned>(std::time(nullptr)));
 
 	float moveInterval = 0.2f;
-	int score = 0;
 
 	// --- OOP: snake body, movement, and food all live in this one object ---
 	Snake snake({ 5, 5 }, { 1, 0 }, COLS, ROWS);
@@ -187,12 +204,15 @@ void runSnake(sf::RenderWindow& window) {
 			if (e->is<sf::Event::KeyPressed>()) {
 				auto key = e->getIf<sf::Event::KeyPressed>()->code;
 				if (key == sf::Keyboard::Key::Escape)
-					window.close();
+					return;
 				if (key == sf::Keyboard::Key::R && gameOver) {
 					snake.reset({ 5, 5 }, { 1, 0 });
 					score = 0;
 					gameOver = false;
 					snake.respawnFood();
+				}
+				if (key == sf::Keyboard::Key::Space) {
+					isPaused = !isPaused;
 				}
 			}
 		}
@@ -206,7 +226,7 @@ void runSnake(sf::RenderWindow& window) {
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
 			snake.setDirection({ 1, 0 });
 
-		if (!gameOver && clock.getElapsedTime().asSeconds() >= moveInterval) {
+		if (!gameOver && !isPaused && clock.getElapsedTime().asSeconds() >= moveInterval) {
 			snake.move();
 			clock.restart();
 
@@ -218,12 +238,18 @@ void runSnake(sf::RenderWindow& window) {
 
 			if (snake.checkFoodCollision()) {
 				snake.respawnFood();
+				eatSound.play();
 				snake.grow();
 				score++;
+				if (score > highScore) {
+					highScore = score;
+					gameData.saveHighScore(highScore);
+				}
+
 			}
 		}
 
-		foodShape.setPosition({
+		appleSprite.setPosition({
 			static_cast<float>(OFFSETX + snake.getFoodPosition().x * CELL_SIZE),
 			static_cast<float>(OFFSETY + snake.getFoodPosition().y * CELL_SIZE)
 			});
@@ -250,10 +276,13 @@ void runSnake(sf::RenderWindow& window) {
 		}
 
 		scoreText.setCharacterSize(24);
-		scoreText.setString("Score: " + std::to_string(score));
-		scoreText.setPosition({ 10.f, 10.f });
+		scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScore));
+		scoreText.setPosition({ 
+			static_cast<float>(OFFSETX),
+			static_cast<float>(OFFSETY - 2 * CELL_SIZE) 
+		});
 		window.draw(scoreText);
-		window.draw(foodShape);
+		window.draw(appleSprite);
 
 		for (auto& segment : snake.getBody()) {
 			rect.setPosition({

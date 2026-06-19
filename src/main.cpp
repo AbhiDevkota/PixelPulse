@@ -1,13 +1,13 @@
 #include "HomeScreen.h"
 #include "Files.h"
+#include "pacman/Pacman.h"
 #include <SFML/Graphics.hpp>
 
 
 void runFlappyBird(sf::RenderWindow& window);
 
 #include <iostream>
-
-void runSnake(sf::RenderWindow& window);
+void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager); //Conflict resolved by Abhi Devkota
 int main() {
 	corezone::FileManager fileManager;
     if(!fileManager.initialize()){
@@ -77,13 +77,23 @@ int main() {
             }
             if (game == "SNAKE") {
                 home.pauseMusic();
-                runSnake(window);
+                runSnake(window,fileManager);
                 home.resumeMusic();
             }
             
         }
         //Up to here
         
+
+        if (home.isGameReady()) {
+            std::string game = home.getSelectedGame();
+            home.resetGame();
+            if (game == "PAC MAN")
+            {
+                runPacMan(window);
+                std::cout << "Started To run PACMAN" << std::endl;
+            }
+        }
 
         window.clear();
         home.draw();
