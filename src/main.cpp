@@ -5,9 +5,8 @@
 #include <iostream>
 
 
+void runRocketShooter(sf::RenderWindow& window);
 void runFlappyBird(sf::RenderWindow& window);
-
-#include <iostream>
 void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager); //Conflict resolved by Abhi Devkota
 int main() {
 	corezone::FileManager fileManager;
@@ -67,6 +66,13 @@ int main() {
         // Added by aashutosh to select game and run it
         if (home.isGameReady()) {
             std::string game = home.getSelectedGame();
+            home.resetGame();
+            if (game == "ROCKET SHOOTER") {
+                home.pauseMusic();
+                runRocketShooter(window);
+                home.resumeMusic();
+                continue;
+            }// Skip rendering the home screen when a game is launched
             home.resetGame();    
 
             if (game == "FLAPPY BIRD") {          //Merge Resolved by Abhi Devkota. 
@@ -76,10 +82,10 @@ int main() {
             }
             if (game == "SNAKE") {
                 home.pauseMusic();
-                runSnake(window,fileManager);
+                runSnake(window, fileManager);
                 home.resumeMusic();
+                continue;
             }
-            
         }
         //Up to here
         

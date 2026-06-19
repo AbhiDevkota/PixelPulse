@@ -1,4 +1,3 @@
-
 # <img src="assets/preview/icon_concept1.png" width="30"/> Pixel Pulse 
 
 
@@ -55,5 +54,4 @@ Here is the working Method of some part of code:
 * [ ] Fix the sound effects and overall sounds
 * [ ] Fix the size of the game
 * [ ] Fix the alignment of the game
-
 
