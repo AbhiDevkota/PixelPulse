@@ -2,6 +2,7 @@
 #include "Files.h"
 #include "pacman/Pacman.h"
 #include <SFML/Graphics.hpp>
+#include <iostream>
 
 
 void runFlappyBird(sf::RenderWindow& window);
@@ -66,11 +67,9 @@ int main() {
         // Added by aashutosh to select game and run it
         if (home.isGameReady()) {
             std::string game = home.getSelectedGame();
-            home.resetGame();
-    
-	
+            home.resetGame();    
 
-            if (game == "FLAPPY BIRD") {
+            if (game == "FLAPPY BIRD") {          //Merge Resolved by Abhi Devkota. 
                 home.pauseMusic();
                 runFlappyBird(window);
                 home.resumeMusic();

@@ -29,6 +29,9 @@ add_executable(CoreZone
     ${SRC_FILES}
     ${HEADER_FILES}
     CoreZone.rc
+    "src/dino_game/game.cpp"
+    "include/Files.h" "src/Files.cpp")
+
  "include/Files.h" "src/Files.cpp" "include/pacman/Pacman.h" "src/pacman/Pacman.cpp" "include/pacman/Map.h" "src/pacman/Map.cpp")
 
 if (MSVC)
