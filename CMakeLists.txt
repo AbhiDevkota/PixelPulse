@@ -30,9 +30,9 @@ add_executable(CoreZone
     ${HEADER_FILES}
     CoreZone.rc
     "src/dino_game/game.cpp"
-    "include/Files.h" "src/Files.cpp")
-
- "include/Files.h" "src/Files.cpp" "include/pacman/Pacman.h" "src/pacman/Pacman.cpp" "include/pacman/Map.h" "src/pacman/Map.cpp")
+    "include/Files.h" "src/Files.cpp"
+    "include/pacman/Pacman.h" "src/pacman/Pacman.cpp"
+    "include/pacman/Map.h" "src/pacman/Map.cpp")
 
 if (MSVC)
     target_compile_options(CoreZone PRIVATE /W4)   # removed /WX so warnings don't kill build
