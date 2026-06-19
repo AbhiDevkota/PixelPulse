@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <memory>
 
 enum class TileType {
 	EMPTY,
@@ -18,7 +19,7 @@ enum class TileType {
 
 struct Tile {
 	TileType type = TileType::EMPTY;
-	sf::Sprite sprite;
+	std::unique_ptr<sf::Sprite> sprite;
 	bool hasDot = false;
 	bool hasPowerPellet = false;
 };
@@ -49,9 +50,9 @@ private:
 	sf::Vector2f playerSpawnPos_;
 	
 	// Wall textures
-	std::unordered_map<char, sf::Texture> wallTextures_;
-	sf::Texture dotTexture_;
-	sf::Texture powerPelletTexture_;
+	std::unordered_map<char, std::unique_ptr<sf::Texture>> wallTextures_;
+	std::unique_ptr<sf::Texture> dotTexture_;
+	std::unique_ptr<sf::Texture> powerPelletTexture_;
 	
 	bool loadTextures();
 	TileType charToTileType(char c) const;

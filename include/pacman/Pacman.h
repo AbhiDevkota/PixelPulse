@@ -59,13 +59,13 @@ private:
 	int totalDots_ = 0;
 	
 	// UI
-	sf::Font font_;
-	sf::Text scoreText_;
-	sf::Text livesText_;
+	std::unique_ptr<sf::Font> font_;
+	std::unique_ptr<sf::Text> scoreText_;
+	std::unique_ptr<sf::Text> livesText_;
 	
 	// Audio
-	sf::SoundBuffer chompBuffer_;
-	sf::Sound chompSound_;
+	std::unique_ptr<sf::SoundBuffer> chompBuffer_;
+	std::unique_ptr<sf::Sound> chompSound_;
 	
 	// Assets
 	bool loadAssets();

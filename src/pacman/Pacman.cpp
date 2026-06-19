@@ -24,12 +24,11 @@ bool Pacman::loadAssets() {
 	
 	// Load player textures (direction: UP, DOWN, LEFT, RIGHT)
 	std::string directions[] = {"up", "down", "left", "right"};
-	Direction dirs[] = {Direction::UP, Direction::DOWN, Direction::LEFT, Direction::RIGHT};
 	
 	for (int d = 0; d < 4; d++) {
 		for (int f = 1; f <= 2; f++) {
 			std::string path = "assets/pacman/player1/" + directions[d] + "_" + std::to_string(f) + ".png";
-			if (!playerTextures_[d][f - 1].loadFromFile(path)) {
+			if (!playerTextures_[d][f - 1].openFromFile(path)) {
 				std::cerr << "Failed to load: " << path << std::endl;
 			}
 		}
@@ -44,26 +43,28 @@ bool Pacman::loadAssets() {
 	playerSprite_.setPosition(playerPos_);
 	
 	// Load font
-	if (!font_.loadFromFile("fonts/regular.ttf")) {
+	font_ = std::make_unique<sf::Font>();
+	if (!font_->openFromFile("fonts/regular.ttf")) {
 		std::cerr << "Failed to load font" << std::endl;
 	}
 	
 	// Setup UI
-	scoreText_.setFont(font_);
-	scoreText_.setString("Score: 0");
-	scoreText_.setCharacterSize(24);
-	scoreText_.setFillColor(sf::Color::White);
-	scoreText_.setPosition(sf::Vector2f(10, 10));
+	scoreText_ = std::make_unique<sf::Text>(*font_);
+	scoreText_->setString("Score: 0");
+	scoreText_->setCharacterSize(24);
+	scoreText_->setFillColor(sf::Color::White);
+	scoreText_->setPosition(sf::Vector2f(10, 10));
 	
-	livesText_.setFont(font_);
-	livesText_.setString("Lives: 3");
-	livesText_.setCharacterSize(24);
-	livesText_.setFillColor(sf::Color::White);
-	livesText_.setPosition(sf::Vector2f(10, 40));
+	livesText_ = std::make_unique<sf::Text>(*font_);
+	livesText_->setString("Lives: 3");
+	livesText_->setCharacterSize(24);
+	livesText_->setFillColor(sf::Color::White);
+	livesText_->setPosition(sf::Vector2f(10, 40));
 	
 	// Load sounds
-	if (chompBuffer_.loadFromFile("audios/pacman/food_chomp.wav")) {
-		chompSound_.setBuffer(chompBuffer_);
+	chompBuffer_ = std::make_unique<sf::SoundBuffer>();
+	if (chompBuffer_->openFromFile("audios/pacman/food_chomp.wav")) {
+		chompSound_ = std::make_unique<sf::Sound>(*chompBuffer_);
 	}
 	
 	// Store total dots
@@ -200,14 +201,14 @@ void Pacman::checkDotCollision() {
 			map_.removeDot(tileX, tileY);
 			score_ += 10;
 			dotsCollected_++;
-			chompSound_.play();
-			scoreText_.setString("Score: " + std::to_string(score_));
+			if (chompSound_) chompSound_->play();
+			scoreText_->setString("Score: " + std::to_string(score_));
 		} else if (type == TileType::POWER_PELLET) {
 			map_.removeDot(tileX, tileY);
 			score_ += 50;
 			dotsCollected_++;
-			chompSound_.play();
-			scoreText_.setString("Score: " + std::to_string(score_));
+			if (chompSound_) chompSound_->play();
+			scoreText_->setString("Score: " + std::to_string(score_));
 		}
 	}
 }
@@ -217,12 +218,11 @@ void Pacman::render() {
 	
 	map_.render(window_);
 	window_.draw(playerSprite_);
-	window_.draw(scoreText_);
-	window_.draw(livesText_);
+	window_.draw(*scoreText_);
+	window_.draw(*livesText_);
 	
 	if (state_ == PacmanState::WIN) {
-		sf::Text winText;
-		winText.setFont(font_);
+		sf::Text winText(*font_);
 		winText.setString("YOU WIN!");
 		winText.setCharacterSize(48);
 		winText.setFillColor(sf::Color::Yellow);
