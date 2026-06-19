@@ -5,8 +5,7 @@
 #include <SFML/Audio.hpp>
 #include <vector>
 #include <string>
-#include <unordered_map>
-#include <memory>
+#include <optional>
 #include "pacman/Map.h"
 
 enum class PacmanState {
@@ -42,9 +41,12 @@ private:
 	// Map
 	Map map_;
 	
-	// Player
-	sf::Sprite playerSprite_;
+	// Textures - stored first
 	sf::Texture playerTextures_[4][2]; // [direction][frame]
+	
+	// Player sprite - created after textures (SFML 3 requires texture at construction)
+	std::optional<sf::Sprite> playerSprite_;
+	
 	Direction currentDir_ = Direction::NONE;
 	Direction nextDir_ = Direction::NONE;
 	sf::Vector2f playerPos_;
@@ -58,14 +60,15 @@ private:
 	int dotsCollected_ = 0;
 	int totalDots_ = 0;
 	
-	// UI - raw pointers for SFML 3.x
-	sf::Font* font_ = nullptr;
-	sf::Text* scoreText_ = nullptr;
-	sf::Text* livesText_ = nullptr;
+	// Font and text
+	sf::Font font_;
+	sf::Text scoreText_;
+	sf::Text livesText_;
 	
 	// Audio
-	sf::SoundBuffer* chompBuffer_ = nullptr;
-	sf::Sound* chompSound_ = nullptr;
+	sf::SoundBuffer chompBuffer_;
+	sf::Sound chompSound_;
+	bool soundLoaded_ = false;
 	
 	// Assets
 	bool loadAssets();

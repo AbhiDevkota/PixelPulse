@@ -5,7 +5,6 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include <memory>
 
 enum class TileType {
 	EMPTY,
@@ -17,17 +16,10 @@ enum class TileType {
 	PLAYER_SPAWN
 };
 
-struct Tile {
-	TileType type = TileType::EMPTY;
-	sf::Sprite* sprite = nullptr;
-	bool hasDot = false;
-	bool hasPowerPellet = false;
-};
-
 class Map {
 public:
 	Map() = default;
-	~Map();
+	~Map() = default;
 
 	bool load(const std::string& mapPath);
 	void render(sf::RenderWindow& window);
@@ -42,18 +34,24 @@ public:
 	int getTotalDots() const { return totalDots_; }
 	
 private:
-	std::vector<std::vector<Tile>> tiles_;
+	// Textures - stored first
+	sf::Texture dotTexture_;
+	sf::Texture powerPelletTexture_;
+	std::unordered_map<char, sf::Texture> wallTextures_;
+	
+	// Tile data
+	std::vector<std::vector<TileType>> tileTypes_;
+	std::vector<std::vector<bool>> hasDot_;
+	std::vector<std::vector<bool>> hasPowerPellet_;
+	
+	// Sprites - created after textures are loaded
+	std::vector<std::vector<sf::Sprite>> sprites_;
+	
 	int width_ = 0;
 	int height_ = 0;
 	int tileSize_ = 16;
 	int totalDots_ = 0;
 	sf::Vector2f playerSpawnPos_;
-	
-	// Wall textures
-	std::unordered_map<char, sf::Texture*> wallTextures_;
-	sf::Texture* dotTexture_ = nullptr;
-	sf::Texture* powerPelletTexture_ = nullptr;
-	sf::Texture* emptyTexture_ = nullptr;
 	
 	bool loadTextures();
 	TileType charToTileType(char c) const;

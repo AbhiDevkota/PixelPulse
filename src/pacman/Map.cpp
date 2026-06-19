@@ -1,22 +1,7 @@
 #include "pacman/Map.h"
 #include <fstream>
-#include <sstream>
 #include <iostream>
-
-Map::~Map() {
-	for (auto& pair : wallTextures_) {
-		delete pair.second;
-	}
-	delete dotTexture_;
-	delete powerPelletTexture_;
-	delete emptyTexture_;
-	
-	for (auto& row : tiles_) {
-		for (auto& tile : row) {
-			delete tile.sprite;
-		}
-	}
-}
+#include <optional>
 
 bool Map::load(const std::string& mapPath) {
 	if (!loadTextures()) {
@@ -42,61 +27,64 @@ bool Map::load(const std::string& mapPath) {
 	height_ = lines.size();
 	width_ = lines[0].length();
 	
-	tiles_.resize(height_, std::vector<Tile>(width_));
+	tileTypes_.resize(height_, std::vector<TileType>(width_, TileType::EMPTY));
+	hasDot_.resize(height_, std::vector<bool>(width_, false));
+	hasPowerPellet_.resize(height_, std::vector<bool>(width_, false));
+	sprites_.reserve(height_);
+	
 	totalDots_ = 0;
 	
 	for (int y = 0; y < height_; y++) {
+		std::vector<sf::Sprite> row;
+		row.reserve(width_);
+		
 		for (int x = 0; x < width_ && x < lines[y].length(); x++) {
 			char c = lines[y][x];
-			Tile& tile = tiles_[y][x];
-			tile.type = charToTileType(c);
+			TileType type = charToTileType(c);
+			tileTypes_[y][x] = type;
 			
-			// Create sprite with empty texture as placeholder
-			tile.sprite = new sf::Sprite(*emptyTexture_);
-			tile.sprite->setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
+			// SFML 3: sprite must be constructed with a texture
+			std::optional<sf::Sprite> spriteOpt;
 			
-			if (tile.type == TileType::DOT) {
-				tile.hasDot = true;
-				tile.sprite->setTexture(*dotTexture_);
+			if (type == TileType::DOT) {
+				hasDot_[y][x] = true;
+				spriteOpt.emplace(dotTexture_);
+				(*spriteOpt).setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
 				totalDots_++;
-			} else if (tile.type == TileType::POWER_PELLET) {
-				tile.hasPowerPellet = true;
-				tile.sprite->setTexture(*powerPelletTexture_);
+			} else if (type == TileType::POWER_PELLET) {
+				hasPowerPellet_[y][x] = true;
+				spriteOpt.emplace(powerPelletTexture_);
+				(*spriteOpt).setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
 				totalDots_++;
-			} else if (tile.type == TileType::WALL) {
+			} else if (type == TileType::WALL) {
 				auto it = wallTextures_.find(c);
 				if (it != wallTextures_.end()) {
-					tile.sprite->setTexture(*it->second);
+					spriteOpt.emplace(it->second);
+					(*spriteOpt).setPosition(sf::Vector2f(x * tileSize_, y * tileSize_));
 				}
-			} else if (tile.type == TileType::PLAYER_SPAWN) {
+			} else if (type == TileType::PLAYER_SPAWN) {
 				playerSpawnPos_ = sf::Vector2f(x * tileSize_, y * tileSize_);
 			}
+			
+			if (spriteOpt) {
+				row.push_back(std::move(*spriteOpt));
+			}
 		}
+		sprites_.push_back(std::move(row));
 	}
 	
 	return true;
 }
 
 bool Map::loadTextures() {
-	// Create empty texture for placeholder
-	emptyTexture_ = new sf::Texture();
-	sf::Image emptyImg;
-	emptyImg.create(sf::Vector2u(tileSize_, tileSize_), sf::Color::Transparent);
-	emptyTexture_->loadFromImage(emptyImg);
-	
-	// Load dot texture
-	dotTexture_ = new sf::Texture();
-	if (!dotTexture_->loadFromFile("assets/pacman/edibles/food.png")) {
+	if (!dotTexture_.loadFromFile("assets/pacman/edibles/food.png")) {
 		return false;
 	}
 	
-	// Load power pellet
-	powerPelletTexture_ = new sf::Texture();
-	if (!powerPelletTexture_->loadFromFile("assets/pacman/edibles/power_pellet.png")) {
+	if (!powerPelletTexture_.loadFromFile("assets/pacman/edibles/power_pellet.png")) {
 		return false;
 	}
 	
-	// Load wall textures
 	std::unordered_map<char, std::string> wallFiles = {
 		{'!', "assets/pacman/walls/right-top.png"},
 		{'@', "assets/pacman/walls/horizontal.png"},
@@ -113,11 +101,9 @@ bool Map::loadTextures() {
 	};
 	
 	for (const auto& [key, path] : wallFiles) {
-		sf::Texture* tex = new sf::Texture();
-		if (tex->loadFromFile(path)) {
-			wallTextures_[key] = tex;
-		} else {
-			delete tex;
+		sf::Texture tex;
+		if (tex.loadFromFile(path)) {
+			wallTextures_[key] = std::move(tex);
 		}
 	}
 	
@@ -152,9 +138,9 @@ TileType Map::charToTileType(char c) const {
 void Map::render(sf::RenderWindow& window) {
 	for (int y = 0; y < height_; y++) {
 		for (int x = 0; x < width_; x++) {
-			Tile& tile = tiles_[y][x];
-			if (tile.type == TileType::WALL || tile.hasDot || tile.hasPowerPellet) {
-				window.draw(*tile.sprite);
+			TileType type = tileTypes_[y][x];
+			if (type == TileType::WALL || hasDot_[y][x] || hasPowerPellet_[y][x]) {
+				window.draw(sprites_[y][x]);
 			}
 		}
 	}
@@ -164,14 +150,13 @@ TileType Map::getTileAt(int x, int y) const {
 	if (x < 0 || x >= width_ || y < 0 || y >= height_) {
 		return TileType::WALL;
 	}
-	return tiles_[y][x].type;
+	return tileTypes_[y][x];
 }
 
 void Map::removeDot(int x, int y) {
 	if (x >= 0 && x < width_ && y >= 0 && y < height_) {
-		tiles_[y][x].hasDot = false;
-		tiles_[y][x].hasPowerPellet = false;
-		tiles_[y][x].type = TileType::EMPTY;
-		tiles_[y][x].sprite->setTexture(*emptyTexture_);
+		hasDot_[y][x] = false;
+		hasPowerPellet_[y][x] = false;
+		tileTypes_[y][x] = TileType::EMPTY;
 	}
 }
