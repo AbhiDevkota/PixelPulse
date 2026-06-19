@@ -1,5 +1,6 @@
 #include "HomeScreen.h"
 #include "Files.h"
+#include "pacman/Pacman.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
@@ -66,8 +67,8 @@ int main() {
             home.resetGame();
             if (game == "PAC MAN")
             {
-                //runPacMan(window);
-                std::cout << "Started PAC MAN from menu" << std::endl;
+                runPacMan(window);
+                std::cout << "Started To run PACMAN" << std::endl;
             }
         }
 
