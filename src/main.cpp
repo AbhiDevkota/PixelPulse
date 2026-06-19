@@ -3,8 +3,7 @@
 #include "pacman/Pacman.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
-
-
+void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager);
 int main() {
 	corezone::FileManager fileManager;
     if(!fileManager.initialize()){
@@ -37,7 +36,8 @@ int main() {
     std::string fontPath = corezone::AssetPath::getFontPath("regular.ttf");
     corezone::HomeScreen home(window, fontPath, &fileManager);
     home.initialize();
-
+    
+    
     sf::Clock clock;
 
     while (window.isOpen()) {
@@ -61,6 +61,19 @@ int main() {
 
         float dt = clock.restart().asSeconds();
         home.update(dt);
+        // Added by aashutosh to select game and run it
+        if (home.isGameReady()) {
+            std::string game = home.getSelectedGame();
+            home.resetGame();
+            if (game == "SNAKE") {
+                home.pauseMusic();
+                runSnake(window,fileManager);
+                home.resumeMusic();
+            }
+            
+        }
+        //Up to here
+        
 
         if (home.isGameReady()) {
             std::string game = home.getSelectedGame();
