@@ -1,5 +1,6 @@
 #include "HomeScreen.h"
 #include "Files.h"
+#include "pacman/Pacman.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
 void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager);
@@ -73,6 +74,16 @@ int main() {
         }
         //Up to here
         
+
+        if (home.isGameReady()) {
+            std::string game = home.getSelectedGame();
+            home.resetGame();
+            if (game == "PAC MAN")
+            {
+                runPacMan(window);
+                std::cout << "Started To run PACMAN" << std::endl;
+            }
+        }
 
         window.clear();
         home.draw();
