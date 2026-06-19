@@ -49,7 +49,11 @@ Here is the working Method of some part of code:
 1. [File Managements](wiki/file_management.md):
    This is the explanation of the code and the working mechanism of the File Management system in our game which is responsible for the save/load data, manage assets, font, icons etc. 
 ## Current Progress
-![game_progress](assets/preview/Screenshot 2026-06-19 101157.png)
-## [Todo List](wiki/todo.md)
+![game_progress](assets/preview/game_preview.png)
+## TODO
+* [ ] Make sure the ghost appears
+* [ ] Fix the sound effects and overall sounds
+* [ ] Fix the size of the game
+* [ ] Fix the alignment of the game
 
 
