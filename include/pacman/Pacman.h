@@ -37,16 +37,16 @@ public:
 private:
 	sf::RenderWindow& window_;
 	PacmanState state_ = PacmanState::PLAYING;
-	
+
 	// Map
 	Map map_;
-	
+
 	// Textures - stored first
 	sf::Texture playerTextures_[4][2]; // [direction][frame]
-	
+
 	// Player sprite - created after textures (SFML 3 requires texture at construction)
 	std::optional<sf::Sprite> playerSprite_;
-	
+
 	Direction currentDir_ = Direction::NONE;
 	Direction nextDir_ = Direction::NONE;
 	sf::Vector2f playerPos_;
@@ -54,22 +54,22 @@ private:
 	int animFrame_ = 0;
 	float animTimer_ = 0.0f;
 	int lives_ = 3;
-	
+
 	// Game
 	int score_ = 0;
 	int dotsCollected_ = 0;
 	int totalDots_ = 0;
-	
-	// Font and text
+
+	// Font and text - sf::Text has no default ctor in SFML 3, must be constructed with a font
 	sf::Font font_;
-	sf::Text scoreText_;
-	sf::Text livesText_;
-	
-	// Audio
+	std::optional<sf::Text> scoreText_;
+	std::optional<sf::Text> livesText_;
+
+	// Audio - sf::Sound has no default ctor in SFML 3, must be constructed with a buffer
 	sf::SoundBuffer chompBuffer_;
-	sf::Sound chompSound_;
+	std::optional<sf::Sound> chompSound_;
 	bool soundLoaded_ = false;
-	
+
 	// Assets
 	bool loadAssets();
 	void updateAnimation(float dt);
