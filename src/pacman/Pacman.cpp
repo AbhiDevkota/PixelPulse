@@ -9,7 +9,9 @@ void runPacMan(sf::RenderWindow& window) {
 	}
 }
 
-Pacman::Pacman(sf::RenderWindow& window) : window_(window) {}
+Pacman::Pacman(sf::RenderWindow& window) : window_(window) {
+}
+
 
 bool Pacman::initialize() {
 	return loadAssets();
@@ -22,21 +24,21 @@ bool Pacman::loadAssets() {
 		return false;
 	}
 	
-	// Load player textures (direction: UP, DOWN, LEFT, RIGHT)
+	// Load player textures
 	std::string directions[] = {"up", "down", "left", "right"};
 	
 	for (int d = 0; d < 4; d++) {
 		for (int f = 1; f <= 2; f++) {
 			std::string path = "assets/pacman/player1/" + directions[d] + "_" + std::to_string(f) + ".png";
-			if (!playerTextures_[d][f - 1].openFromFile(path)) {
+			if (!playerTextures_[d][f - 1].loadFromFile(path)) {
 				std::cerr << "Failed to load: " << path << std::endl;
 			}
 		}
 	}
 	
 	// Setup player sprite
-	playerSprite_.setTexture(playerTextures_[2][0]); // Start facing left
-	playerSprite_.setScale(sf::Vector2f(0.5f, 0.5f)); // Scale down to 16x16
+	playerSprite_.setTexture(playerTextures_[2][0]);
+	playerSprite_.setScale(sf::Vector2f(0.5f, 0.5f));
 	
 	// Set player position to spawn
 	playerPos_ = map_.getPlayerSpawnPos();
@@ -63,11 +65,10 @@ bool Pacman::loadAssets() {
 	
 	// Load sounds
 	chompBuffer_ = std::make_unique<sf::SoundBuffer>();
-	if (chompBuffer_->openFromFile("audios/pacman/food_chomp.wav")) {
+	if (chompBuffer_->loadFromFile("audios/pacman/food_chomp.wav")) {
 		chompSound_ = std::make_unique<sf::Sound>(*chompBuffer_);
 	}
 	
-	// Store total dots
 	totalDots_ = map_.getTotalDots();
 	
 	return true;
@@ -129,7 +130,6 @@ void Pacman::update(float deltaTime) {
 	movePlayer(deltaTime);
 	checkDotCollision();
 	
-	// Check win condition
 	if (dotsCollected_ >= totalDots_) {
 		state_ = PacmanState::WIN;
 	}
@@ -141,7 +141,7 @@ void Pacman::updateAnimation(float dt) {
 		animTimer_ = 0;
 		animFrame_ = (animFrame_ + 1) % 2;
 		
-		int dirIndex = 2; // Default left
+		int dirIndex = 2;
 		if (currentDir_ == Direction::UP) dirIndex = 0;
 		else if (currentDir_ == Direction::DOWN) dirIndex = 1;
 		else if (currentDir_ == Direction::LEFT) dirIndex = 2;
@@ -152,12 +152,10 @@ void Pacman::updateAnimation(float dt) {
 }
 
 void Pacman::movePlayer(float dt) {
-	// Try to change direction if requested
 	if (nextDir_ != Direction::NONE && canMove(playerPos_, nextDir_)) {
 		currentDir_ = nextDir_;
 	}
 	
-	// Move in current direction
 	if (currentDir_ != Direction::NONE && canMove(playerPos_, currentDir_)) {
 		sf::Vector2f movement(0, 0);
 		switch (currentDir_) {

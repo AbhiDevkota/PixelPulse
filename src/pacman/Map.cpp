@@ -48,7 +48,6 @@ bool Map::load(const std::string& mapPath) {
 				tile.sprite->setTexture(*powerPelletTexture_);
 				totalDots_++;
 			} else if (tile.type == TileType::WALL) {
-				// Set wall texture based on character
 				auto it = wallTextures_.find(c);
 				if (it != wallTextures_.end()) {
 					tile.sprite->setTexture(*it->second);
@@ -63,19 +62,16 @@ bool Map::load(const std::string& mapPath) {
 }
 
 bool Map::loadTextures() {
-	// Load dot texture
 	dotTexture_ = std::make_unique<sf::Texture>();
-	if (!dotTexture_->openFromFile("assets/pacman/edibles/food.png")) {
+	if (!dotTexture_->loadFromFile("assets/pacman/edibles/food.png")) {
 		return false;
 	}
 	
-	// Load power pellet
 	powerPelletTexture_ = std::make_unique<sf::Texture>();
-	if (!powerPelletTexture_->openFromFile("assets/pacman/edibles/power_pellet.png")) {
+	if (!powerPelletTexture_->loadFromFile("assets/pacman/edibles/power_pellet.png")) {
 		return false;
 	}
 	
-	// Load wall textures
 	std::unordered_map<char, std::string> wallFiles = {
 		{'!', "assets/pacman/walls/right-top.png"},
 		{'@', "assets/pacman/walls/horizontal.png"},
@@ -93,7 +89,7 @@ bool Map::loadTextures() {
 	
 	for (const auto& [key, path] : wallFiles) {
 		auto tex = std::make_unique<sf::Texture>();
-		if (tex->openFromFile(path)) {
+		if (tex->loadFromFile(path)) {
 			wallTextures_[key] = std::move(tex);
 		}
 	}
@@ -110,10 +106,10 @@ TileType Map::charToTileType(char c) const {
 			return TileType::POWER_PELLET;
 		case '*':
 			return TileType::DOT;
-		case 'b': // Blinky spawn
-		case 'p': // Pinky spawn
-		case 'i': // Inky spawn
-		case 'c': // Clyde spawn
+		case 'b':
+		case 'p':
+		case 'i':
+		case 'c':
 			return TileType::GHOST_SPAWN;
 		case 'f':
 			return TileType::PLAYER_SPAWN;
