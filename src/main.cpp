@@ -73,7 +73,6 @@ int main() {
                 home.resumeMusic();
                 continue;
             }// Skip rendering the home screen when a game is launched
-            home.resetGame();    
 
             if (game == "FLAPPY BIRD") {          //Merge Resolved by Abhi Devkota. 
                 home.pauseMusic();
@@ -86,6 +85,20 @@ int main() {
                 home.resumeMusic();
                 continue;
             }
+            if (game == "PAC MAN") {
+                home.pauseMusic();
+                runPacMan(window);
+                home.resumeMusic();
+                continue;
+            }
+			//if (game == "DINO RUN") {
+			//	home.pauseMusic();
+			//	runDino(window);
+			//	home.resumeMusic();
+			//	continue;
+			//}
+
+            home.resetGame();
         }
         //Up to here
         
