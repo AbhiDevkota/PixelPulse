@@ -9,12 +9,12 @@ void runRocketShooter(sf::RenderWindow& window);
 void runFlappyBird(sf::RenderWindow& window);
 void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager); //Conflict resolved by Abhi Devkota
 int main() {
-	corezone::FileManager fileManager;
-    if(!fileManager.initialize()){
+    corezone::FileManager fileManager;
+    if (!fileManager.initialize()) {
         std::cerr << "Failed to init file mgt stystem" << std::endl;
         return -1;
     }
-	std::cout << "File mgt system initialized successfully" << std::endl;
+    std::cout << "File mgt system initialized successfully" << std::endl;
 
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     //sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
@@ -73,7 +73,7 @@ int main() {
                 home.resumeMusic();
                 continue;
             }// Skip rendering the home screen when a game is launched
-            home.resetGame();    
+            home.resetGame();
 
             if (game == "FLAPPY BIRD") {          //Merge Resolved by Abhi Devkota. 
                 home.pauseMusic();
@@ -88,7 +88,7 @@ int main() {
             }
         }
         //Up to here
-        
+
 
         if (home.isGameReady()) {
             std::string game = home.getSelectedGame();
