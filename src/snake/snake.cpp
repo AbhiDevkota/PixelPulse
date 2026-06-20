@@ -2,7 +2,7 @@
 #include<SFML/audio.hpp>
 #include <cstdlib>
 #include <ctime>
-#include "Snake.h"
+#include "snake/Snake.h"
 #include "Files.h"
 Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
 	: cols(cols), rows(rows) {
@@ -175,7 +175,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 
 	sf::SoundBuffer eatSoundBuffer;
 	sf::Sound eatSound(eatSoundBuffer);
-	if (eatSoundBuffer.loadFromFile("assets/snake/food_crunch.mp3")) {
+	if (eatSoundBuffer.loadFromFile("audios/snake/food_crunch.mp3")) {
 		eatSound.setVolume(100.f);
 	}
 
