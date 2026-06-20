@@ -4,7 +4,7 @@
 #include <vector>
 
 Background::Background(sf::RenderWindow& window)
-    : sprite(firstTexture)
+    : sprite1(firstTexture), sprite2(firstTexture)
 {
     // Store all background image paths
     std::vector<std::string> paths = {
@@ -18,36 +18,71 @@ Background::Background(sf::RenderWindow& window)
     bgTextures.resize(paths.size());
 
     for (std::size_t i = 0; i < paths.size(); i++) {
-        bgTextures[i].loadFromFile(paths[i]);
+        if (!bgTextures[i].loadFromFile(paths[i])) {
+            loaded = false;
+            return;
+        }
     }
+    loaded = true;
 
     // Pick first random background
-    bgIndex = std::rand() % bgTextures.size();
+    bgIndex = std::rand() % (int)bgTextures.size();
 
     // true resets sprite size to the texture size
-    sprite.setTexture(bgTextures[bgIndex], true);
+    sprite1.setTexture(bgTextures[bgIndex], true);
+    sprite2.setTexture(bgTextures[bgIndex], true);
 
     applyScale(window);
 }
 
+void Background::update(float dt, sf::RenderWindow& window) {
+    // Move both background sprites to the left
+    sprite1.move({ -speed * dt, 0.f });
+    sprite2.move({ -speed * dt, 0.f });
+
+    float width = sprite1.getGlobalBounds().size.x;
+
+    // If first sprite leaves screen, place it after second sprite
+    if (sprite1.getPosition().x + width <= 0.f) {
+        sprite1.setPosition({ sprite2.getPosition().x + width - 4.f, 0.f });
+    }
+
+    // If second sprite leaves screen, place it after first sprite
+    if (sprite2.getPosition().x + width <= 0.f) {
+        sprite2.setPosition({ sprite1.getPosition().x + width - 4.f, 0.f });
+    }
+}
+   
 void Background::pickRandom(sf::RenderWindow& window) {
     // Pick another random background
-    bgIndex = std::rand() % bgTextures.size();
+    bgIndex = std::rand() % (int)bgTextures.size();
 
     // true resets sprite size to the new texture size
-    sprite.setTexture(bgTextures[bgIndex], true);
+    sprite1.setTexture(bgTextures[bgIndex], true);
+    sprite2.setTexture(bgTextures[bgIndex], true);
 
     applyScale(window);
 }
 
 void Background::applyScale(sf::RenderWindow& window) {
-    // Scale background to fit full window
+    // Fit background to window size
     float scaleX = (float)window.getSize().x / bgTextures[bgIndex].getSize().x;
     float scaleY = (float)window.getSize().y / bgTextures[bgIndex].getSize().y;
 
-    sprite.setScale({ scaleX, scaleY });
+    sprite1.setScale({ scaleX, scaleY });
+    sprite2.setScale({ scaleX, scaleY });
+
+    float width = sprite1.getGlobalBounds().size.x;
+
+    sprite1.setPosition({ 0.f, 0.f });
+    sprite2.setPosition({ width - 4.f, 0.f });
 }
 
 void Background::draw(sf::RenderWindow& window) {
-    window.draw(sprite);
+    window.draw(sprite1);
+    window.draw(sprite2);
+}
+
+bool Background::isLoaded() const {
+    return loaded;
 }

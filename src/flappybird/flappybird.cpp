@@ -46,6 +46,7 @@ void runFlappyBird(sf::RenderWindow& window) {
         // Update
         bird.update(dt, window);
         pipes.update(dt, window, cellW, cellH);
+        background.update(dt, window);
 
         // Collision
         if (pipes.collides(bird.getBounds())) {
