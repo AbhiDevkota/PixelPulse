@@ -1,43 +1,60 @@
 #include "pipepair.h"
 #include <cstdlib>
+#include <string>
+#include <vector>
 
 PipePair::PipePair(sf::RenderWindow& window, float cellW, float cellH)
-    : pipeUp(upTexture), pipeDown(downTexture)
+    : pipeUp(firstUpTexture), pipeDown(firstDownTexture)
 {
-    // Load pipe images
-    if (!upTexture.loadFromFile("assets/Flappy/Up.png")) return;
-    if (!downTexture.loadFromFile("assets/Flappy/Down.png")) return;
+    // up pipe image paths
+    std::vector<std::string> upPaths = {
+        "assets/Flappy/Up.png",
+        "assets/Flappy/Up2.png",
+        "assets/Flappy/Up3.png",
+        "assets/Flappy/Up4.png",
+        "assets/Flappy/Up5.png"
+    };
 
-    loaded = true;
+    // down pipe image paths
+    std::vector<std::string> downPaths = {
+        "assets/Flappy/Down.png",
+        "assets/Flappy/Down2.png",
+        "assets/Flappy/Down3.png",
+        "assets/Flappy/Down4.png",
+        "assets/Flappy/Down5.png"
+    };
 
-    // Set textures again after loading
-    pipeUp.setTexture(upTexture, true);
-    pipeDown.setTexture(downTexture, true);
+    // load each pair - skip if either image fails to load
+    for (std::size_t i = 0; i < upPaths.size(); i++) {
+        sf::Texture up;
+        sf::Texture down;
 
-    // Pipe width scale
-    pipeScaleX = (float)window.getSize().x / upTexture.getSize().x * 0.15f;
+        if (up.loadFromFile(upPaths[i]) && down.loadFromFile(downPaths[i])) {
+            upTextures.push_back(up);
+            downTextures.push_back(down);
+        }
+    }
 
-    // Pipe origins
-    pipeDown.setOrigin({ 0.f, 0.f });
-    pipeUp.setOrigin({ 0.f, (float)upTexture.getSize().y });
+    // need at least one pair to play
+    loaded = !upTextures.empty();
 
-    reset(window, cellW, cellH);
+    if (loaded)
+        reset(window, cellW, cellH);
 }
 
 void PipePair::update(float dt, sf::RenderWindow& window, float cellW, float cellH) {
-    // Move pipes left
+    // move pipes left every frame
     pipeX -= cellW * 3.f * dt;
 
     pipeDown.setPosition({ pipeX, 0.f });
     pipeUp.setPosition({ pipeX, (float)window.getSize().y });
 
-    // Respawn pipes from right side
+    // pipe went off screen - bring back from right with new random gap
     if (pipeX + pipeUp.getGlobalBounds().size.x < 0.f) {
         pipeX = cellW * 12.f;
 
         float minGapY = cellH * 4.f;
         float maxGapY = cellH * 12.f;
-
         gapY = minGapY + (float)(std::rand() % (int)(maxGapY - minGapY));
 
         applyPipeSize(window);
@@ -45,6 +62,10 @@ void PipePair::update(float dt, sf::RenderWindow& window, float cellW, float cel
 }
 
 void PipePair::reset(sf::RenderWindow& window, float cellW, float cellH) {
+    // pick new pipe design on game over
+    pickRandomPipe(window);
+
+    // put pipe back to starting position
     pipeX = cellW * 12.f;
     gapY = cellH * 8.f;
     gapSize = cellH * 4.f;
@@ -52,20 +73,39 @@ void PipePair::reset(sf::RenderWindow& window, float cellW, float cellH) {
     applyPipeSize(window);
 }
 
-void PipePair::applyPipeSize(sf::RenderWindow& window) {
-    // Top pipe
-    float pipeDownHeight = gapY - gapSize / 2.f;
-    pipeDown.setScale({ pipeScaleX, pipeDownHeight / downTexture.getSize().y });
+void PipePair::pickRandomPipe(sf::RenderWindow& window) {
+    // pick a random pipe pair
+    pipeIndex = std::rand() % (int)upTextures.size();
 
-    // Bottom pipe
+    // apply chosen textures
+    pipeUp.setTexture(upTextures[pipeIndex], true);
+    pipeDown.setTexture(downTextures[pipeIndex], true);
+
+    // pipe width = 15% of screen width
+    pipeScaleX = (float)window.getSize().x / upTextures[pipeIndex].getSize().x * 0.15f;
+
+    // top pipe grows downward from y=0
+    pipeDown.setOrigin({ 0.f, 0.f });
+
+    // bottom pipe grows upward from screen bottom
+    pipeUp.setOrigin({ 0.f, (float)upTextures[pipeIndex].getSize().y });
+}
+
+void PipePair::applyPipeSize(sf::RenderWindow& window) {
+    // top pipe fills from y=0 to where gap starts
+    float pipeDownHeight = gapY - gapSize / 2.f;
+    pipeDown.setScale({ pipeScaleX, pipeDownHeight / downTextures[pipeIndex].getSize().y });
+
+    // bottom pipe fills from where gap ends to screen bottom
     float pipeUpHeight = (float)window.getSize().y - (gapY + gapSize / 2.f);
-    pipeUp.setScale({ pipeScaleX, pipeUpHeight / upTexture.getSize().y });
+    pipeUp.setScale({ pipeScaleX, pipeUpHeight / upTextures[pipeIndex].getSize().y });
 
     pipeDown.setPosition({ pipeX, 0.f });
     pipeUp.setPosition({ pipeX, (float)window.getSize().y });
 }
 
 bool PipePair::collides(const sf::FloatRect& birdBounds) const {
+    // true if bird touches either pipe
     return birdBounds.findIntersection(pipeUp.getGlobalBounds()) ||
         birdBounds.findIntersection(pipeDown.getGlobalBounds());
 }
