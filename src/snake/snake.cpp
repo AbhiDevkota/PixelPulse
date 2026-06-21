@@ -2,7 +2,7 @@
 #include<SFML/audio.hpp>
 #include <cstdlib>
 #include <ctime>
-#include "Snake.h"
+#include "snake/Snake.h"
 #include "Files.h"
 Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
 	: cols(cols), rows(rows) {
@@ -72,6 +72,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 
 	corezone::GameDataManager gameData(filemanager, "SNAKE");
 
+	int lives = 3;
 	int highScore = 0;
 	gameData.getHighScore(highScore);
 
@@ -175,7 +176,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 
 	sf::SoundBuffer eatSoundBuffer;
 	sf::Sound eatSound(eatSoundBuffer);
-	if (eatSoundBuffer.loadFromFile("assets/snake/food_crunch.mp3")) {
+	if (eatSoundBuffer.loadFromFile("audios/snake/food_crunch.mp3")) {
 		eatSound.setVolume(100.f);
 	}
 
@@ -207,6 +208,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 					return;
 				if (key == sf::Keyboard::Key::R && gameOver) {
 					snake.reset({ 5, 5 }, { 1, 0 });
+					lives = 3;
 					score = 0;
 					gameOver = false;
 					snake.respawnFood();
@@ -230,11 +232,18 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 			snake.move();
 			clock.restart();
 
-			if (snake.checkSelfCollision())
-				gameOver = true;
-
-			if (snake.checkWallCollision())
-				gameOver = true;
+			if (snake.checkSelfCollision() || snake.checkWallCollision()) {
+				lives--;
+				if (lives <= 0) {
+					gameOver = true;
+				}
+				else {
+					snake.reset({ 5,5 }, { 1,0});
+					clock.restart();
+				}
+			}
+				
+			
 
 			if (snake.checkFoodCollision()) {
 				snake.respawnFood();
@@ -276,7 +285,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 		}
 
 		scoreText.setCharacterSize(24);
-		scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScore));
+		scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScore) + "  Lives:  " + std::to_string(lives));
 		scoreText.setPosition({ 
 			static_cast<float>(OFFSETX),
 			static_cast<float>(OFFSETY - 2 * CELL_SIZE) 
