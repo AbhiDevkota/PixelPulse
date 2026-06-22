@@ -8,6 +8,7 @@
 void runRocketShooter(sf::RenderWindow& window);
 void runFlappyBird(sf::RenderWindow& window);
 void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager); //Conflict resolved by Abhi Devkota
+void runDino(sf::RenderWindow& window);
 int main() {
 	corezone::FileManager fileManager;
     if(!fileManager.initialize()){
@@ -91,12 +92,6 @@ int main() {
                 home.resumeMusic();
                 continue;
             }
-			//if (game == "DINO RUN") {
-			//	home.pauseMusic();
-			//	runDino(window);
-			//	home.resumeMusic();
-			//	continue;
-			//}
 
             home.resetGame();
         }
