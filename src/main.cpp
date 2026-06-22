@@ -96,17 +96,6 @@ int main() {
             home.resetGame();
         }
         //Up to here
-        
-
-        if (home.isGameReady()) {
-            std::string game = home.getSelectedGame();
-            home.resetGame();
-            if (game == "PAC MAN")
-            {
-                runPacMan(window);
-                std::cout << "Started To run PACMAN" << std::endl;
-            }
-        }
 
         window.clear();
         home.draw();
