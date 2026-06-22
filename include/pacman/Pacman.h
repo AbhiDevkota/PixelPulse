@@ -41,6 +41,11 @@ private:
 	// Map
 	Map map_;
 
+	// Game area (60% of screen resolution)
+	sf::Vector2f gameAreaSize_;
+	sf::Vector2f gameAreaOffset_;
+	float gameScale_ = 1.0f;
+
 	// Textures - stored first
 	sf::Texture playerTextures_[4][2]; // [direction][frame]
 

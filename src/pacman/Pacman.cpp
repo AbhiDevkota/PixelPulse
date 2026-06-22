@@ -34,31 +34,53 @@ bool Pacman::loadAssets() {
 		}
 	}
 
-	// Setup player sprite with initial texture (SFML 3 requires texture at construction)
-	playerSprite_.emplace(playerTextures_[2][0]);
-	playerSprite_->setScale(sf::Vector2f(0.5f, 0.5f));
+	// Calculate game area (60% of screen resolution)
+	int windowWidth = window_.getSize().x;
+	int windowHeight = window_.getSize().y;
+	gameAreaSize_ = sf::Vector2f(windowWidth * 0.6f, windowHeight * 0.6f);
+	gameAreaOffset_ = sf::Vector2f(
+		(windowWidth - gameAreaSize_.x) / 2.0f,
+		(windowHeight - gameAreaSize_.y) / 2.0f
+	);
 
-	// Set player position to spawn
+	// Scale map to fit game area
+	int mapPixelWidth = map_.getWidth() * map_.getTileSize();
+	int mapPixelHeight = map_.getHeight() * map_.getTileSize();
+	gameScale_ = std::min(gameAreaSize_.x / mapPixelWidth, gameAreaSize_.y / mapPixelHeight);
+	map_.setScale(gameScale_);
+	map_.setOffset(gameAreaOffset_);
+
+	// Setup player sprite
+	playerSprite_.emplace(playerTextures_[2][0]);
+	playerSprite_->setScale(sf::Vector2f(gameScale_, gameScale_));
+
+	// Set player position to spawn (in map coordinates)
 	playerPos_ = map_.getPlayerSpawnPos();
-	playerSprite_->setPosition(playerPos_);
+	playerSprite_->setPosition(sf::Vector2f(
+		playerPos_.x * gameScale_ + gameAreaOffset_.x,
+		playerPos_.y * gameScale_ + gameAreaOffset_.y
+	));
+
+	// Player speed in map coordinates per second
+	playerSpeed_ = 150.0f;
 
 	// Load font
 	if (!font_.openFromFile("fonts/regular.ttf")) {
 		std::cerr << "Failed to load font" << std::endl;
 	}
 
-	// Setup UI (SFML 3.x requires font at construction)
+	// Setup UI above game area
 	scoreText_.emplace(font_);
 	scoreText_->setString("Score: 0");
 	scoreText_->setCharacterSize(24);
 	scoreText_->setFillColor(sf::Color::White);
-	scoreText_->setPosition(sf::Vector2f(10, 10));
+	scoreText_->setPosition(sf::Vector2f(gameAreaOffset_.x + 10, gameAreaOffset_.y - 35));
 
 	livesText_.emplace(font_);
 	livesText_->setString("Lives: 3");
 	livesText_->setCharacterSize(24);
 	livesText_->setFillColor(sf::Color::White);
-	livesText_->setPosition(sf::Vector2f(10, 40));
+	livesText_->setPosition(sf::Vector2f(gameAreaOffset_.x + 200, gameAreaOffset_.y - 35));
 
 	// Load sounds
 	if (chompBuffer_.loadFromFile("audios/pacman/food_chomp.wav")) {
@@ -149,22 +171,30 @@ void Pacman::updateAnimation(float dt) {
 }
 
 void Pacman::movePlayer(float dt) {
+	// Try to change direction if requested
 	if (nextDir_ != Direction::NONE && canMove(playerPos_, nextDir_)) {
 		currentDir_ = nextDir_;
 	}
 
+	// Move in current direction
 	if (currentDir_ != Direction::NONE && canMove(playerPos_, currentDir_)) {
-		sf::Vector2f movement(0, 0);
+		// Smooth movement using speed and delta time
+		float movement = playerSpeed_ * dt;
+		float tileSize = map_.getTileSize();
+
 		switch (currentDir_) {
-		case Direction::UP: movement.y = -playerSpeed_ * dt; break;
-		case Direction::DOWN: movement.y = playerSpeed_ * dt; break;
-		case Direction::LEFT: movement.x = -playerSpeed_ * dt; break;
-		case Direction::RIGHT: movement.x = playerSpeed_ * dt; break;
+		case Direction::UP: playerPos_.y -= movement; break;
+		case Direction::DOWN: playerPos_.y += movement; break;
+		case Direction::LEFT: playerPos_.x -= movement; break;
+		case Direction::RIGHT: playerPos_.x += movement; break;
 		default: break;
 		}
 
-		playerPos_ += movement;
-		playerSprite_->setPosition(playerPos_);
+		// Update sprite in screen coordinates
+		playerSprite_->setPosition(sf::Vector2f(
+			playerPos_.x * gameScale_ + gameAreaOffset_.x,
+			playerPos_.y * gameScale_ + gameAreaOffset_.y
+		));
 	}
 }
 
