@@ -136,7 +136,10 @@ void Map::render(sf::RenderWindow& window) {
 		for (int x = 0; x < width_; x++) {
 			TileType type = tileTypes_[y][x];
 			if ((type == TileType::WALL || hasDot_[y][x] || hasPowerPellet_[y][x]) && sprites_[y][x]) {
-				window.draw(*sprites_[y][x]);
+				sf::Sprite sprite = *sprites_[y][x];
+				sprite.setScale(sf::Vector2f(scale_, scale_));
+				sprite.setPosition(sf::Vector2f(x * tileSize_ * scale_ + offset_.x, y * tileSize_ * scale_ + offset_.y));
+				window.draw(sprite);
 			}
 		}
 	}

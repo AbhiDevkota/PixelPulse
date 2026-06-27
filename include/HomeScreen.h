@@ -89,9 +89,16 @@ namespace corezone {
         void handleMouseMove(sf::Vector2f mousePos);
         void handleMouseClick(sf::Vector2f mousePos);
         void draw();
+      
+      //Merge Conflict resolve by abhi.
+        //Added by Aashutosh to run game after selection
         bool isGameReady() const { return readyToLaunch_; }
         std::string getSelectedGame() const { return loadingName_; }
         void resetGame() { loadingMode_ = false; readyToLaunch_ = false; loadingName_ = ""; }
+        //This part is for audio handling on game launch
+        void pauseMusic() { bgMusic_.pause(); }
+        void resumeMusic() { bgMusic_.play(); }
+        //Up to here
 
     private:
         FileManager* fileManager_ = nullptr;  //file pointer to point file mgt
@@ -104,6 +111,7 @@ namespace corezone {
         void renderControls();
         void renderCredit();
         void startLoading();
+
         bool readyToLaunch_ = false;
     };
 

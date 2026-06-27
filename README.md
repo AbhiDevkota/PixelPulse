@@ -1,4 +1,3 @@
-
 # <img src="assets/preview/icon_concept1.png" width="30"/> Pixel Pulse 
 
 
@@ -26,8 +25,8 @@ This is the Retro style version of the gaming console with a collection of class
 | Member | Game |
 | -------- | ------- |
 | <a href="https://github.com/Aashutosh-kc">Aashutosh KC</a> | Snake |
-| <a href="https://github.com/AbhiDevkota">Abhi Devkota</a> | Menu / Homescreen |
-| <a href="https://github.com/PrabinDhungana000">Prabin Dhungana</a> | Cricket |
+| <a href="https://github.com/AbhiDevkota">Abhi Devkota</a> | Menu , Pac-man |
+| <a href="https://github.com/PrabinDhungana000">Prabin Dhungana</a> | Flappy Bird |
 | <a href="https://github.com/Samyam1070">Samyam Khadka</a> | Rocket Shooter |
 | <a href="https://github.com/sunim4125">Sunim Fuyal</a> | Dino game |
 ## How to Run
@@ -55,5 +54,4 @@ Here is the working Method of some part of code:
 * [ ] Fix the sound effects and overall sounds
 * [ ] Fix the size of the game
 * [ ] Fix the alignment of the game
-
 

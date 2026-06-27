@@ -33,6 +33,10 @@ public:
 	int getTileSize() const { return tileSize_; }
 	sf::Vector2f getPlayerSpawnPos() const { return playerSpawnPos_; }
 	int getTotalDots() const { return totalDots_; }
+	float getScale() const { return scale_; }
+
+	void setScale(float scale) { scale_ = scale; }
+	void setOffset(sf::Vector2f offset) { offset_ = offset; }
 
 private:
 	// Textures - stored first
@@ -54,6 +58,8 @@ private:
 	int tileSize_ = 16;
 	int totalDots_ = 0;
 	sf::Vector2f playerSpawnPos_;
+	float scale_ = 1.0f;
+	sf::Vector2f offset_ = sf::Vector2f(0, 0);
 
 	bool loadTextures();
 	TileType charToTileType(char c) const;
