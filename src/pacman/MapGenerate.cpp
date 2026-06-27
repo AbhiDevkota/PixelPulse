@@ -86,3 +86,42 @@ void MapGenerator::paintOuterBorder(){
 	hLine(1, 30, 26, '@');
 	set(27, 30, '^');
 }
+
+void MapGenerator::pasteGhostHouse() {
+	static const char* const GHOST_ROWS[11] = {
+	"*45223 44 12264*",  // row  9
+	"*41226 56 52234*",  // row 10
+	"*44          44*",  // row 11
+	"*44 !@@--@@# 44*",  // row 12
+	"*56 $b    p$ 56*",  // row 13
+	"*   $      $   *",  // row 14
+	"*13 $i    c$ 13*",  // row 15
+	"*44 %@@@@@@^ 44*",  // row 16
+	"*44          44*",  // row 17
+	"*44 12222223 44*",  // row 18
+	"*56 52231226 56*",  // row 19
+	};
+
+	for (int i = 0; i < 11; ++i) {
+		int row = 9 + i;
+		const char* seg = GHOST_ROWS[i];
+		for (int j = 0; j < 16; ++j) {
+			set(6 + j, row, seg[j]);
+		}
+	}
+	set(1, 14, 'f');
+	set(26, 14, 'f');
+}
+
+void MapGenerator::set(int col, int row, char c) {
+	if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+	grid_[row][col] = c;
+}
+
+void MapGenerator::hLine(int col, int row, int len, char c) {
+	for (int i = 0; i < len; ++i) set(col + i, row, c);
+}
+
+void MapGenerator::vLine(int col, int row, int len, char c) {
+	for (int i = 0; i < len; ++i) set(col, row + i, c);
+}
