@@ -16,9 +16,9 @@ bool Pacman::initialize() {
 }
 
 bool Pacman::loadAssets() {
-	// Load map
-	if (!map_.load("assets/pacman/maps/single-player.map")) {
-		std::cerr << "Failed to load map" << std::endl;
+	// Generate the map procedurally (seed 0 = use current time for randomness)
+	if (!map_.loadGenerated(0)) {
+		std::cerr << "Failed to generate map" << std::endl;
 		return false;
 	}
 
