@@ -190,44 +190,57 @@ void Pacman::updateAnimation(float dt) {
 void Pacman::movePlayer(float dt) {
 	float ts = static_cast<float>(map_.getTileSize());
 
-	// Snap the perpendicular axis so Pacman stays centred in its lane.
-	// This prevents diagonal drift that makes corner-checks fail.
-	if (currentDir_ == Direction::LEFT || currentDir_ == Direction::RIGHT) {
-		// Snap to nearest row centre
-		float rowCentre = std::round(playerPos_.y / ts) * ts + ts * 0.5f;
-		playerPos_.y += (rowCentre - playerPos_.y) * std::min(1.0f, dt * 20.0f);
-	}
-	else if (currentDir_ == Direction::UP || currentDir_ == Direction::DOWN) {
-		// Snap to nearest column centre
-		float colCentre = std::round(playerPos_.x / ts) * ts + ts * 0.5f;
-		playerPos_.x += (colCentre - playerPos_.x) * std::min(1.0f, dt * 20.0f);
-	}
+	// Nearest tile centre to Pacman's current position
+	float cx = std::floor(playerPos_.x / ts) * ts + ts * 0.5f;
+	float cy = std::floor(playerPos_.y / ts) * ts + ts * 0.5f;
 
-	// Try to turn into the requested direction when Pacman is close enough to a tile centre
+	// Turn window: one frame of movement + small grace so we never skip past it
+	float turnWindow = playerSpeed_ * dt + 2.0f;
+
+	bool nearColCentre = std::abs(playerPos_.x - cx) <= turnWindow;
+	bool nearRowCentre = std::abs(playerPos_.y - cy) <= turnWindow;
+
+	// --- Try to apply queued turn ---
 	if (nextDir_ != Direction::NONE && nextDir_ != currentDir_) {
-		float cx = std::round(playerPos_.x / ts) * ts + ts * 0.5f;
-		float cy = std::round(playerPos_.y / ts) * ts + ts * 0.5f;
-		float distToCenter = std::max(std::abs(playerPos_.x - cx), std::abs(playerPos_.y - cy));
-		// Only allow turning within 4px of tile centre so we don't clip corners
-		if (distToCenter < 4.0f && canMove(playerPos_, nextDir_)) {
+		bool changingToHoriz = (nextDir_ == Direction::LEFT || nextDir_ == Direction::RIGHT);
+		bool changingToVert = (nextDir_ == Direction::UP || nextDir_ == Direction::DOWN);
+
+		// Perpendicular axis must be near a tile centre, except for 180-degree reversal
+		bool reversing = (currentDir_ == Direction::UP && nextDir_ == Direction::DOWN)
+			|| (currentDir_ == Direction::DOWN && nextDir_ == Direction::UP)
+			|| (currentDir_ == Direction::LEFT && nextDir_ == Direction::RIGHT)
+			|| (currentDir_ == Direction::RIGHT && nextDir_ == Direction::LEFT)
+			|| (currentDir_ == Direction::NONE);
+
+		bool perpAligned = reversing
+			|| (changingToHoriz && nearRowCentre)
+			|| (changingToVert && nearColCentre);
+
+		if (perpAligned && canMove(playerPos_, nextDir_)) {
+			// Snap onto the perpendicular centre for a clean lane entry
+			if (changingToHoriz) playerPos_.y = cy;
+			if (changingToVert)  playerPos_.x = cx;
 			currentDir_ = nextDir_;
+			nextDir_ = Direction::NONE;
 		}
 	}
 
-	// Move in current direction
-	if (currentDir_ != Direction::NONE && canMove(playerPos_, currentDir_)) {
-		float movement = playerSpeed_ * dt;
-
-		switch (currentDir_) {
-		case Direction::UP:    playerPos_.y -= movement; break;
-		case Direction::DOWN:  playerPos_.y += movement; break;
-		case Direction::LEFT:  playerPos_.x -= movement; break;
-		case Direction::RIGHT: playerPos_.x += movement; break;
-		default: break;
+	// --- Move in current direction ---
+	if (currentDir_ != Direction::NONE) {
+		if (canMove(playerPos_, currentDir_)) {
+			float movement = playerSpeed_ * dt;
+			switch (currentDir_) {
+			case Direction::UP:    playerPos_.y -= movement; break;
+			case Direction::DOWN:  playerPos_.y += movement; break;
+			case Direction::LEFT:  playerPos_.x -= movement; break;
+			case Direction::RIGHT: playerPos_.x += movement; break;
+			default: break;
+			}
 		}
+		// Wall ahead: Pacman stops; nextDir_ will be retried next frame
 	}
 
-	// Update sprite in screen coordinates
+	// --- Update sprite ---
 	if (playerSprite_) {
 		playerSprite_->setPosition(sf::Vector2f(
 			playerPos_.x * gameScale_ + gameAreaOffset_.x,
@@ -239,40 +252,23 @@ void Pacman::movePlayer(float dt) {
 bool Pacman::canMove(sf::Vector2f pos, Direction dir) {
 	float ts = static_cast<float>(map_.getTileSize());
 
-	// Half the tile size is used as Pacman's collision radius.
-	// We probe the two corners of the leading edge so Pacman can't clip
-	// through a wall even when its centre sits between two tile columns/rows.
-	const float radius = ts * 0.45f; // slightly less than half to give a tiny grace margin
-	const float step = 1.5f;       // how far ahead (px) to probe the leading edge
+	// Step just past the leading edge (centre + half-tile + 1px) to catch
+	// the boundary before Pacman visually overlaps the wall.
+	float half = ts * 0.5f + 1.0f;
 
-	// Leading-edge centre in map-pixel space
-	sf::Vector2f probe = pos;
+	float checkX = pos.x;
+	float checkY = pos.y;
 	switch (dir) {
-	case Direction::UP:    probe.y = pos.y - radius - step; break;
-	case Direction::DOWN:  probe.y = pos.y + radius + step; break;
-	case Direction::LEFT:  probe.x = pos.x - radius - step; break;
-	case Direction::RIGHT: probe.x = pos.x + radius + step; break;
+	case Direction::UP:    checkY = pos.y - half; break;
+	case Direction::DOWN:  checkY = pos.y + half; break;
+	case Direction::LEFT:  checkX = pos.x - half; break;
+	case Direction::RIGHT: checkX = pos.x + half; break;
 	default: return false;
 	}
 
-	// For horizontal movement also check the top and bottom corners;
-	// for vertical movement check left and right corners.
-	auto blocked = [&](float px, float py) {
-		int tx = static_cast<int>(px / ts);
-		int ty = static_cast<int>(py / ts);
-		return map_.getTileAt(tx, ty) == TileType::WALL;
-		};
-
-	if (dir == Direction::LEFT || dir == Direction::RIGHT) {
-		// Check top-corner and bottom-corner of the leading edge
-		return !blocked(probe.x, pos.y - radius + 1.0f)
-			&& !blocked(probe.x, pos.y + radius - 1.0f);
-	}
-	else {
-		// Check left-corner and right-corner of the leading edge
-		return !blocked(pos.x - radius + 1.0f, probe.y)
-			&& !blocked(pos.x + radius - 1.0f, probe.y);
-	}
+	int tx = static_cast<int>(checkX / ts);
+	int ty = static_cast<int>(checkY / ts);
+	return map_.getTileAt(tx, ty) != TileType::WALL;
 }
 
 void Pacman::checkDotCollision() {
