@@ -10,9 +10,20 @@
 #include <string>
 
 class Player {
-	sf::RectangleShape rectangle;
+	sf::Texture dinoTexture{ "assets/dinosaurs/move.png" };
+	sf::Sprite dinoSprite{ dinoTexture };
 	sf::SoundBuffer jumpSoundBuffer{ "assets/dinosaurs/jump.mp3" };
 	sf::Sound jumpSound{ jumpSoundBuffer };
+
+	// Animation variables
+	int frameWidth = 24;
+	int frameHeight = 24;
+	int totalFrames = 6;
+	int currentFrame = 0;
+
+	// Animation timing
+	sf::Clock animationClock;
+	float frameDuration = 0.1f;
 
 public:
 	float w = 50.f;
@@ -22,9 +33,15 @@ public:
 	float y;
 
 	float velocity_y = 0.f;
-	float gravity = 2000.f;
-	float jump_force = -800.f;
+	float GRAVITY = 2000.f;
+	float JUMP_FORCE = -800.f;
 	bool is_grounded = false;
+
+	Player() {
+		dinoSprite.setTextureRect(sf::IntRect({ 0, 0 }, { frameWidth, frameHeight }));
+		dinoSprite.setScale({ w / frameWidth, h / frameHeight });
+		dinoSprite.setOrigin({ 0.f, frameHeight / 2.f });
+	}
 
 	sf::FloatRect getBounds() const {
 		return sf::FloatRect({ x, y - (h / 2.f) }, { w, h });
@@ -33,7 +50,7 @@ public:
 	//update position
 	void Update(float dt, float ground_y) {
 
-		velocity_y += gravity * dt;
+		velocity_y += GRAVITY * dt;
 
 		y += velocity_y * dt;
 
@@ -49,16 +66,35 @@ public:
 		if (is_grounded && (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Space) ||
 			sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Up))) {
 			jumpSound.play();
-			velocity_y = jump_force;
+			velocity_y = JUMP_FORCE;
 			is_grounded = false;
 		}
+		// 2. Animation Logic
+		if (is_grounded) {
+			if (animationClock.getElapsedTime().asSeconds() > frameDuration) {
+				currentFrame++;
+				if (currentFrame >= totalFrames) {
+					currentFrame = 0;
+				}
+
+				int xOffset = currentFrame * frameWidth;
+				// Grouped as {position}, {size} for SFML 3
+				dinoSprite.setTextureRect(sf::IntRect({ xOffset, 0 }, { frameWidth, frameHeight }));
+
+				animationClock.restart();
+			}
+		}
+		else {
+			// Freeze on frame 0 when jumping
+			dinoSprite.setTextureRect(sf::IntRect({ 0, 0 }, { frameWidth, frameHeight }));
+		}
+
+		// 3. Update sprite position (Vector requirement)
+		dinoSprite.setPosition({ x, y });
 	}
 
 	void Draw(sf::RenderWindow& window) {
-		rectangle.setSize({ w,h });
-		rectangle.setOrigin({ 0.f, h / 2.f });
-		rectangle.setPosition({ x,y });
-		window.draw(rectangle);
+		window.draw(dinoSprite);
 	}
 };
 
@@ -71,6 +107,8 @@ class Obstacles {
 		//position
 		float x;
 		float y;
+
+		sf::IntRect textureRect;
 	};
 
 	//max obstacles
@@ -83,25 +121,40 @@ class Obstacles {
 	int current = 0;
 
 	//size
-	float w = 50.f;
+	float w = 100.f;
 	float h = 100.f;
 
 	//speed
-	float speed = 600.f;
+	float SPEED = 600.f;
 
 	//countdown timer
 	float duration_start = 2.f;
 	float duration = duration_start;
 	float timer = duration;
 
-	//shape 
-	sf::RectangleShape rectangle;
+	sf::Texture cactusTexture{ "assets/dinosaurs/cactus.png" };
+	sf::Sprite cactusSprite{ cactusTexture };
+
+	const int frameWidth = 64;
+	const int frameHeight = 64;
 
 public:
+	Obstacles() {
+		cactusSprite.setOrigin({ 0.f, static_cast<float>(frameHeight) });
 
+		cactusSprite.setScale({ w / frameWidth, h / frameHeight });
+	}
 	//spawn function
 	void Spawn(float x, float y) {
-		array[current] = { true,x,y };
+
+		int randomColumn = rand() % 9;
+
+		int rowOffset = 1 * frameHeight;
+		int colOffset = randomColumn * frameWidth;
+
+		sf::IntRect randomCactusRect({ colOffset, rowOffset }, { frameWidth, frameHeight });
+
+		array[current] = { true,x,y, randomCactusRect };
 
 		current = (current + 1) % n;
 	}
@@ -130,7 +183,7 @@ public:
 				continue;
 
 			//move
-			array[i].x -= speed * dt;
+			array[i].x -= SPEED * dt;
 
 			//inactive when out of window
 			if (array[i].x + w < 0.f)
@@ -147,11 +200,11 @@ public:
 			if (not array[i].active)
 				continue;
 
-			rectangle.setSize({ w,h });
-			rectangle.setOrigin({ 0.f,h });
-			rectangle.setPosition({ array[i].x,array[i].y });
-			rectangle.setFillColor({ 0,100,200 });
-			window.draw(rectangle);
+			cactusSprite.setTextureRect(array[i].textureRect);
+
+			cactusSprite.setPosition({ array[i].x, array[i].y });
+
+			window.draw(cactusSprite);
 		}
 	}
 
