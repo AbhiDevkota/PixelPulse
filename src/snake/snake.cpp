@@ -4,6 +4,7 @@
 #include <ctime>
 #include "snake/Snake.h"
 #include "Files.h"
+
 Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
 	: cols(cols), rows(rows) {
 	reset(startPos, startDir);
@@ -89,6 +90,13 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 	const int OFFSETY = (size.y - PLAY_HEIGHT) / 2;
 
 	int score = 0;
+
+	sf::Music bgMusicSnake;
+	if (bgMusicSnake.openFromFile("audios/snake/background_snake.wav")) {
+		bgMusicSnake.setLooping(true);
+		bgMusicSnake.setVolume(30.f);
+		bgMusicSnake.play();
+	}
 
 	sf::Texture offsetTexture;
 	offsetTexture.loadFromFile("./assets/snake/offset.png");
