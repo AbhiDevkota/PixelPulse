@@ -4,7 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
-
+void RunDino(sf::RenderWindow& window);
 void runRocketShooter(sf::RenderWindow& window);
 void runFlappyBird(sf::RenderWindow& window);
 void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager); //Conflict resolved by Abhi Devkota
@@ -64,7 +64,6 @@ int main() {
 
         float dt = clock.restart().asSeconds();
         home.update(dt);
-        // Added by aashutosh to select game and run it
         if (home.isGameReady()) {
             std::string game = home.getSelectedGame();
             home.resetGame();
@@ -86,6 +85,7 @@ int main() {
                 home.resumeMusic();
                 continue;
             }
+
             if (game == "PAC MAN") {
                 home.pauseMusic();
                 runPacMan(window);
@@ -94,7 +94,15 @@ int main() {
             }
 
             home.resetGame();
-        }
+
+            if (game == "DINO RUN") {
+                home.pauseMusic();
+                RunDino(window);
+                home.resumeMusic();
+                continue;
+            }
+
+        
         //Up to here
 
         window.clear();
