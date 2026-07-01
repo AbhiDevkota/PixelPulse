@@ -6,7 +6,7 @@
 
 
 void runRocketShooter(sf::RenderWindow& window);
-void runFlappyBird(sf::RenderWindow& window);
+void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager);
 void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager); //Conflict resolved by Abhi Devkota
 int main() {
     corezone::FileManager fileManager;
@@ -77,7 +77,7 @@ int main() {
 
             if (game == "FLAPPY BIRD") {          //Merge Resolved by Abhi Devkota. 
                 home.pauseMusic();
-                runFlappyBird(window);
+                runFlappyBird(window, fileManager);
                 home.resumeMusic();
             }
             if (game == "SNAKE") {

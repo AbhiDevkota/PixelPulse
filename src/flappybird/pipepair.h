@@ -22,11 +22,13 @@ public:
     float gapSize = 0.f;
 
     bool loaded = false;
+    bool scored = false;
 
     PipePair(sf::RenderWindow& window, float cellW, float cellH);
 
     void update(float dt, sf::RenderWindow& window, float cellW, float cellH);
     void reset(sf::RenderWindow& window, float cellW, float cellH);
+    int getScorePoint(float birdX);
     void draw(sf::RenderWindow& window);
 
     bool collides(const sf::FloatRect& birdBounds) const;

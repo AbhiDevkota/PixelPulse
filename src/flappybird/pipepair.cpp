@@ -43,13 +43,11 @@ PipePair::PipePair(sf::RenderWindow& window, float cellW, float cellH)
 }
 
 void PipePair::update(float dt, sf::RenderWindow& window, float cellW, float cellH) {
-    // move pipes left every frame
     pipeX -= cellW * 3.f * dt;
 
     pipeDown.setPosition({ pipeX, 0.f });
     pipeUp.setPosition({ pipeX, (float)window.getSize().y });
 
-    // pipe went off screen - bring back from right with new random gap
     if (pipeX + pipeUp.getGlobalBounds().size.x < 0.f) {
         pipeX = cellW * 12.f;
 
@@ -57,18 +55,18 @@ void PipePair::update(float dt, sf::RenderWindow& window, float cellW, float cel
         float maxGapY = cellH * 12.f;
         gapY = minGapY + (float)(std::rand() % (int)(maxGapY - minGapY));
 
+        scored = false;  // <-- add this: new pipe cycle, allow scoring again
         applyPipeSize(window);
     }
 }
 
 void PipePair::reset(sf::RenderWindow& window, float cellW, float cellH) {
-    // pick new pipe design on game over
     pickRandomPipe(window);
 
-    // put pipe back to starting position
     pipeX = cellW * 12.f;
     gapY = cellH * 8.f;
     gapSize = cellH * 4.f;
+    scored = false;  // <-- add this: game reset, allow scoring again
 
     applyPipeSize(window);
 }
@@ -108,6 +106,14 @@ bool PipePair::collides(const sf::FloatRect& birdBounds) const {
     // true if bird touches either pipe
     return birdBounds.findIntersection(pipeUp.getGlobalBounds()) ||
         birdBounds.findIntersection(pipeDown.getGlobalBounds());
+}
+
+int PipePair::getScorePoint(float birdX) {
+    if (!scored && birdX > pipeX + pipeUp.getGlobalBounds().size.x) {
+        scored = true;
+        return 1;
+    }
+    return 0;
 }
 
 void PipePair::draw(sf::RenderWindow& window) {
