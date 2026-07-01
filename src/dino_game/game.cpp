@@ -20,7 +20,7 @@ void RunDino(sf::RenderWindow& window) {
 		Obstacles obstacles;
 
 		//font and text
-		sf::Font font("C:/Windows/Fonts/arial.ttf");
+		sf::Font font("fonts/regular.ttf");
 		sf::Text text(font, "Game Over", 60);
 		auto bounds = text.getLocalBounds();
 		text.setOrigin({ bounds.position.x + 0.5f * bounds.size.x, 0.6f * text.getCharacterSize() });
