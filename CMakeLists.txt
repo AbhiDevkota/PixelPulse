@@ -29,7 +29,11 @@ add_executable(CoreZone
     ${SRC_FILES}
     ${HEADER_FILES}
     CoreZone.rc
-     "src/flappybird/flappybird.h" "src/flappybird/bird.cpp" "src/flappybird/background.h" "src/flappybird/background.cpp" "src/flappybird/gameaudio.h" "src/flappybird/gameaudio.cpp" "src/flappybird/pipepair.h" "src/flappybird/pipepair.cpp")
+    "src/flappybird/flappybird.h" "src/flappybird/bird.cpp" "src/flappybird/background.h" "src/flappybird/background.cpp" "src/flappybird/gameaudio.h" "src/flappybird/gameaudio.cpp" "src/flappybird/pipepair.h" "src/flappybird/pipepair.cpp")
+    "src/dino_game/game.cpp"
+    "include/Files.h" "src/Files.cpp"
+    "include/pacman/Pacman.h" "src/pacman/Pacman.cpp"
+    "include/pacman/Map.h" "src/pacman/Map.cpp" "include/dino/dino.h")
 
 if (MSVC)
     target_compile_options(CoreZone PRIVATE /W4)   # removed /WX so warnings don't kill build
