@@ -66,6 +66,7 @@ public:
 		if (is_grounded && (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Space) ||
 			sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Up))) {
 			jumpSound.play();
+			jumpSound.setVolume( 30.f );
 			velocity_y = JUMP_FORCE;
 			is_grounded = false;
 		}
