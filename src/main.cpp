@@ -85,6 +85,12 @@ int main() {
                 home.resumeMusic();
                 continue;
             }
+            if (game == "PAC MAN") {
+                home.pauseMusic();
+                runPacMan(window);
+                home.resumeMusic();
+                continue;
+            }
             if (game == "DINO RUN") {
                 home.pauseMusic();
                 RunDino(window);
