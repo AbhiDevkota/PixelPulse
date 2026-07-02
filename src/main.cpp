@@ -93,7 +93,7 @@ int main() {
                 continue;
             }
 
-            home.resetGame();
+
 
             if (game == "DINO RUN") {
                 home.pauseMusic();
@@ -101,7 +101,8 @@ int main() {
                 home.resumeMusic();
                 continue;
             }
-
+             
+            home.resetGame();
 
             //Up to here
 
