@@ -1,4 +1,4 @@
-#include <dino.h>
+#include "dino/dino.h"
 
 
 void RunDino(sf::RenderWindow& window) {
