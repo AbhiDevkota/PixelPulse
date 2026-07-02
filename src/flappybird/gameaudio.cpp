@@ -1,4 +1,4 @@
-#include "gameaudio.h"
+#include "flappy/gameaudio.h"
 
 GameAudio::GameAudio()
     : jumpSound(jumpSoundBuffer)

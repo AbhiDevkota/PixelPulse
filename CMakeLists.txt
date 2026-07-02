@@ -29,7 +29,7 @@ add_executable(CoreZone
     ${SRC_FILES}
     ${HEADER_FILES}
     CoreZone.rc
-     "src/flappybird/flappybird.h" "src/flappybird/bird.cpp" "src/flappybird/background.h" "src/flappybird/background.cpp" "src/flappybird/gameaudio.h" "src/flappybird/gameaudio.cpp" "src/flappybird/pipepair.h" "src/flappybird/pipepair.cpp")
+     "include/flappy/flappybird.h" "src/flappybird/bird.cpp" "include/flappy/background.h" "src/flappybird/background.cpp" "include/flappy/gameaudio.h" "src/flappybird/gameaudio.cpp" "include/flappy/pipepair.h" "src/flappybird/pipepair.cpp")
 
 if (MSVC)
     target_compile_options(CoreZone PRIVATE /W4)   # removed /WX so warnings don't kill build

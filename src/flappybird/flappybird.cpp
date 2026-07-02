@@ -1,8 +1,8 @@
-#include "flappybird.h"
-#include "background.h"
-#include "bird.h"
-#include "pipepair.h"
-#include "gameaudio.h"
+#include "flappy/flappybird.h"
+#include "flappy/background.h"
+#include "flappy/bird.h"
+#include "flappy/pipepair.h"
+#include "flappy/gameaudio.h"
 #include "Files.h"
 #include <cstdlib>
 #include <ctime>
