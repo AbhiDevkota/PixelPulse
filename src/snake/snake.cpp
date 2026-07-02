@@ -2,8 +2,9 @@
 #include<SFML/audio.hpp>
 #include <cstdlib>
 #include <ctime>
-#include "Snake.h"
+#include "snake/Snake.h"
 #include "Files.h"
+
 Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
 	: cols(cols), rows(rows) {
 	reset(startPos, startDir);
@@ -72,6 +73,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 
 	corezone::GameDataManager gameData(filemanager, "SNAKE");
 
+	int lives = 3;
 	int highScore = 0;
 	gameData.getHighScore(highScore);
 
@@ -88,6 +90,13 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 	const int OFFSETY = (size.y - PLAY_HEIGHT) / 2;
 
 	int score = 0;
+
+	sf::Music bgMusicSnake;
+	if (bgMusicSnake.openFromFile("audios/snake/background_snake.wav")) {
+		bgMusicSnake.setLooping(true);
+		bgMusicSnake.setVolume(30.f);
+		bgMusicSnake.play();
+	}
 
 	sf::Texture offsetTexture;
 	offsetTexture.loadFromFile("./assets/snake/offset.png");
@@ -169,13 +178,17 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 		});
 	rect.setFillColor(sf::Color::White);
 
-	sf::Texture appleTexture;
-	appleTexture.loadFromFile("assets/snake/apple.png");
-	sf::Sprite appleSprite(appleTexture);
+	std::vector<sf::Texture> foodTextures(4);
+	foodTextures[0].loadFromFile("assets/snake/brain.png");
+	foodTextures[1].loadFromFile("assets/snake/heart.png");
+	foodTextures[2].loadFromFile("assets/snake/lungs.png");
+	foodTextures[3].loadFromFile("assets/snake/stomach.png");
+	int currentFood = std::rand() % 4;
+	sf::Sprite foodSprite(foodTextures[currentFood]);
 
 	sf::SoundBuffer eatSoundBuffer;
 	sf::Sound eatSound(eatSoundBuffer);
-	if (eatSoundBuffer.loadFromFile("assets/snake/food_crunch.mp3")) {
+	if (eatSoundBuffer.loadFromFile("audios/snake/food_crunch.mp3")) {
 		eatSound.setVolume(100.f);
 	}
 
@@ -207,6 +220,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 					return;
 				if (key == sf::Keyboard::Key::R && gameOver) {
 					snake.reset({ 5, 5 }, { 1, 0 });
+					lives = 3;
 					score = 0;
 					gameOver = false;
 					snake.respawnFood();
@@ -230,14 +244,23 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 			snake.move();
 			clock.restart();
 
-			if (snake.checkSelfCollision())
-				gameOver = true;
-
-			if (snake.checkWallCollision())
-				gameOver = true;
+			if (snake.checkSelfCollision() || snake.checkWallCollision()) {
+				lives--;
+				if (lives <= 0) {
+					gameOver = true;
+				}
+				else {
+					snake.reset({ 5,5 }, { 1,0});
+					clock.restart();
+				}
+			}
+				
+			
 
 			if (snake.checkFoodCollision()) {
 				snake.respawnFood();
+				currentFood = std::rand() % 4;
+				foodSprite.setTexture(foodTextures[currentFood]);
 				eatSound.play();
 				snake.grow();
 				score++;
@@ -249,7 +272,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 			}
 		}
 
-		appleSprite.setPosition({
+		foodSprite.setPosition({
 			static_cast<float>(OFFSETX + snake.getFoodPosition().x * CELL_SIZE),
 			static_cast<float>(OFFSETY + snake.getFoodPosition().y * CELL_SIZE)
 			});
@@ -276,13 +299,13 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 		}
 
 		scoreText.setCharacterSize(24);
-		scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScore));
+		scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScore) + "  Lives:  " + std::to_string(lives));
 		scoreText.setPosition({ 
 			static_cast<float>(OFFSETX),
 			static_cast<float>(OFFSETY - 2 * CELL_SIZE) 
 		});
 		window.draw(scoreText);
-		window.draw(appleSprite);
+		window.draw(foodSprite);
 
 		for (auto& segment : snake.getBody()) {
 			rect.setPosition({
