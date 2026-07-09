@@ -4,7 +4,7 @@ Bird::Bird(sf::RenderWindow& window, float cellW, float cellH)
     : sprite(texture)
 {
     // Load bird image
-    loaded = texture.loadFromFile("assets/Flappy/Popat.png");
+    loaded = texture.loadFromFile("assets/Flappy/Jetman.png");
     if (!loaded) return;
 
     // Set texture again after loading
