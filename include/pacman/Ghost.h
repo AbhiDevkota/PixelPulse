@@ -49,6 +49,7 @@ public:
     void update(float dt, const sf::Vector2f& pacmanPos, Direction pacmanDir, 
                 const Ghost* blinkyRef, GhostMode globalMode, float frightenedTimer);
     void render(sf::RenderWindow& window, float gameScale, sf::Vector2f gameOffset);
+    void reset();
     void reset(const sf::Vector2f& spawnPos);
     void setFrightened(float duration);
     void setEaten();
@@ -120,7 +121,7 @@ private:
     int frightenedEatenCount_ = 0;
     
     // Animation
-    sf::Sprite sprite_;
+    std::optional<sf::Sprite> sprite_;
     std::array<sf::Texture, 4> normalTextures_;    // [UP, DOWN, LEFT, RIGHT]
     std::array<sf::Texture, 2> frightenedTextures_; // [frame0, frame1]
     std::array<sf::Texture, 4> eyesTextures_;      // [UP, DOWN, LEFT, RIGHT]

@@ -36,7 +36,7 @@ bool Pacman::loadAssets() {
 	}
 
 	// Load ghost textures
-	std::array<sf::Texture, 4> ghostTextures[4]; // [ghost][direction]
+	std::array<std::array<sf::Texture, 4>, 4> ghostTextures; // [ghost][direction]
 	std::array<sf::Texture, 2> frightenedTextures;
 	std::array<sf::Texture, 4> eyesTextures;
 	
@@ -158,9 +158,11 @@ bool Pacman::loadAssets() {
 	initializeGhosts();
 	
 	// Store ghost textures for later use
-	ghostTextures_ = std::move(ghostTextures);
-	frightenedTextures_ = std::move(frightenedTextures);
-	eyesTextures_ = std::move(eyesTextures);
+	for (int g = 0; g < 4; g++) {
+		ghostTextures_[g] = ghostTextures[g];
+	}
+	frightenedTextures_ = frightenedTextures;
+	eyesTextures_ = eyesTextures;
 
 	return true;
 }
@@ -441,7 +443,7 @@ void Pacman::checkGhostCollision() {
 					// Reset ghosts
 					for (auto& g : ghosts_) {
 						if (g) {
-							g->reset(g->houseSpawnPos_);
+							g->reset();
 							g->releaseFromHouse();
 						}
 					}
@@ -495,7 +497,7 @@ void Pacman::render() {
 		winText.setString("YOU WIN!");
 		winText.setCharacterSize(48);
 		winText.setFillColor(sf::Color::Yellow);
-		winText.setPosition(sf::Vector2f(window_.getSize().x / 2 - 100, window_.getSize().y / 2));
+		winText.setPosition(sf::Vector2f(static_cast<float>(window_.getSize().x) / 2.0f - 100.0f, static_cast<float>(window_.getSize().y) / 2.0f));
 		window_.draw(winText);
 	}
 

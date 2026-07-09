@@ -75,6 +75,14 @@ private:
 	sf::SoundBuffer chompBuffer_;
 	std::optional<sf::Sound> chompSound_;
 	bool soundLoaded_ = false;
+	sf::SoundBuffer powerPelletBuffer_;
+	sf::SoundBuffer ghostEatenBuffer_;
+	sf::SoundBuffer gameOverBuffer_;
+	
+	// Ghost textures
+	std::array<std::array<sf::Texture, 4>, 4> ghostTextures_;  // [ghost][direction]
+	std::array<sf::Texture, 2> frightenedTextures_;
+	std::array<sf::Texture, 4> eyesTextures_;
 
 	// Assets
 	bool loadAssets();

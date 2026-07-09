@@ -49,9 +49,13 @@ void Ghost::loadTextures(const std::array<sf::Texture, 4>& normal,
     eyesTextures_ = eyes;
     
     if (normalTextures_[0].getSize().x > 0) {
-        sprite_.setTexture(normalTextures_[0]);
-        sprite_.setScale(sf::Vector2f(tileSize_, tileSize_));
+        sprite_.emplace(normalTextures_[0]);
+        sprite_->setScale(sf::Vector2f(tileSize_, tileSize_));
     }
+}
+
+void Ghost::reset() {
+    reset(houseSpawnPos_);
 }
 
 void Ghost::reset(const sf::Vector2f& spawnPos) {
@@ -70,8 +74,8 @@ void Ghost::reset(const sf::Vector2f& spawnPos) {
     useEyesTexture_ = false;
     animFrame_ = 0;
     
-    if (normalTextures_[0].getSize().x > 0) {
-        sprite_.setTexture(normalTextures_[0]);
+    if (normalTextures_[0].getSize().x > 0 && sprite_) {
+        sprite_->setTexture(normalTextures_[0]);
     }
 }
 
@@ -140,10 +144,10 @@ void Ghost::updateState(float dt, const sf::Vector2f& pacmanPos, Direction pacma
     // Handle eaten ghost returning to house
     if (mode_ == GhostMode::EATEN) {
         // Check if reached ghost house
-        float distToHouse = std::sqrt(
+        float distToHouse = static_cast<float>(std::sqrt(
             std::pow(position_.x - houseSpawnPos_.x, 2) +
             std::pow(position_.y - houseSpawnPos_.y, 2)
-        );
+        ));
         
         if (distToHouse < tileSize_ * 0.5f) {
             // Respawn
@@ -205,11 +209,11 @@ void Ghost::updateMovement(float dt) {
     
     // Snap to tile center when close
     float ts = tileSize_;
-    float centerX = std::floor(position_.x / ts) * ts + ts * 0.5f;
-    float centerY = std::floor(position_.y / ts) * ts + ts * 0.5f;
-    float distToCenter = std::sqrt(
+    float centerX = static_cast<float>(std::floor(position_.x / ts)) * ts + ts * 0.5f;
+    float centerY = static_cast<float>(std::floor(position_.y / ts)) * ts + ts * 0.5f;
+    float distToCenter = static_cast<float>(std::sqrt(
         std::pow(position_.x - centerX, 2) + std::pow(position_.y - centerY, 2)
-    );
+    ));
     
     if (distToCenter < currentSpeed_ * dt && currentDir_ != Direction::NONE) {
         // At tile center, can change direction
@@ -252,6 +256,8 @@ void Ghost::updateAnimation(float dt) {
 }
 
 void Ghost::updateSprite() {
+    if (!sprite_) return;
+    
     int dirIndex = 0;
     switch (currentDir_) {
         case Direction::UP:    dirIndex = 0; break;
@@ -263,7 +269,7 @@ void Ghost::updateSprite() {
     
     if (useEyesTexture_) {
         if (eyesTextures_[dirIndex].getSize().x > 0) {
-            sprite_.setTexture(eyesTextures_[dirIndex]);
+            sprite_->setTexture(eyesTextures_[dirIndex]);
         }
     } else if (useFrightenedTexture_) {
         // Flash near end of frightened time
@@ -271,15 +277,15 @@ void Ghost::updateSprite() {
             // Could add white flash texture here
         }
         if (frightenedTextures_[animFrame_].getSize().x > 0) {
-            sprite_.setTexture(frightenedTextures_[animFrame_]);
+            sprite_->setTexture(frightenedTextures_[animFrame_]);
         }
     } else {
         if (normalTextures_[dirIndex].getSize().x > 0) {
-            sprite_.setTexture(normalTextures_[dirIndex]);
+            sprite_->setTexture(normalTextures_[dirIndex]);
         }
     }
     
-    sprite_.setPosition(position_ - sf::Vector2f(tileSize_ * 0.5f, tileSize_ * 0.5f));
+    sprite_->setPosition(position_ - sf::Vector2f(tileSize_ * 0.5f, tileSize_ * 0.5f));
 }
 
 void Ghost::calculateTarget(const sf::Vector2f& pacmanPos, Direction pacmanDir, const Ghost* blinkyRef) {
@@ -327,10 +333,10 @@ void Ghost::calculateTarget(const sf::Vector2f& pacmanPos, Direction pacmanDir, 
             
         case GhostType::CLYDE:
             // Flees when close (< 8 tiles), chases when far
-            float dist = std::sqrt(
+            float dist = static_cast<float>(std::sqrt(
                 std::pow(pacmanTileX - static_cast<int>(position_.x / tileSize_), 2) +
                 std::pow(pacmanTileY - static_cast<int>(position_.y / tileSize_), 2)
-            );
+            ));
             
             if (dist < 8.0f) {
                 // Flee to scatter corner
@@ -387,14 +393,16 @@ GhostTarget Ghost::getChaseTarget(const sf::Vector2f& pacmanPos, Direction pacma
             break;
             
         case GhostType::CLYDE:
-            float dist = std::sqrt(
-                std::pow(pacmanTileX - static_cast<int>(position_.x / tileSize_), 2) +
-                std::pow(pacmanTileY - static_cast<int>(position_.y / tileSize_), 2)
-            );
-            if (dist < 8.0f) {
-                target = getScatterTarget();
-            } else {
-                target = {pacmanTileX, pacmanTileY};
+            {
+                float dist = static_cast<float>(std::sqrt(
+                    std::pow(pacmanTileX - static_cast<int>(position_.x / tileSize_), 2) +
+                    std::pow(pacmanTileY - static_cast<int>(position_.y / tileSize_), 2)
+                ));
+                if (dist < 8.0f) {
+                    target = getScatterTarget();
+                } else {
+                    target = {pacmanTileX, pacmanTileY};
+                }
             }
             break;
     }
@@ -428,10 +436,10 @@ Direction Ghost::chooseDirection() {
     
     for (Direction dir : available) {
         sf::Vector2f nextPos = getNextTileCenter(dir);
-        float dist = std::sqrt(
+        float dist = static_cast<float>(std::sqrt(
             std::pow(nextPos.x / tileSize_ - targetTile_.x, 2) +
             std::pow(nextPos.y / tileSize_ - targetTile_.y, 2)
-        );
+        ));
         
         // For frightened mode, maximize distance (run away)
         if (mode_ == GhostMode::FRIGHTENED) {
@@ -480,8 +488,8 @@ bool Ghost::canMove(Direction dir) const {
 
 sf::Vector2f Ghost::getNextTileCenter(Direction dir) const {
     float ts = tileSize_;
-    float centerX = std::floor(position_.x / ts) * ts + ts * 0.5f;
-    float centerY = std::floor(position_.y / ts) * ts + ts * 0.5f;
+    float centerX = static_cast<float>(std::floor(position_.x / ts)) * ts + ts * 0.5f;
+    float centerY = static_cast<float>(std::floor(position_.y / ts)) * ts + ts * 0.5f;
     
     sf::Vector2f delta = deltaFromDir(dir);
     return {centerX + delta.x * ts, centerY + delta.y * ts};
@@ -506,16 +514,18 @@ void Ghost::handleHouseExit(float dt) {
 
 void Ghost::snapToTileCenter() {
     float ts = tileSize_;
-    position_.x = std::floor(position_.x / ts) * ts + ts * 0.5f;
-    position_.y = std::floor(position_.y / ts) * ts + ts * 0.5f;
+    position_.x = static_cast<float>(std::floor(position_.x / ts)) * ts + ts * 0.5f;
+    position_.y = static_cast<float>(std::floor(position_.y / ts)) * ts + ts * 0.5f;
 }
 
 void Ghost::render(sf::RenderWindow& window, float gameScale, sf::Vector2f gameOffset) {
-    sf::Sprite sprite = sprite_;
+    if (!sprite_) return;
+    
+    sf::Sprite sprite = *sprite_;
     sprite.setScale(sf::Vector2f(gameScale, gameScale));
-    sprite.setPosition(
+    sprite.setPosition(sf::Vector2f(
         position_.x * gameScale + gameOffset.x - (tileSize_ * gameScale * 0.5f),
         position_.y * gameScale + gameOffset.y - (tileSize_ * gameScale * 0.5f)
-    );
+    ));
     window.draw(sprite);
 }
