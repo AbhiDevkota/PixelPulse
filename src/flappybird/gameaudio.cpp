@@ -15,18 +15,18 @@ bool GameAudio::load() {
     music.setLooping(true);
     music.play();
 
-    // Jump sound
+    // Jump sound — just load the buffer, don't play it yet
     if (!jumpSoundBuffer.loadFromFile("audios/Flappy/jumpsound.mp3")) {
         return false;
     }
 
     jumpSound.setVolume(50.f);
-    jumpSound.setLooping(true);
-    jumpSound.play();
+    jumpSound.setLooping(false); // a flap sound should play once, not loop
 
     return true;
 }
 
 void GameAudio::playJump() {
-    jumpSound.play();
+    jumpSound.stop();       // stop any tail end still playing
+    jumpSound.play();       // play from the start
 }
