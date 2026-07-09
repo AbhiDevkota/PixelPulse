@@ -36,40 +36,42 @@ bool Pacman::loadAssets() {
 	}
 
 	// Load ghost textures
-	std::array<std::array<sf::Texture, 4>, 4> ghostTextures; // [ghost][direction]
-	std::array<sf::Texture, 2> frightenedTextures;
-	std::array<sf::Texture, 4> eyesTextures;
+	std::array<std::array<std::array<sf::Texture, 2>, 4>, 4> ghostTextures; // [ghost][direction][frame]
+	std::array<std::array<sf::Texture, 2>, 4> frightenedTextures; // [direction][frame]
+	std::array<std::array<sf::Texture, 2>, 4> eyesTextures; // [direction][frame]
 	
 	std::string ghostNames[] = { "blinky", "pinky", "inky", "clyde" };
 	std::string directionsLower[] = { "up", "down", "left", "right" };
 	
+	// Load normal ghost textures for each ghost
 	for (int g = 0; g < 4; g++) {
 		for (int d = 0; d < 4; d++) {
-			std::string path = "assets/pacman/ghosts/" + ghostNames[g] + "_" + directionsLower[d] + ".png";
-			if (!ghostTextures[g][d].loadFromFile(path)) {
-				std::cerr << "Failed to load ghost texture: " << path << std::endl;
-				// Fallback: try to load generic ghost texture
-				path = "assets/pacman/ghosts/ghost_" + directionsLower[d] + ".png";
-				if (!ghostTextures[g][d].loadFromFile(path)) {
-					std::cerr << "Also failed to load fallback: " << path << std::endl;
+			for (int f = 0; f < 2; f++) {
+				std::string path = "assets/pacman/ghost/" + ghostNames[g] + "/" + directionsLower[d] + "_" + std::to_string(f + 1) + ".png";
+				if (!ghostTextures[g][d][f].loadFromFile(path)) {
+					std::cerr << "Failed to load ghost texture: " << path << std::endl;
 				}
 			}
 		}
 	}
 	
-	// Load frightened textures
-	for (int f = 0; f < 2; f++) {
-		std::string path = "assets/pacman/ghosts/frightened_" + std::to_string(f + 1) + ".png";
-		if (!frightenedTextures[f].loadFromFile(path)) {
-			std::cerr << "Failed to load frightened texture: " << path << std::endl;
+	// Load frightened textures (same for all ghosts)
+	for (int d = 0; d < 4; d++) {
+		for (int f = 0; f < 2; f++) {
+			std::string path = "assets/pacman/ghost/frightened/" + directionsLower[d] + "_" + std::to_string(f + 1) + ".png";
+			if (!frightenedTextures[d][f].loadFromFile(path)) {
+				std::cerr << "Failed to load frightened texture: " << path << std::endl;
+			}
 		}
 	}
 	
-	// Load eyes textures
+	// Load eyes textures (dead ghosts)
 	for (int d = 0; d < 4; d++) {
-		std::string path = "assets/pacman/ghosts/eyes_" + directionsLower[d] + ".png";
-		if (!eyesTextures[d].loadFromFile(path)) {
-			std::cerr << "Failed to load eyes texture: " << path << std::endl;
+		for (int f = 0; f < 2; f++) {
+			std::string path = "assets/pacman/ghost/dead/" + directionsLower[d] + "_" + std::to_string(f + 1) + ".png";
+			if (!eyesTextures[d][f].loadFromFile(path)) {
+				std::cerr << "Failed to load eyes texture: " << path << std::endl;
+			}
 		}
 	}
 
@@ -154,15 +156,13 @@ bool Pacman::loadAssets() {
 
 	totalDots_ = map_.getTotalDots();
 	
-	// Initialize ghosts
-	initializeGhosts();
-	
-	// Store ghost textures for later use
-	for (int g = 0; g < 4; g++) {
-		ghostTextures_[g] = ghostTextures[g];
-	}
+	// Store ghost textures for later use (MUST be done before initializeGhosts)
+	ghostTextures_ = ghostTextures;
 	frightenedTextures_ = frightenedTextures;
 	eyesTextures_ = eyesTextures;
+	
+	// Initialize ghosts (after textures are stored)
+	initializeGhosts();
 
 	return true;
 }
@@ -488,6 +488,14 @@ void Pacman::render() {
 	window_.clear(sf::Color::Black);
 
 	map_.render(window_);
+	
+	// Render ghosts
+	for (auto& ghost : ghosts_) {
+		if (ghost) {
+			ghost->render(window_, gameScale_, gameAreaOffset_);
+		}
+	}
+	
 	if (playerSprite_) window_.draw(*playerSprite_);
 	if (scoreText_) window_.draw(*scoreText_);
 	if (livesText_) window_.draw(*livesText_);

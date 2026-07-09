@@ -71,9 +71,9 @@ public:
     bool canBeEaten() const { return mode_ == GhostMode::FRIGHTENED; }
     int getPointsValue() const { return frightenedEatenCount_ * 200; }
 
-    void loadTextures(const std::array<sf::Texture, 4>& normalTextures,
-                      const std::array<sf::Texture, 2>& frightenedTextures,
-                      const std::array<sf::Texture, 4>& eyesTextures);
+    void loadTextures(const std::array<std::array<sf::Texture, 2>, 4>& normalTextures,
+                      const std::array<std::array<sf::Texture, 2>, 4>& frightenedTextures,
+                      const std::array<std::array<sf::Texture, 2>, 4>& eyesTextures);
 
 private:
     void updateState(float dt, const sf::Vector2f& pacmanPos, Direction pacmanDir,
@@ -122,9 +122,9 @@ private:
     
     // Animation
     std::optional<sf::Sprite> sprite_;
-    std::array<sf::Texture, 4> normalTextures_;    // [UP, DOWN, LEFT, RIGHT]
-    std::array<sf::Texture, 2> frightenedTextures_; // [frame0, frame1]
-    std::array<sf::Texture, 4> eyesTextures_;      // [UP, DOWN, LEFT, RIGHT]
+    std::array<std::array<sf::Texture, 2>, 4> normalTextures_;    // [direction][frame]
+    std::array<std::array<sf::Texture, 2>, 4> frightenedTextures_; // [direction][frame]
+    std::array<std::array<sf::Texture, 2>, 4> eyesTextures_;      // [direction][frame]
     int animFrame_ = 0;
     float animTimer_ = 0.0f;
     bool useFrightenedTexture_ = false;

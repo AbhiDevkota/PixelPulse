@@ -80,9 +80,9 @@ private:
 	sf::SoundBuffer gameOverBuffer_;
 	
 	// Ghost textures
-	std::array<std::array<sf::Texture, 4>, 4> ghostTextures_;  // [ghost][direction]
-	std::array<sf::Texture, 2> frightenedTextures_;
-	std::array<sf::Texture, 4> eyesTextures_;
+	std::array<std::array<std::array<sf::Texture, 2>, 4>, 4> ghostTextures_;  // [ghost][direction][frame]
+	std::array<std::array<sf::Texture, 2>, 4> frightenedTextures_; // [direction][frame]
+	std::array<std::array<sf::Texture, 2>, 4> eyesTextures_;      // [direction][frame]
 
 	// Assets
 	bool loadAssets();

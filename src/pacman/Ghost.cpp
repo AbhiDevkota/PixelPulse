@@ -41,15 +41,15 @@ Ghost::Ghost(GhostType type, const Map& map, sf::Vector2f spawnPos, float tileSi
     houseExitDelay_ = HOUSE_EXIT_DELAYS[static_cast<int>(type)];
 }
 
-void Ghost::loadTextures(const std::array<sf::Texture, 4>& normal,
-                         const std::array<sf::Texture, 2>& frightened,
-                         const std::array<sf::Texture, 4>& eyes) {
+void Ghost::loadTextures(const std::array<std::array<sf::Texture, 2>, 4>& normal,
+                         const std::array<std::array<sf::Texture, 2>, 4>& frightened,
+                         const std::array<std::array<sf::Texture, 2>, 4>& eyes) {
     normalTextures_ = normal;
     frightenedTextures_ = frightened;
     eyesTextures_ = eyes;
     
-    if (normalTextures_[0].getSize().x > 0) {
-        sprite_.emplace(normalTextures_[0]);
+    if (normalTextures_[0][0].getSize().x > 0) {
+        sprite_.emplace(normalTextures_[0][0]);
         sprite_->setScale(sf::Vector2f(tileSize_, tileSize_));
     }
 }
@@ -74,8 +74,8 @@ void Ghost::reset(const sf::Vector2f& spawnPos) {
     useEyesTexture_ = false;
     animFrame_ = 0;
     
-    if (normalTextures_[0].getSize().x > 0 && sprite_) {
-        sprite_->setTexture(normalTextures_[0]);
+    if (normalTextures_[0][0].getSize().x > 0 && sprite_) {
+        sprite_->setTexture(normalTextures_[0][0]);
     }
 }
 
@@ -268,20 +268,20 @@ void Ghost::updateSprite() {
     }
     
     if (useEyesTexture_) {
-        if (eyesTextures_[dirIndex].getSize().x > 0) {
-            sprite_->setTexture(eyesTextures_[dirIndex]);
+        if (eyesTextures_[dirIndex][animFrame_].getSize().x > 0) {
+            sprite_->setTexture(eyesTextures_[dirIndex][animFrame_]);
         }
     } else if (useFrightenedTexture_) {
         // Flash near end of frightened time
         if (mode_ == GhostMode::FRIGHTENED && frightTimer_ < 3.0f && static_cast<int>(animTimer_ * 2.0f) % 2 == 0) {
             // Could add white flash texture here
         }
-        if (frightenedTextures_[animFrame_].getSize().x > 0) {
-            sprite_->setTexture(frightenedTextures_[animFrame_]);
+        if (frightenedTextures_[dirIndex][animFrame_].getSize().x > 0) {
+            sprite_->setTexture(frightenedTextures_[dirIndex][animFrame_]);
         }
     } else {
-        if (normalTextures_[dirIndex].getSize().x > 0) {
-            sprite_->setTexture(normalTextures_[dirIndex]);
+        if (normalTextures_[dirIndex][animFrame_].getSize().x > 0) {
+            sprite_->setTexture(normalTextures_[dirIndex][animFrame_]);
         }
     }
     
