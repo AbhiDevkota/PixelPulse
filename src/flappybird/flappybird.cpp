@@ -51,67 +51,94 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
     highScoreText.setPosition({ 20.f, 60.f });
     highScoreText.setString("High Score: " + std::to_string(highScore));
 
+    sf::Text gameOverText(font);
+    gameOverText.setCharacterSize(42);
+    gameOverText.setFillColor(sf::Color::White);
+
+    bool gameOver = false;
 
     sf::Clock clock;
 
-    while (window.isOpen()) {
+    while (window.isOpen()) {                           // ← outer game loop
+
         float dt = clock.restart().asSeconds();
 
-        // Input
-        while (auto event = window.pollEvent()) {
+        while (auto event = window.pollEvent()) {       // ← inner event loop
+
             if (event->is<sf::Event::Closed>())
                 window.close();
 
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
                 return;
 
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space)) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::R) && gameOver) {
+                background.pickRandom(window);
+                bird.reset(cellW, cellH);
+                pipes.reset(window, cellW, cellH);
+                score = 0;
+                scoreText.setString("Score: 0");
+                gameOver = false;
+            }
+
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !gameOver) {
                 bird.flap();
                 audio.playJump();
             }
         }
 
-        // Update
-        bird.update(dt, window);
-        pipes.update(dt, window, cellW, cellH);
-        background.update(dt, window);
-            
-        // Add score when bird passes pipe
-        score += pipes.getScorePoint(bird.getBounds().position.x);
+        // freeze all game logic when game over
+        if (!gameOver) {
+            bird.update(dt, window);
+            pipes.update(dt, window, cellW, cellH);
+            background.update(dt, window);
 
-        // Update high score and persist it (same pattern as Snake)
-        if (score > highScore) {
-            highScore = score;
-            gameData.saveHighScore(highScore);
+            // add 1 if bird just passed a pipe, 0 otherwise
+            score += pipes.getScorePoint(bird.getBounds().position.x);
+
+            // update and save high score immediately when beaten
+            if (score > highScore) {
+                highScore = score;
+                gameData.saveHighScore(highScore);
+            }
+
+            // refresh HUD text every frame
+            scoreText.setString("Score: " + std::to_string(score));
+            highScoreText.setString("High Score: " + std::to_string(highScore));
+
+            // collision with any pipe triggers game over
+            if (pipes.collides(bird.getBounds()))
+                gameOver = true;
         }
 
-
-        // Update score text
-        scoreText.setString("Score: " + std::to_string(score));
-        highScoreText.setString("High Score: " + std::to_string(highScore));
-
-        // Collision
-        if (pipes.collides(bird.getBounds())) {
-            background.pickRandom(window);
-            bird.reset(cellW, cellH);
-            pipes.reset(window, cellW, cellH);
-                
-            // Reset score after collision
-            score = 0;
-            scoreText.setString("Score: 0");
-
-            sf::sleep(sf::milliseconds(500));
-        }
-
-        // Draw
+        // draw background, pipes, bird every frame
         window.clear();
         background.draw(window);
         pipes.draw(window);
         bird.draw(window);
 
-        // Draw score at top-left
-        window.draw(scoreText);
-        window.draw(highScoreText);
+        // show HUD only while playing
+        if (!gameOver) {
+            window.draw(scoreText);
+            window.draw(highScoreText);
+        }
+
+
+        // draw game over overlay on top when game over
+        if (gameOver) {
+            gameOverText.setString(
+                "Game Over!  Score: " + std::to_string(score) +
+                "\nHigh Score: " + std::to_string(highScore) +
+                "\n\nPress R to Restart"
+            );
+
+            // center the text on screen
+            sf::FloatRect bounds = gameOverText.getLocalBounds();
+            gameOverText.setPosition({
+                window.getSize().x / 2.f - bounds.size.x / 2.f - bounds.position.x,
+                window.getSize().y / 2.f - bounds.size.y / 2.f - bounds.position.y
+                });
+            window.draw(gameOverText);
+        }
 
         window.display();
     }
