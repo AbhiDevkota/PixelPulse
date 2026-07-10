@@ -1,5 +1,5 @@
 #ifndef FILES_H
-#define FILES_H
+#define FILES_H		//files management system header file. 
 
 #include <string>
 #include <vector>

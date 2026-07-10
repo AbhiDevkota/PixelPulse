@@ -4,6 +4,7 @@
 #include <ctime>
 #include "snake/Snake.h"
 #include "Files.h"
+
 Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
 	: cols(cols), rows(rows) {
 	reset(startPos, startDir);
@@ -90,6 +91,13 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 
 	int score = 0;
 
+	sf::Music bgMusicSnake;
+	if (bgMusicSnake.openFromFile("audios/snake/background_snake.wav")) {
+		bgMusicSnake.setLooping(true);
+		bgMusicSnake.setVolume(30.f);
+		bgMusicSnake.play();
+	}
+
 	sf::Texture offsetTexture;
 	offsetTexture.loadFromFile("./assets/snake/offset.png");
 	offsetTexture.setRepeated(true);
@@ -170,9 +178,13 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 		});
 	rect.setFillColor(sf::Color::White);
 
-	sf::Texture appleTexture;
-	appleTexture.loadFromFile("assets/snake/apple.png");
-	sf::Sprite appleSprite(appleTexture);
+	std::vector<sf::Texture> foodTextures(4);
+	foodTextures[0].loadFromFile("assets/snake/brain.png");
+	foodTextures[1].loadFromFile("assets/snake/heart.png");
+	foodTextures[2].loadFromFile("assets/snake/lungs.png");
+	foodTextures[3].loadFromFile("assets/snake/stomach.png");
+	int currentFood = std::rand() % 4;
+	sf::Sprite foodSprite(foodTextures[currentFood]);
 
 	sf::SoundBuffer eatSoundBuffer;
 	sf::Sound eatSound(eatSoundBuffer);
@@ -247,6 +259,8 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 
 			if (snake.checkFoodCollision()) {
 				snake.respawnFood();
+				currentFood = std::rand() % 4;
+				foodSprite.setTexture(foodTextures[currentFood]);
 				eatSound.play();
 				snake.grow();
 				score++;
@@ -258,7 +272,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 			}
 		}
 
-		appleSprite.setPosition({
+		foodSprite.setPosition({
 			static_cast<float>(OFFSETX + snake.getFoodPosition().x * CELL_SIZE),
 			static_cast<float>(OFFSETY + snake.getFoodPosition().y * CELL_SIZE)
 			});
@@ -291,7 +305,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 			static_cast<float>(OFFSETY - 2 * CELL_SIZE) 
 		});
 		window.draw(scoreText);
-		window.draw(appleSprite);
+		window.draw(foodSprite);
 
 		for (auto& segment : snake.getBody()) {
 			rect.setPosition({

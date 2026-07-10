@@ -33,6 +33,7 @@ add_executable(CoreZone
     "include/Files.h" "src/Files.cpp"
     "include/pacman/Pacman.h" "src/pacman/Pacman.cpp"
     "include/pacman/Map.h" "src/pacman/Map.cpp" "include/pacman/MapGenerate.h" "src/pacman/MapGenerate.cpp")
+    "include/pacman/Map.h" "src/pacman/Map.cpp" "include/dino/dino.h")
 
 if (MSVC)
     target_compile_options(CoreZone PRIVATE /W4)   # removed /WX so warnings don't kill build
