@@ -1,6 +1,7 @@
 #include "pacman/Pacman.h"
 #include <iostream>
 #include <cmath>
+#include <memory>
 
 void runPacMan(sf::RenderWindow& window) {
 	Pacman game(window);
@@ -34,13 +35,50 @@ bool Pacman::loadAssets() {
 		}
 	}
 
-	// Calculate game area: leave a fixed border on every side for the retro arcade look.
-	// Border = 8% of the smaller window dimension, giving equal breathing room all around.
+	// Load ghost textures
+	std::array<std::array<std::array<sf::Texture, 2>, 4>, 4> ghostTextures; // [ghost][direction][frame]
+	std::array<std::array<sf::Texture, 2>, 4> frightenedTextures; // [direction][frame]
+	std::array<std::array<sf::Texture, 2>, 4> eyesTextures; // [direction][frame]
+	
+	std::string ghostNames[] = { "blinky", "pinky", "inky", "clyde" };
+	std::string directionsLower[] = { "up", "down", "left", "right" };
+	
+	// Load normal ghost textures for each ghost
+	for (int g = 0; g < 4; g++) {
+		for (int d = 0; d < 4; d++) {
+			for (int f = 0; f < 2; f++) {
+				std::string path = "assets/pacman/ghost/" + ghostNames[g] + "/" + directionsLower[d] + "_" + std::to_string(f + 1) + ".png";
+				if (!ghostTextures[g][d][f].loadFromFile(path)) {
+					std::cerr << "Failed to load ghost texture: " << path << std::endl;
+				}
+			}
+		}
+	}
+	
+	// Load frightened textures (same for all ghosts)
+	for (int d = 0; d < 4; d++) {
+		for (int f = 0; f < 2; f++) {
+			std::string path = "assets/pacman/ghost/frightened/" + directionsLower[d] + "_" + std::to_string(f + 1) + ".png";
+			if (!frightenedTextures[d][f].loadFromFile(path)) {
+				std::cerr << "Failed to load frightened texture: " << path << std::endl;
+			}
+		}
+	}
+	
+	// Load eyes textures (dead ghosts)
+	for (int d = 0; d < 4; d++) {
+		for (int f = 0; f < 2; f++) {
+			std::string path = "assets/pacman/ghost/dead/" + directionsLower[d] + "_" + std::to_string(f + 1) + ".png";
+			if (!eyesTextures[d][f].loadFromFile(path)) {
+				std::cerr << "Failed to load eyes texture: " << path << std::endl;
+			}
+		}
+	}
+
+	// Calculate game area
 	int windowWidth = window_.getSize().x;
 	int windowHeight = window_.getSize().y;
 	float border = std::min(windowWidth, windowHeight) * 0.08f;
-
-	// Reserve extra vertical space at the top for the HUD (score / lives bar)
 	float hudHeight = 40.0f;
 
 	gameAreaSize_ = sf::Vector2f(
@@ -49,13 +87,11 @@ bool Pacman::loadAssets() {
 	);
 	gameAreaOffset_ = sf::Vector2f(border, border + hudHeight);
 
-	// Scale map uniformly to fit entirely within the game area
 	int mapPixelWidth = map_.getWidth() * map_.getTileSize();
 	int mapPixelHeight = map_.getHeight() * map_.getTileSize();
 	gameScale_ = std::min(gameAreaSize_.x / mapPixelWidth,
 		gameAreaSize_.y / mapPixelHeight);
 
-	// Centre the scaled map inside the game area
 	float scaledMapW = mapPixelWidth * gameScale_;
 	float scaledMapH = mapPixelHeight * gameScale_;
 	gameAreaOffset_.x += (gameAreaSize_.x - scaledMapW) / 2.0f;
@@ -68,7 +104,6 @@ bool Pacman::loadAssets() {
 	playerSprite_.emplace(playerTextures_[2][0]);
 	playerSprite_->setScale(sf::Vector2f(gameScale_, gameScale_));
 
-	// Set player position to spawn tile centre (in map-pixel coordinates)
 	sf::Vector2f spawnTopLeft = map_.getPlayerSpawnPos();
 	float halfTile = map_.getTileSize() * 0.5f;
 	playerPos_ = sf::Vector2f(spawnTopLeft.x + halfTile, spawnTopLeft.y + halfTile);
@@ -77,7 +112,6 @@ bool Pacman::loadAssets() {
 		playerPos_.y * gameScale_ + gameAreaOffset_.y
 	));
 
-	// Player speed in map coordinates per second
 	playerSpeed_ = 150.0f;
 
 	// Load font
@@ -85,8 +119,8 @@ bool Pacman::loadAssets() {
 		std::cerr << "Failed to load font" << std::endl;
 	}
 
-	// Setup UI in the HUD bar above the map
-	float hudY = border + (hudHeight - 28.0f) / 2.0f; // vertically centre text in HUD
+	// Setup UI
+	float hudY = border + (hudHeight - 28.0f) / 2.0f;
 	scoreText_.emplace(font_);
 	scoreText_->setString("Score: 0");
 	scoreText_->setCharacterSize(24);
@@ -104,8 +138,31 @@ bool Pacman::loadAssets() {
 		chompSound_.emplace(chompBuffer_);
 		soundLoaded_ = true;
 	}
+	
+	// Load power pellet sound
+	if (!powerPelletBuffer_.loadFromFile("audios/pacman/power_pellet_chomp.wav")) {
+		std::cerr << "Failed to load power pellet sound" << std::endl;
+	}
+	
+	// Load ghost eaten sound
+	if (!ghostEatenBuffer_.loadFromFile("audios/pacman/ghost_chomp.wav")) {
+		std::cerr << "Failed to load ghost eaten sound" << std::endl;
+	}
+	
+	// Load game over sound
+	if (!gameOverBuffer_.loadFromFile("audios/pacman/game_over.wav")) {
+		std::cerr << "Failed to load game over sound" << std::endl;
+	}
 
 	totalDots_ = map_.getTotalDots();
+	
+	// Store ghost textures for later use (MUST be done before initializeGhosts)
+	ghostTextures_ = ghostTextures;
+	frightenedTextures_ = frightenedTextures;
+	eyesTextures_ = eyesTextures;
+	
+	// Initialize ghosts (after textures are stored)
+	initializeGhosts();
 
 	return true;
 }
@@ -165,6 +222,9 @@ void Pacman::update(float deltaTime) {
 	updateAnimation(deltaTime);
 	movePlayer(deltaTime);
 	checkDotCollision();
+	updateGhosts(deltaTime);
+	checkGhostCollision();
+	updateGlobalMode(deltaTime);
 
 	if (dotsCollected_ >= totalDots_) {
 		state_ = PacmanState::WIN;
@@ -274,8 +334,6 @@ bool Pacman::canMove(sf::Vector2f pos, Direction dir) {
 void Pacman::checkDotCollision() {
 	float ts = static_cast<float>(map_.getTileSize());
 
-	// Use Pacman's centre (pos is already the centre in map-pixel space after the
-	// spawn fix; tileSize/2 was added in loadAssets below).
 	int tileX = static_cast<int>(playerPos_.x / ts);
 	int tileY = static_cast<int>(playerPos_.y / ts);
 
@@ -286,8 +344,142 @@ void Pacman::checkDotCollision() {
 			map_.removeDot(tileX, tileY);
 			score_ += points;
 			dotsCollected_++;
-			if (soundLoaded_) chompSound_->play();
+			
+			if (type == TileType::POWER_PELLET) {
+				powerPelletActive_ = true;
+				frightenedTimer_ = 8.0f; // 8 seconds of frightened mode
+				if (soundLoaded_) {
+					sf::Sound powerSound(powerPelletBuffer_);
+					powerSound.play();
+				}
+			} else if (soundLoaded_) {
+				chompSound_->play();
+			}
+			
 			scoreText_->setString("Score: " + std::to_string(score_));
+		}
+	}
+}
+
+void Pacman::initializeGhosts() {
+	sf::Vector2f ts = {static_cast<float>(map_.getTileSize()), static_cast<float>(map_.getTileSize())};
+	
+	// Ghost spawn positions from the map (b, p, i, c)
+	std::array<sf::Vector2f, 4> spawnPositions = {
+		sf::Vector2f(13.5f * ts.x, 14.5f * ts.y), // Blinky
+		sf::Vector2f(18.5f * ts.x, 14.5f * ts.y), // Pinky
+		sf::Vector2f(13.5f * ts.x, 16.5f * ts.y), // Inky
+		sf::Vector2f(18.5f * ts.x, 16.5f * ts.y)  // Clyde
+	};
+	
+	GhostType types[] = {GhostType::BLINKY, GhostType::PINKY, GhostType::INKY, GhostType::CLYDE};
+	
+	for (int i = 0; i < 4; i++) {
+		ghosts_[i] = std::make_unique<Ghost>(types[i], map_, spawnPositions[i], ts.x);
+		
+		// Load textures for this ghost
+		ghosts_[i]->loadTextures(ghostTextures_[i], frightenedTextures_, eyesTextures_);
+		
+		// Release ghosts with delay
+		ghosts_[i]->releaseFromHouse();
+	}
+}
+
+void Pacman::updateGhosts(float dt) {
+	Ghost* blinkyRef = ghosts_[0].get(); // Blinky is first
+	
+	for (auto& ghost : ghosts_) {
+		if (ghost) {
+			ghost->update(dt, playerPos_, currentDir_, blinkyRef, globalMode_, frightenedTimer_);
+		}
+	}
+}
+
+void Pacman::checkGhostCollision() {
+	float ts = static_cast<float>(map_.getTileSize());
+	
+	for (auto& ghost : ghosts_) {
+		if (!ghost || ghost->isInHouse() || ghost->isEaten()) continue;
+		
+		float dist = std::sqrt(
+			std::pow(playerPos_.x - ghost->getPosition().x, 2) +
+			std::pow(playerPos_.y - ghost->getPosition().y, 2)
+		);
+		
+		if (dist < ts * 0.8f) {
+			if (ghost->canBeEaten()) {
+				// Eat the ghost
+				ghost->setEaten();
+				int points = ghost->getPointsValue();
+				score_ += points;
+				scoreText_->setString("Score: " + std::to_string(score_));
+				
+				if (soundLoaded_) {
+					sf::Sound eatenSound(ghostEatenBuffer_);
+					eatenSound.play();
+				}
+			} else if (ghost->isDeadly()) {
+				// Pacman dies
+				lives_--;
+				livesText_->setString("Lives: " + std::to_string(lives_));
+				
+				if (soundLoaded_) {
+					sf::Sound gameOverSound(gameOverBuffer_);
+					gameOverSound.play();
+				}
+				
+				if (lives_ <= 0) {
+					state_ = PacmanState::GAME_OVER;
+				} else {
+					// Reset positions
+					sf::Vector2f spawnTopLeft = map_.getPlayerSpawnPos();
+					float halfTile = map_.getTileSize() * 0.5f;
+					playerPos_ = sf::Vector2f(spawnTopLeft.x + halfTile, spawnTopLeft.y + halfTile);
+					playerSprite_->setPosition(sf::Vector2f(
+						playerPos_.x * gameScale_ + gameAreaOffset_.x,
+						playerPos_.y * gameScale_ + gameAreaOffset_.y
+					));
+					
+					// Reset ghosts
+					for (auto& g : ghosts_) {
+						if (g) {
+							g->reset();
+							g->releaseFromHouse();
+						}
+					}
+					
+					currentDir_ = Direction::NONE;
+					nextDir_ = Direction::NONE;
+				}
+			}
+		}
+	}
+}
+
+void Pacman::updateGlobalMode(float dt) {
+	if (powerPelletActive_) {
+		globalMode_ = GhostMode::FRIGHTENED;
+		frightenedTimer_ -= dt;
+		
+		if (frightenedTimer_ <= 0) {
+			powerPelletActive_ = false;
+			globalMode_ = GhostMode::CHASE;
+		}
+	} else {
+		// Classic mode switching
+		globalModeTimer_ += dt;
+		
+		// Simple alternating pattern: scatter 7s, chase 20s, scatter 7s, chase 20s...
+		if (globalMode_ == GhostMode::SCATTER) {
+			if (globalModeTimer_ >= 7.0f) {
+				globalMode_ = GhostMode::CHASE;
+				globalModeTimer_ = 0.0f;
+			}
+		} else {
+			if (globalModeTimer_ >= 20.0f) {
+				globalMode_ = GhostMode::SCATTER;
+				globalModeTimer_ = 0.0f;
+			}
 		}
 	}
 }
@@ -296,6 +488,14 @@ void Pacman::render() {
 	window_.clear(sf::Color::Black);
 
 	map_.render(window_);
+	
+	// Render ghosts
+	for (auto& ghost : ghosts_) {
+		if (ghost) {
+			ghost->render(window_, gameScale_, gameAreaOffset_);
+		}
+	}
+	
 	if (playerSprite_) window_.draw(*playerSprite_);
 	if (scoreText_) window_.draw(*scoreText_);
 	if (livesText_) window_.draw(*livesText_);
@@ -305,7 +505,7 @@ void Pacman::render() {
 		winText.setString("YOU WIN!");
 		winText.setCharacterSize(48);
 		winText.setFillColor(sf::Color::Yellow);
-		winText.setPosition(sf::Vector2f(window_.getSize().x / 2 - 100, window_.getSize().y / 2));
+		winText.setPosition(sf::Vector2f(static_cast<float>(window_.getSize().x) / 2.0f - 100.0f, static_cast<float>(window_.getSize().y) / 2.0f));
 		window_.draw(winText);
 	}
 
