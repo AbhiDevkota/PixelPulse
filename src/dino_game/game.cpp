@@ -93,7 +93,7 @@ void RunDino(sf::RenderWindow& window) {
 					gameover = obstacles.CheckHit(player);
 				}
 
-				window.clear({ 64,64,64 });
+				window.clear({ 64,64,64 });  
 
 				//draw ground
 				ground.Draw(window);
