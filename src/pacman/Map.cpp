@@ -1,7 +1,11 @@
 #include "pacman/Map.h"
+#include "pacman/MapGenerate.h"
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <ctime>
+
+//.map  file load garxa then delegates to buildFromLines
 
 bool Map::load(const std::string& mapPath) {
 	if (!loadTextures()) {
@@ -18,32 +22,68 @@ bool Map::load(const std::string& mapPath) {
 	std::vector<std::string> lines;
 	std::string line;
 	while (std::getline(file, line)) {
+		//Strip Windows-style carriage returns if present
+		if (!line.empty() && line.back() == '\r') line.pop_back();
 		lines.push_back(line);
 	}
 	file.close();
 
+	return buildFromLines(lines);
+}
+
+
+/*loadGenerated — runs MapGenerator then delegates to buildFromLines.
+No file is written to disk; the grid is consumed directly.*/
+
+bool Map::loadGenerated(uint32_t seed) {
+	if (!loadTextures()) {
+		std::cerr << "Failed to load map textures" << std::endl;
+		return false;
+	}
+
+	// Use current time as seed when caller passes 0
+	if (seed == 0) seed = static_cast<uint32_t>(std::time(nullptr));
+
+	MapGenerator gen;
+	gen.generate(seed);
+
+	// Convert the generator's char grid into a vector of strings
+	std::vector<std::string> lines;
+	lines.reserve(MapGenerator::ROWS);
+	for (int row = 0; row < MapGenerator::ROWS; ++row) {
+		std::string line;
+		line.reserve(MapGenerator::COLS);
+		for (int col = 0; col < MapGenerator::COLS; ++col) {
+			line += gen.at(col, row);
+		}
+		lines.push_back(std::move(line));
+	}
+
+	return buildFromLines(lines);
+}
+
+
+//buildFromLines — shared parsing used by both load() and loadGenerated()
+
+bool Map::buildFromLines(const std::vector<std::string>& lines) {
 	if (lines.empty()) return false;
 
-	height_ = lines.size();
-	width_ = lines[0].length();
+	height_ = static_cast<int>(lines.size());
+	width_ = static_cast<int>(lines[0].length());
 
-	tileTypes_.resize(height_, std::vector<TileType>(width_, TileType::EMPTY));
-	hasDot_.resize(height_, std::vector<bool>(width_, false));
-	hasPowerPellet_.resize(height_, std::vector<bool>(width_, false));
-	sprites_.resize(height_);
-
+	//Reset all grid state so repeated calls start clean
+	tileTypes_.assign(height_, std::vector<TileType>(width_, TileType::EMPTY));
+	hasDot_.assign(height_, std::vector<bool>(width_, false));
+	hasPowerPellet_.assign(height_, std::vector<bool>(width_, false));
+	sprites_.assign(height_, std::vector<std::optional<sf::Sprite>>(width_));
 	totalDots_ = 0;
 
 	for (int y = 0; y < height_; y++) {
-		// Every column gets a slot (default-empty optional) so indices stay aligned with x
-		sprites_[y].resize(width_);
-
-		for (int x = 0; x < width_ && x < lines[y].length(); x++) {
+		for (int x = 0; x < width_ && x < static_cast<int>(lines[y].length()); x++) {
 			char c = lines[y][x];
 			TileType type = charToTileType(c);
 			tileTypes_[y][x] = type;
 
-			// SFML 3: sprite must be constructed with a texture
 			if (type == TileType::DOT) {
 				hasDot_[y][x] = true;
 				sprites_[y][x].emplace(dotTexture_);
@@ -136,7 +176,10 @@ void Map::render(sf::RenderWindow& window) {
 		for (int x = 0; x < width_; x++) {
 			TileType type = tileTypes_[y][x];
 			if ((type == TileType::WALL || hasDot_[y][x] || hasPowerPellet_[y][x]) && sprites_[y][x]) {
-				window.draw(*sprites_[y][x]);
+				sf::Sprite sprite = *sprites_[y][x];
+				sprite.setScale(sf::Vector2f(scale_, scale_));
+				sprite.setPosition(sf::Vector2f(x * tileSize_ * scale_ + offset_.x, y * tileSize_ * scale_ + offset_.y));
+				window.draw(sprite);
 			}
 		}
 	}

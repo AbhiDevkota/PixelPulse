@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_map>
 #include <optional>
+#include <cstdint>
 
 enum class TileType {
 	EMPTY,
@@ -18,45 +19,57 @@ enum class TileType {
 };
 
 class Map {
-public:
-	Map() = default;
-	~Map() = default;
+	public:
+		Map() = default;
+		~Map() = default;
 
-	bool load(const std::string& mapPath);
-	void render(sf::RenderWindow& window);
+		bool load(const std::string& mapPath);
 
-	TileType getTileAt(int x, int y) const;
-	void removeDot(int x, int y);
+		bool loadGenerated(uint32_t seed = 0);
 
-	int getWidth() const { return width_; }
-	int getHeight() const { return height_; }
-	int getTileSize() const { return tileSize_; }
-	sf::Vector2f getPlayerSpawnPos() const { return playerSpawnPos_; }
-	int getTotalDots() const { return totalDots_; }
+		void render(sf::RenderWindow& window);
 
-private:
-	// Textures - stored first
-	sf::Texture dotTexture_;
-	sf::Texture powerPelletTexture_;
-	std::unordered_map<char, sf::Texture> wallTextures_;
+		TileType getTileAt(int x, int y) const;
+		void removeDot(int x, int y);
 
-	// Tile data
-	std::vector<std::vector<TileType>> tileTypes_;
-	std::vector<std::vector<bool>> hasDot_;
-	std::vector<std::vector<bool>> hasPowerPellet_;
+		int getWidth() const { return width_; }
+		int getHeight() const { return height_; }
+		int getTileSize() const { return tileSize_; }
+		sf::Vector2f getPlayerSpawnPos() const { return playerSpawnPos_; }
+		int getTotalDots() const { return totalDots_; }
+		float getScale() const { return scale_; }
 
-	// Sprites - created after textures are loaded. Grid-aligned: sprites_[y][x]
-	// corresponds exactly to tile (x, y); empty optional means "no sprite here".
-	std::vector<std::vector<std::optional<sf::Sprite>>> sprites_;
+		void setScale(float scale) { scale_ = scale; }
+		void setOffset(sf::Vector2f offset) { offset_ = offset; }
 
-	int width_ = 0;
-	int height_ = 0;
-	int tileSize_ = 16;
-	int totalDots_ = 0;
-	sf::Vector2f playerSpawnPos_;
+	private:
+		// Textures - stored first
+		sf::Texture dotTexture_;
+		sf::Texture powerPelletTexture_;
+		std::unordered_map<char, sf::Texture> wallTextures_;
 
-	bool loadTextures();
-	TileType charToTileType(char c) const;
-};
+		// Tile data
+		std::vector<std::vector<TileType>> tileTypes_;
+		std::vector<std::vector<bool>> hasDot_;
+		std::vector<std::vector<bool>> hasPowerPellet_;
+
+		// Sprites - created after textures are loaded. Grid-aligned: sprites_[y][x]
+		// corresponds exactly to tile (x, y); empty optional means "no sprite here".
+		std::vector<std::vector<std::optional<sf::Sprite>>> sprites_;
+
+		int width_ = 0;
+		int height_ = 0;
+		int tileSize_ = 16;
+		int totalDots_ = 0;
+		sf::Vector2f playerSpawnPos_;
+		float scale_ = 1.0f;
+		sf::Vector2f offset_ = sf::Vector2f(0, 0);
+
+		bool loadTextures();
+		TileType charToTileType(char c) const;
+
+		// Shared grid-parsing used by both load() and loadGenerated()
+		bool buildFromLines(const std::vector<std::string>& lines);
+	};
 
 #endif

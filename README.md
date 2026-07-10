@@ -52,6 +52,6 @@ Here is the working Method of some part of code:
 ## TODO
 * [ ] Make sure the ghost appears
 * [ ] Fix the sound effects and overall sounds
-* [ ] Fix the size of the game
-* [ ] Fix the alignment of the game
+* [X] Fix the size of the game
+* [X] Fix the alignment of the game
 

@@ -6,21 +6,15 @@
 #include <vector>
 #include <string>
 #include <optional>
+#include <array>
 #include "pacman/Map.h"
+#include "pacman/Ghost.h"
 
 enum class PacmanState {
 	PLAYING,
 	PAUSED,
 	GAME_OVER,
 	WIN
-};
-
-enum class Direction {
-	NONE,
-	UP,
-	DOWN,
-	LEFT,
-	RIGHT
 };
 
 class Pacman {
@@ -41,6 +35,11 @@ private:
 	// Map
 	Map map_;
 
+	// Game area (60% of screen resolution)
+	sf::Vector2f gameAreaSize_;
+	sf::Vector2f gameAreaOffset_;
+	float gameScale_ = 1.0f;
+
 	// Textures - stored first
 	sf::Texture playerTextures_[4][2]; // [direction][frame]
 
@@ -54,6 +53,13 @@ private:
 	int animFrame_ = 0;
 	float animTimer_ = 0.0f;
 	int lives_ = 3;
+
+	// Ghosts
+	std::array<std::unique_ptr<Ghost>, 4> ghosts_;
+	GhostMode globalMode_ = GhostMode::SCATTER;
+	float globalModeTimer_ = 0.0f;
+	float frightenedTimer_ = 0.0f;
+	bool powerPelletActive_ = false;
 
 	// Game
 	int score_ = 0;
@@ -69,6 +75,14 @@ private:
 	sf::SoundBuffer chompBuffer_;
 	std::optional<sf::Sound> chompSound_;
 	bool soundLoaded_ = false;
+	sf::SoundBuffer powerPelletBuffer_;
+	sf::SoundBuffer ghostEatenBuffer_;
+	sf::SoundBuffer gameOverBuffer_;
+	
+	// Ghost textures
+	std::array<std::array<std::array<sf::Texture, 2>, 4>, 4> ghostTextures_;  // [ghost][direction][frame]
+	std::array<std::array<sf::Texture, 2>, 4> frightenedTextures_; // [direction][frame]
+	std::array<std::array<sf::Texture, 2>, 4> eyesTextures_;      // [direction][frame]
 
 	// Assets
 	bool loadAssets();
@@ -76,6 +90,12 @@ private:
 	void movePlayer(float dt);
 	void checkDotCollision();
 	bool canMove(sf::Vector2f pos, Direction dir);
+	
+	// Ghost system
+	void initializeGhosts();
+	void updateGhosts(float dt);
+	void checkGhostCollision();
+	void updateGlobalMode(float dt);
 };
 
 void runPacMan(sf::RenderWindow& window);

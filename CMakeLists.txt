@@ -32,6 +32,7 @@ add_executable(CoreZone
     "src/dino_game/game.cpp"
     "include/Files.h" "src/Files.cpp"
     "include/pacman/Pacman.h" "src/pacman/Pacman.cpp"
+    "include/pacman/Map.h" "src/pacman/Map.cpp" "include/pacman/MapGenerate.h" "src/pacman/MapGenerate.cpp")
     "include/pacman/Map.h" "src/pacman/Map.cpp" "include/dino/dino.h")
 
 if (MSVC)

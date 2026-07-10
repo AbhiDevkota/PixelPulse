@@ -73,7 +73,6 @@ int main() {
                 home.resumeMusic();
                 continue;
             }// Skip rendering the home screen when a game is launched
-            home.resetGame();    
 
             if (game == "FLAPPY BIRD") {          //Merge Resolved by Abhi Devkota. 
                 home.pauseMusic();
@@ -109,9 +108,13 @@ int main() {
             if (game == "PAC MAN")
             {
                 runPacMan(window);
-                std::cout << "Started To run PACMAN" << std::endl;
+                home.resumeMusic();
+                continue;
             }
+
+            home.resetGame();
         }
+        //Up to here
 
         window.clear();
         home.draw();
