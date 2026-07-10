@@ -34,7 +34,7 @@ public:
 
 	float velocity_y = 0.f;
 	float GRAVITY = 2000.f;
-	float JUMP_FORCE = -800.f;
+	float JUMP_FORCE = -900.f;
 	bool is_grounded = false;
 
 	Player() {
@@ -43,8 +43,21 @@ public:
 		dinoSprite.setOrigin({ 0.f, frameHeight / 2.f });
 	}
 
+	//get bounds of player
 	sf::FloatRect getBounds() const {
-		return sf::FloatRect({ x, y - (h / 2.f) }, { w, h });
+		float scaleX = w / static_cast<float>(frameWidth);
+		float scaleY = h / static_cast<float>(frameHeight);
+
+		// Precise pixel measurements of the dino sprite within the 24x24 frame
+		float artWidth = 16.f;
+		float artHeight = 18.f;
+		float offsetX = 4.f;  // Transparent padding on the left
+		float offsetY = 3.f;  // Transparent padding on the top
+
+		float startX = x + (offsetX * scaleX);
+		float startY = (y - (h / 2.f)) + (offsetY * scaleY);
+
+		return sf::FloatRect({ startX, startY }, { artWidth * scaleX, artHeight * scaleY });
 	}
 
 	//update position
@@ -113,7 +126,7 @@ class Obstacles {
 	};
 
 	//max obstacles
-	static constexpr int n = 20;
+	static constexpr int n = 15;
 
 	//array of Obstacles
 	Obstacle array[n];
@@ -148,9 +161,9 @@ public:
 	//spawn function
 	void Spawn(float x, float y) {
 
-		int randomColumn = rand() % 9;
+		int randomColumn = rand() % 2;
 
-		int rowOffset = 1 * frameHeight;
+		int rowOffset = 0 * frameHeight;
 		int colOffset = randomColumn * frameWidth;
 
 		sf::IntRect randomCactusRect({ colOffset, rowOffset }, { frameWidth, frameHeight });
@@ -172,7 +185,7 @@ public:
 			int num_obstacles = (rand() % 3) + 1;
 
 			for (int i = 0; i < num_obstacles; i++) {
-				Spawn(spawn_x + (i * w), spawn_y);
+				Spawn(spawn_x + (i * (w * 0.6f)), spawn_y);
 			}
 		}
 
@@ -214,11 +227,21 @@ public:
 	{
 		sf::FloatRect playerBounds = player.getBounds();
 
+		float scaleX = w / static_cast<float>(frameWidth);
+		float scaleY = h / static_cast<float>(frameHeight);
+
+		// precise pixel measurements of the large cactus sprites inside the 64x64 frame
+		float artWidth = 38.f;
+		float artHeight = 54.f;
+		float offsetX = 13.f;
+		float offsetY = 10.f;
+
 		for (int i = 0; i < n; i++) {
 			if (!array[i].active) continue;
 
-			// Since origin is bottom-left {0, h}, top-left is x, y - h
-			sf::FloatRect obstacleBounds({ array[i].x, array[i].y - h }, { w, h });
+			float startX = array[i].x + (offsetX * scaleX);
+			float startY = (array[i].y - h) + (offsetY * scaleY);
+			sf::FloatRect obstacleBounds({ startX, startY }, { artWidth * scaleX, artHeight * scaleY });
 
 			if (playerBounds.findIntersection(obstacleBounds)) {
 				return true;
