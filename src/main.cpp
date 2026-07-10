@@ -4,17 +4,17 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
-
+void RunDino(sf::RenderWindow& window);
 void runRocketShooter(sf::RenderWindow& window);
-void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager);
+void runFlappyBird(sf::RenderWindow& window);
 void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager); //Conflict resolved by Abhi Devkota
 int main() {
-    corezone::FileManager fileManager;
-    if (!fileManager.initialize()) {
+	corezone::FileManager fileManager;
+    if(!fileManager.initialize()){
         std::cerr << "Failed to init file mgt stystem" << std::endl;
         return -1;
     }
-    std::cout << "File mgt system initialized successfully" << std::endl;
+	std::cout << "File mgt system initialized successfully" << std::endl;
 
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     //sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
@@ -63,7 +63,6 @@ int main() {
 
         float dt = clock.restart().asSeconds();
         home.update(dt);
-        // Added by aashutosh to select game and run it
         if (home.isGameReady()) {
             std::string game = home.getSelectedGame();
             home.resetGame();
@@ -73,11 +72,11 @@ int main() {
                 home.resumeMusic();
                 continue;
             }// Skip rendering the home screen when a game is launched
-            home.resetGame();
+            home.resetGame();    
 
             if (game == "FLAPPY BIRD") {          //Merge Resolved by Abhi Devkota. 
                 home.pauseMusic();
-                runFlappyBird(window, fileManager);
+                runFlappyBird(window);
                 home.resumeMusic();
             }
             if (game == "SNAKE") {
@@ -86,9 +85,21 @@ int main() {
                 home.resumeMusic();
                 continue;
             }
+            if (game == "PAC MAN") {
+                home.pauseMusic();
+                runPacMan(window);
+                home.resumeMusic();
+                continue;
+            }
+            if (game == "DINO RUN") {
+                home.pauseMusic();
+                RunDino(window);
+                home.resumeMusic();
+                continue;
+            }
         }
         //Up to here
-
+        
 
         if (home.isGameReady()) {
             std::string game = home.getSelectedGame();
