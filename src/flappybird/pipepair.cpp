@@ -8,20 +8,18 @@ PipePair::PipePair(sf::RenderWindow& window, float cellW, float cellH)
 {
     // up pipe image paths
     std::vector<std::string> upPaths = {
-        "assets/Flappy/Up.png",
-        "assets/Flappy/Up2.png",
-        "assets/Flappy/Up3.png",
-        "assets/Flappy/Up4.png",
-        "assets/Flappy/Up5.png"
+        "assets/flappy/Up1.png",
+        "assets/flappy/Up2.png",
+        "assets/flappy/Up3.png",
+        "assets/flappy/Up4.png"
     };
 
     // down pipe image paths
     std::vector<std::string> downPaths = {
-        "assets/Flappy/Down.png",
-        "assets/Flappy/Down2.png",
-        "assets/Flappy/Down3.png",
-        "assets/Flappy/Down4.png",
-        "assets/Flappy/Down5.png"
+        "assets/flappy/Down1.png",
+        "assets/flappy/Down2.png",
+        "assets/flappy/Down3.png",
+        "assets/flappy/Down4.png"
     };
 
     // load each pair - skip if either image fails to load
