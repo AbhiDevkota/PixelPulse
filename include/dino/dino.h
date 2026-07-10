@@ -185,7 +185,7 @@ public:
 			int num_obstacles = (rand() % 3) + 1;
 
 			for (int i = 0; i < num_obstacles; i++) {
-				Spawn(spawn_x + (i * (w*0.6f)), spawn_y);
+				Spawn(spawn_x + (i * (w * 0.6f)), spawn_y);
 			}
 		}
 
