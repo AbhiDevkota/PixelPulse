@@ -225,19 +225,19 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 					gameOver = false;
 					snake.respawnFood();
 				}
-				if (key == sf::Keyboard::Key::Space) {
+				if (key == sf::Keyboard::Key::Space || key == sf::Keyboard::Key::P) {
 					isPaused = !isPaused;
 				}
 			}
 		}
 
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up))
 			snake.setDirection({ 0, -1 });
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A) || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left))
 			snake.setDirection({ -1, 0 });
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S))
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S) || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down))
 			snake.setDirection({ 0, 1 });
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D) || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))
 			snake.setDirection({ 1, 0 });
 
 		if (!gameOver && !isPaused && clock.getElapsedTime().asSeconds() >= moveInterval) {
