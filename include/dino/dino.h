@@ -270,19 +270,40 @@ public:
 class Ground {
 
 	float y;
-	//shape 
-	sf::RectangleShape rectangle;
+
+	sf::Texture groundTexture{ "assets/dinosaurs/ground.png" };
+	sf::Sprite groundSprite{ groundTexture };
+
+	float textureOffset = 0.f;
+	int currentRow = 0;
 
 public:
 	void Spawn(float window_width, float ground_y) {
 		y = ground_y;
-
-		// Create a line spanning the entire width of the screen
-		rectangle.setSize({ window_width, 5.f });
-		rectangle.setPosition({ 0.f, y/2 });
-		rectangle.setFillColor(sf::Color::White);
 	}
 
+	// Change to a random theme
+	void Randomize() {
+		int nextRow = rand() % 4;
+		while (nextRow == currentRow) {
+			nextRow = rand() % 4;
+		}
+		currentRow = nextRow;
+	}
+
+	void Reset() {
+		currentRow = 0; // Start back at green grass
+		textureOffset = 0.f;
+	}
+
+	void Update(float dt, float speed) {
+		textureOffset += speed * dt;
+
+		float tileWidth = static_cast<float>(groundTexture.getSize().x);
+		if (textureOffset >= tileWidth) {
+			textureOffset -= tileWidth;
+		}
+	}
 	//Getter function
 	float GetY() const {
 		return y;
@@ -290,7 +311,20 @@ public:
 
 	// Draw function
 	void Draw(sf::RenderWindow& window) {
-		window.draw(rectangle);
+		int texWidth = groundTexture.getSize().x;
+		int texHeight = groundTexture.getSize().y / 4;
+
+		int yOffset = currentRow * texHeight;
+
+		groundSprite.setTextureRect(sf::IntRect({ 0, yOffset }, { texWidth, texHeight }));
+
+		float windowWidth = static_cast<float>(window.getSize().x);
+
+		// tile the row horizontally across the screen
+		for (float startX = -textureOffset; startX < windowWidth; startX += texWidth) {
+			groundSprite.setPosition({ startX, y / 2.f });
+			window.draw(groundSprite);
+		}
 	}
 };
 

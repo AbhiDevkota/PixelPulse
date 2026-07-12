@@ -33,6 +33,7 @@ void RunDino(sf::RenderWindow& window) {
 		bool gameover = false;
 
 		float score = 0.f;
+		float lastMilestone = 0.f;
 
 		//start clock
 		sf::Clock clock;
@@ -67,9 +68,11 @@ void RunDino(sf::RenderWindow& window) {
 						if (pressed->scancode == sf::Keyboard::Scan::R)
 						{
 							obstacles.Reset();
+							ground.Reset();
 							player.y = static_cast<float>(ground.GetY()) - (player.h / 2.f);
 							player.velocity_y = 0.f;
 							score = 0.f;
+							lastMilestone = 0.f;
 							gameover = false;
 						}
 						else if (pressed->scancode == sf::Keyboard::Scan::Escape)
@@ -85,9 +88,19 @@ void RunDino(sf::RenderWindow& window) {
 					player.Update(dt, ground.GetY());
 					obstacles.Update(dt, static_cast<float>(window.getSize().x), static_cast<float>(ground.GetY()/ 2.f));
 
+					//update ground
+					ground.Update(dt, 600.f);
+
 					//increase score
 					score += dt * 10.f;
 					scoreText.setString("Score: " + std::to_string(static_cast<int>(score)));
+
+					// Check if a new 500-point milestone has been reached
+					int currentMilestone = static_cast<int>(score) / 200;
+					if (currentMilestone > lastMilestone) {
+						ground.Randomize();
+						lastMilestone = currentMilestone;
+					}
 
 					//check hit 
 					gameover = obstacles.CheckHit(player);
