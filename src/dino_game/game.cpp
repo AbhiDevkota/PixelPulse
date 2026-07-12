@@ -9,7 +9,7 @@ void RunDino(sf::RenderWindow& window) {
 
 		//create ground
 		Ground ground;
-		ground.Spawn(static_cast<float>(window.getSize().x), 500.f);
+		ground.Spawn(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y));
 
 		//create player
 		Player player;
@@ -21,9 +21,9 @@ void RunDino(sf::RenderWindow& window) {
 
 		//font and text
 		sf::Font font("fonts/regular.ttf");
-		sf::Text text(font, "Game Over", 60);
+		sf::Text text(font, "Game Over", 90);
 		auto bounds = text.getLocalBounds();
-		text.setOrigin({ bounds.position.x + 0.5f * bounds.size.x, 0.6f * text.getCharacterSize() });
+		text.setOrigin({ bounds.position.x + 0.5f * bounds.size.x, 2.f * text.getCharacterSize() });
 
 		//Score
 		sf::Text scoreText(font, "Score: 0", 30);
@@ -74,7 +74,7 @@ void RunDino(sf::RenderWindow& window) {
 						}
 						else if (pressed->scancode == sf::Keyboard::Scan::Escape)
 						{
-							window.close();
+							return;
 						}
 					}
 				}
@@ -83,7 +83,7 @@ void RunDino(sf::RenderWindow& window) {
 				{
 					//update position
 					player.Update(dt, ground.GetY());
-					obstacles.Update(dt, static_cast<float>(window.getSize().x), static_cast<float>(ground.GetY()));
+					obstacles.Update(dt, static_cast<float>(window.getSize().x), static_cast<float>(ground.GetY()/ 2.f));
 
 					//increase score
 					score += dt * 10.f;

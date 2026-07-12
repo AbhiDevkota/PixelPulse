@@ -34,8 +34,11 @@ public:
 
 	float velocity_y = 0.f;
 	float GRAVITY = 2000.f;
-	float JUMP_FORCE = -900.f;
+	float JUMP_FORCE = -850.f;
 	bool is_grounded = false;
+
+	float scaleX = w / static_cast<float>(frameWidth);
+	float scaleY = h / static_cast<float>(frameHeight);
 
 	Player() {
 		dinoSprite.setTextureRect(sf::IntRect({ 0, 0 }, { frameWidth, frameHeight }));
@@ -45,8 +48,6 @@ public:
 
 	//get bounds of player
 	sf::FloatRect getBounds() const {
-		float scaleX = w / static_cast<float>(frameWidth);
-		float scaleY = h / static_cast<float>(frameHeight);
 
 		// Precise pixel measurements of the dino sprite within the 24x24 frame
 		float artWidth = 16.f;
@@ -67,8 +68,10 @@ public:
 
 		y += velocity_y * dt;
 
-		if (y + h / 2.f >= ground_y) {
-			y = ground_y - h / 2.f;
+		float footOffset = 5.f;
+
+		if (y + h / 2.f - footOffset >= ground_y/ 2.f) {
+			y = ground_y / 2.f - h / 2.f + footOffset;
 			velocity_y = 0.f;
 			is_grounded = true;
 		}
@@ -185,7 +188,7 @@ public:
 			int num_obstacles = (rand() % 3) + 1;
 
 			for (int i = 0; i < num_obstacles; i++) {
-				Spawn(spawn_x + (i * (w * 0.6f)), spawn_y);
+				Spawn(spawn_x + (i * (w * 0.6f)), spawn_y + 20.f);
 			}
 		}
 
@@ -232,9 +235,9 @@ public:
 
 		// precise pixel measurements of the large cactus sprites inside the 64x64 frame
 		float artWidth = 38.f;
-		float artHeight = 54.f;
+		float artHeight = 43.f;
 		float offsetX = 13.f;
-		float offsetY = 10.f;
+		float offsetY = 15.f;
 
 		for (int i = 0; i < n; i++) {
 			if (!array[i].active) continue;
@@ -276,7 +279,7 @@ public:
 
 		// Create a line spanning the entire width of the screen
 		rectangle.setSize({ window_width, 5.f });
-		rectangle.setPosition({ 0.f, y });
+		rectangle.setPosition({ 0.f, y/2 });
 		rectangle.setFillColor(sf::Color::White);
 	}
 
