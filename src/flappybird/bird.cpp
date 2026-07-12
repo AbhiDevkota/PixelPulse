@@ -81,7 +81,18 @@ void Bird::draw(sf::RenderWindow& window) {
 }
 
 sf::FloatRect Bird::getBounds() const {
-    return sprite.getGlobalBounds();   // used to check if the bird hit a pipe
+    sf::FloatRect full = sprite.getGlobalBounds();
+
+    float newW = full.size.x * HITBOX_SCALE;
+    float newH = full.size.y * HITBOX_SCALE;
+
+    float offsetX = (full.size.x - newW) / 2.f;
+    float offsetY = (full.size.y - newH) / 2.f;
+
+    return sf::FloatRect(
+        { full.position.x + offsetX, full.position.y + offsetY },
+        { newW, newH }
+    );
 }
 
 bool Bird::isLoaded() const {

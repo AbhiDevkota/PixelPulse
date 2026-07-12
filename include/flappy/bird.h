@@ -26,6 +26,11 @@ public:
     void flap();                                   // called when player presses space
     void update(float dt, sf::RenderWindow& window); // called every frame
     void reset(float cellW, float cellH);          // called when the game restarts
+
+    // shrinks the collision box so it roughly matches the visible character,
+    // not the full sprite rectangle (which includes empty space around the flame)
+    static constexpr float HITBOX_SCALE = 0.75f;
+
     void draw(sf::RenderWindow& window);           // called every frame to draw the bird
 
     sf::FloatRect getBounds() const;   // used for collision checking
