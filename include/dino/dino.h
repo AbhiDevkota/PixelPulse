@@ -147,6 +147,7 @@ class Obstacles {
 	//countdown timer
 	float duration_start = 2.f;
 	float duration = duration_start;
+	float min_duration = 0.9f;
 	float timer = duration;
 
 	sf::Texture cactusTexture{ "assets/dinosaurs/cactus.png" };
@@ -183,7 +184,7 @@ public:
 		if (timer <= 0.f)
 		{
 			duration *= 0.95f;
-			timer = duration;
+			timer = duration + (static_cast<float>(rand() % 6) / 10.f);
 
 			int num_obstacles = (rand() % 3) + 1;
 
