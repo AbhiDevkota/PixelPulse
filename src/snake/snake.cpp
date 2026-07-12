@@ -20,6 +20,8 @@ void Snake::reset(sf::Vector2i startPos, sf::Vector2i startDir) {
 }
 
 void Snake::setDirection(sf::Vector2i dir) {
+	if ( dir.x == -direction.x && dir.y == -direction.y)
+		return;
 	direction = dir;
 }
 
