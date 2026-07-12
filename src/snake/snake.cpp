@@ -13,8 +13,10 @@ Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
 
 void Snake::reset(sf::Vector2i startPos, sf::Vector2i startDir) {
 	body.clear();
-	body.push_front(startPos);
 	direction = startDir;
+	for (int i = 0; i < 3; ++i) {
+		body.push_back({ startPos.x - startDir.x * i, startPos.y - startDir.y * i });
+	}
 }
 
 void Snake::setDirection(sf::Vector2i dir) {
