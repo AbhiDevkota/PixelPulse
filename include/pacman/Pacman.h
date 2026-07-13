@@ -30,6 +30,7 @@ private:
 	void respawn();   // after a death: reposition entities, keep pellets
 
 	void handleEvents(bool& quit);
+	void pollDirection();   // live key-state polling for movement (see Pacman.cpp)
 	void update(float dt);
 	void movePac(float dist);
 	void collide();

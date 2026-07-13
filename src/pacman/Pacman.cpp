@@ -113,7 +113,10 @@ void Pacman::run() {
 		float dt = clock.restart().asSeconds();
 		dt = std::min(dt, 0.05f);   // clamp so alt-tab/stalls can't cause a huge step
 		handleEvents(quit);
-		if (state_ == State::Playing) update(dt);
+		if (state_ == State::Playing) {
+			pollDirection();
+			update(dt);
+		}
 		render();
 	}
 	if (window_.isOpen()) window_.setView(window_.getDefaultView());
@@ -125,13 +128,11 @@ void Pacman::handleEvents(bool& quit) {
 			window_.close();
 			return;
 		}
+		// Directional keys are read via live polling in pollDirection(); here we
+		// only handle discrete, one-shot actions.
 		if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
 			using K = sf::Keyboard::Key;
 			switch (key->code) {
-			case K::Up:    case K::W: pacWant_ = Direction::UP;    break;
-			case K::Down:  case K::S: pacWant_ = Direction::DOWN;  break;
-			case K::Left:  case K::A: pacWant_ = Direction::LEFT;  break;
-			case K::Right: case K::D: pacWant_ = Direction::RIGHT; break;
 			case K::Escape: quit = true; return;          // back to the menu
 			case K::R:
 				generateNewMap();
@@ -151,6 +152,24 @@ void Pacman::handleEvents(bool& quit) {
 			}
 		}
 	}
+}
+
+// Read movement from the live keyboard state every frame, matching Snake and
+// Flappy Bird. Relying on sf::Event::KeyPressed here made Pac-Man freeze until
+// an OS event (alt-tab / Win key) flushed the starved event queue; polling the
+// hardware key state directly sidesteps that entirely. A held key latches the
+// desired direction; releasing all keys keeps the last request (classic Pac-Man
+// buffered-turn behaviour), and movePac() only commits it when a tile opens up.
+void Pacman::pollDirection() {
+	using K = sf::Keyboard::Key;
+	if (sf::Keyboard::isKeyPressed(K::Up) || sf::Keyboard::isKeyPressed(K::W))
+		pacWant_ = Direction::UP;
+	else if (sf::Keyboard::isKeyPressed(K::Down) || sf::Keyboard::isKeyPressed(K::S))
+		pacWant_ = Direction::DOWN;
+	else if (sf::Keyboard::isKeyPressed(K::Left) || sf::Keyboard::isKeyPressed(K::A))
+		pacWant_ = Direction::LEFT;
+	else if (sf::Keyboard::isKeyPressed(K::Right) || sf::Keyboard::isKeyPressed(K::D))
+		pacWant_ = Direction::RIGHT;
 }
 
 void Pacman::update(float dt) {
