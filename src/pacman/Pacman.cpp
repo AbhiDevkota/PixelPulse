@@ -1,7 +1,21 @@
 #include "pacman/Pacman.h"
-#include <iostream>
+
+#include <algorithm>
 #include <cmath>
-#include <memory>
+#include <iostream>
+
+namespace {
+	constexpr float kSpeed = 5.0f;      // tiles per second
+	constexpr float kAnimRate = 0.15f;  // seconds between animation frames
+
+	// Ghost sprite folders, in ghost index order (matches Map's b/i/p/c scan).
+	const std::array<std::string, 4> kGhostNames = { "blinky", "inky", "pinky", "clyde" };
+
+	bool centered(const sf::Vector2f& p) {
+		return std::abs(p.x - std::round(p.x)) < 0.05f &&
+			std::abs(p.y - std::round(p.y)) < 0.05f;
+	}
+}
 
 void runPacMan(sf::RenderWindow& window) {
 	Pacman game(window);
@@ -10,504 +24,368 @@ void runPacMan(sf::RenderWindow& window) {
 	}
 }
 
-Pacman::Pacman(sf::RenderWindow& window) : window_(window) {}
-
-bool Pacman::initialize() {
-	return loadAssets();
+Pacman::Pacman(sf::RenderWindow& window)
+	: window_(window), rng_(std::random_device{}()) {
 }
 
-bool Pacman::loadAssets() {
-	// Generate the map procedurally (seed 0 = use current time for randomness)
-	if (!map_.loadGenerated(0)) {
-		std::cerr << "Failed to generate map" << std::endl;
-		return false;
+bool Pacman::initialize() {
+	setupView();
+	// Cap the frame rate. Without this the loop free-runs at thousands of FPS, so
+	// each frame's movement step is far smaller than the tile-centre tolerance and
+	// entities snap back to their tile every frame (see movePac / Ghost::moveGhost).
+	// It also keeps the OS event queue responsive instead of CPU-starved.
+	window_.setFramerateLimit(60);
+	map_.loadTextures();
+	loadTextures();
+
+	for (int i = 0; i < 4; ++i) {
+		ghosts_[i].init(i, kGhostNames[i]);
+		ghosts_[i].loadTextures();
 	}
 
-	// Load player textures
-	std::string directions[] = { "up", "down", "left", "right" };
+	hasFont_ = font_.openFromFile("fonts/regular.ttf");
+	if (!hasFont_) std::cerr << "Warning: failed to load font fonts/regular.ttf\n";
 
-	for (int d = 0; d < 4; d++) {
-		for (int f = 1; f <= 2; f++) {
-			std::string path = "assets/pacman/player1/" + directions[d] + "_" + std::to_string(f) + ".png";
-			if (!playerTextures_[d][f - 1].loadFromFile(path)) {
-				std::cerr << "Failed to load: " << path << std::endl;
-			}
-		}
-	}
-
-	// Load ghost textures
-	std::array<std::array<std::array<sf::Texture, 2>, 4>, 4> ghostTextures; // [ghost][direction][frame]
-	std::array<std::array<sf::Texture, 2>, 4> frightenedTextures; // [direction][frame]
-	std::array<std::array<sf::Texture, 2>, 4> eyesTextures; // [direction][frame]
-	
-	std::string ghostNames[] = { "blinky", "pinky", "inky", "clyde" };
-	std::string directionsLower[] = { "up", "down", "left", "right" };
-	
-	// Load normal ghost textures for each ghost
-	for (int g = 0; g < 4; g++) {
-		for (int d = 0; d < 4; d++) {
-			for (int f = 0; f < 2; f++) {
-				std::string path = "assets/pacman/ghost/" + ghostNames[g] + "/" + directionsLower[d] + "_" + std::to_string(f + 1) + ".png";
-				if (!ghostTextures[g][d][f].loadFromFile(path)) {
-					std::cerr << "Failed to load ghost texture: " << path << std::endl;
-				}
-			}
-		}
-	}
-	
-	// Load frightened textures (same for all ghosts)
-	for (int d = 0; d < 4; d++) {
-		for (int f = 0; f < 2; f++) {
-			std::string path = "assets/pacman/ghost/frightened/" + directionsLower[d] + "_" + std::to_string(f + 1) + ".png";
-			if (!frightenedTextures[d][f].loadFromFile(path)) {
-				std::cerr << "Failed to load frightened texture: " << path << std::endl;
-			}
-		}
-	}
-	
-	// Load eyes textures (dead ghosts)
-	for (int d = 0; d < 4; d++) {
-		for (int f = 0; f < 2; f++) {
-			std::string path = "assets/pacman/ghost/dead/" + directionsLower[d] + "_" + std::to_string(f + 1) + ".png";
-			if (!eyesTextures[d][f].loadFromFile(path)) {
-				std::cerr << "Failed to load eyes texture: " << path << std::endl;
-			}
-		}
-	}
-
-	// Calculate game area
-	int windowWidth = window_.getSize().x;
-	int windowHeight = window_.getSize().y;
-	float border = std::min(windowWidth, windowHeight) * 0.08f;
-	float hudHeight = 40.0f;
-
-	gameAreaSize_ = sf::Vector2f(
-		windowWidth - 2.0f * border,
-		windowHeight - 2.0f * border - hudHeight
-	);
-	gameAreaOffset_ = sf::Vector2f(border, border + hudHeight);
-
-	int mapPixelWidth = map_.getWidth() * map_.getTileSize();
-	int mapPixelHeight = map_.getHeight() * map_.getTileSize();
-	gameScale_ = std::min(gameAreaSize_.x / mapPixelWidth,
-		gameAreaSize_.y / mapPixelHeight);
-
-	float scaledMapW = mapPixelWidth * gameScale_;
-	float scaledMapH = mapPixelHeight * gameScale_;
-	gameAreaOffset_.x += (gameAreaSize_.x - scaledMapW) / 2.0f;
-	gameAreaOffset_.y += (gameAreaSize_.y - scaledMapH) / 2.0f;
-
-	map_.setScale(gameScale_);
-	map_.setOffset(gameAreaOffset_);
-
-	// Setup player sprite
-	playerSprite_.emplace(playerTextures_[2][0]);
-	playerSprite_->setScale(sf::Vector2f(gameScale_, gameScale_));
-
-	sf::Vector2f spawnTopLeft = map_.getPlayerSpawnPos();
-	float halfTile = map_.getTileSize() * 0.5f;
-	playerPos_ = sf::Vector2f(spawnTopLeft.x + halfTile, spawnTopLeft.y + halfTile);
-	playerSprite_->setPosition(sf::Vector2f(
-		playerPos_.x * gameScale_ + gameAreaOffset_.x,
-		playerPos_.y * gameScale_ + gameAreaOffset_.y
-	));
-
-	playerSpeed_ = 150.0f;
-
-	// Load font
-	if (!font_.openFromFile("fonts/regular.ttf")) {
-		std::cerr << "Failed to load font" << std::endl;
-	}
-
-	// Setup UI
-	float hudY = border + (hudHeight - 28.0f) / 2.0f;
-	scoreText_.emplace(font_);
-	scoreText_->setString("Score: 0");
-	scoreText_->setCharacterSize(24);
-	scoreText_->setFillColor(sf::Color::White);
-	scoreText_->setPosition(sf::Vector2f(border + 10.0f, hudY));
-
-	livesText_.emplace(font_);
-	livesText_->setString("Lives: 3");
-	livesText_->setCharacterSize(24);
-	livesText_->setFillColor(sf::Color::White);
-	livesText_->setPosition(sf::Vector2f(border + 200.0f, hudY));
-
-	// Load sounds
-	if (chompBuffer_.loadFromFile("audios/pacman/food_chomp.wav")) {
-		chompSound_.emplace(chompBuffer_);
-		soundLoaded_ = true;
-	}
-	
-	// Load power pellet sound
-	if (!powerPelletBuffer_.loadFromFile("audios/pacman/power_pellet_chomp.wav")) {
-		std::cerr << "Failed to load power pellet sound" << std::endl;
-	}
-	
-	// Load ghost eaten sound
-	if (!ghostEatenBuffer_.loadFromFile("audios/pacman/ghost_chomp.wav")) {
-		std::cerr << "Failed to load ghost eaten sound" << std::endl;
-	}
-	
-	// Load game over sound
-	if (!gameOverBuffer_.loadFromFile("audios/pacman/game_over.wav")) {
-		std::cerr << "Failed to load game over sound" << std::endl;
-	}
-
-	totalDots_ = map_.getTotalDots();
-	
-	// Store ghost textures for later use (MUST be done before initializeGhosts)
-	ghostTextures_ = ghostTextures;
-	frightenedTextures_ = frightenedTextures;
-	eyesTextures_ = eyesTextures;
-	
-	// Initialize ghosts (after textures are stored)
-	initializeGhosts();
-
+	generateNewMap();
+	reset();
+	loadAudio();
 	return true;
+}
+
+// The game draws into a fixed logical resolution (COLS*TILE wide, plus the HUD
+// strip). In fullscreen we scale that so it fills ~60% of the screen, centred,
+// with black bars around it (aspect ratio preserved).
+void Pacman::setupView() {
+	const sf::Vector2f logical{ Map::COLS * Map::TILE, Map::ROWS * Map::TILE + Map::HUD };
+	const sf::Vector2f screen{ float(window_.getSize().x), float(window_.getSize().y) };
+	const float coverage = 0.60f;
+	const float scale = std::min(coverage * screen.x / logical.x,
+		coverage * screen.y / logical.y);
+	const float vpW = (logical.x * scale) / screen.x;
+	const float vpH = (logical.y * scale) / screen.y;
+	view_ = sf::View(sf::FloatRect({ 0.f, 0.f }, logical));
+	view_.setViewport(sf::FloatRect({ (1.f - vpW) * 0.5f, (1.f - vpH) * 0.5f }, { vpW, vpH }));
+	window_.setView(view_);
+}
+
+bool Pacman::loadTextures() {
+	if (!playerNeutral_.loadFromFile("assets/pacman/player1/neutral.png"))
+		std::cerr << "Warning: failed to load assets/pacman/player1/neutral.png\n";
+
+	const char* dirs[4] = { "up", "down", "left", "right" };
+	for (int d = 0; d < 4; ++d) {
+		for (int f = 0; f < 2; ++f) {
+			std::string path = std::string("assets/pacman/player1/") + dirs[d] + "_" + std::to_string(f + 1) + ".png";
+			if (!playerTex_[d][f].loadFromFile(path))
+				std::cerr << "Warning: failed to load " << path << "\n";
+		}
+	}
+	return true;
+}
+
+bool Pacman::loadAudio() {
+	auto loadSnd = [&](sf::SoundBuffer& buf, std::unique_ptr<sf::Sound>& snd, const std::string& path, float vol) {
+		if (!buf.loadFromFile(path)) {
+			std::cerr << "Warning: failed to load audio: " << path << "\n";
+			return;
+		}
+		snd = std::make_unique<sf::Sound>(buf);
+		snd->setVolume(vol);
+		};
+	if (!bgMusic_.openFromFile("audios/pacman/background_music.wav"))
+		std::cerr << "Warning: failed to load audios/pacman/background_music.wav\n";
+	else {
+		bgMusic_.setLooping(true);
+		bgMusic_.setVolume(90.f);
+	}
+	loadSnd(foodBuf_, foodSnd_, "audios/pacman/food_chomp.wav", 50.f);
+	loadSnd(powerBuf_, powerSnd_, "audios/pacman/power_pellet_chomp.wav", 65.f);
+	loadSnd(ghostBuf_, ghostSnd_, "audios/pacman/ghost_chomp.wav", 65.f);
+	loadSnd(hurtBuf_, hurtSnd_, "audios/pacman/hurt.wav", 65.f);
+	loadSnd(gameOverBuf_, gameOverSnd_, "audios/pacman/game_over.wav", 65.f);
+	return true;
+}
+
+void Pacman::generateNewMap() {
+	seed_ = rng_();
+	map_.loadGenerated(seed_);   // also does an initial reset() internally
+}
+
+void Pacman::reset() {
+	map_.reset();
+	pacPos_ = map_.pacSpawn();
+	pacDir_ = pacWant_ = Direction::NONE;
+	pacWasCentered_ = false;
+	pacAnimTimer_ = 0.f;
+	pacAnimFrame_ = 0;
+
+	const auto& spawns = map_.ghostSpawns();
+	for (int i = 0; i < 4; ++i)
+		ghosts_[i].reset(spawns[i], map_.ghostHome());
+}
+
+void Pacman::respawn() {
+	// Reposition entities but keep the pellets already eaten this round.
+	pacPos_ = map_.pacSpawn();
+	pacDir_ = pacWant_ = Direction::NONE;
+	pacWasCentered_ = false;
+	pacAnimTimer_ = 0.f;
+	pacAnimFrame_ = 0;
+
+	const auto& spawns = map_.ghostSpawns();
+	for (int i = 0; i < 4; ++i)
+		ghosts_[i].reset(spawns[i], map_.ghostHome());
 }
 
 void Pacman::run() {
 	sf::Clock clock;
-
-	while (window_.isOpen() && state_ == PacmanState::PLAYING) {
-		handleEvents();
-
+	bool quit = false;
+	bgMusic_.play();
+	while (window_.isOpen() && !quit) {
 		float dt = clock.restart().asSeconds();
-		update(dt);
+		dt = std::min(dt, 0.05f);   // clamp so alt-tab/stalls can't cause a huge step
+		handleEvents(quit);
+		if (state_ == State::Playing) {
+			pollDirection();
+			update(dt);
+		}
 		render();
 	}
+	bgMusic_.stop();
+	if (window_.isOpen()) window_.setView(window_.getDefaultView());
 }
 
-void Pacman::handleEvents() {
-	while (const std::optional<sf::Event> event = window_.pollEvent()) {
+void Pacman::handleEvents(bool& quit) {
+	while (const std::optional event = window_.pollEvent()) {
 		if (event->is<sf::Event::Closed>()) {
 			window_.close();
 			return;
 		}
-
-		if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
-			if (state_ == PacmanState::PLAYING) {
-				switch (keyPressed->code) {
-				case sf::Keyboard::Key::Up:
-				case sf::Keyboard::Key::W:
-					nextDir_ = Direction::UP;
-					break;
-				case sf::Keyboard::Key::Down:
-				case sf::Keyboard::Key::S:
-					nextDir_ = Direction::DOWN;
-					break;
-				case sf::Keyboard::Key::Left:
-				case sf::Keyboard::Key::A:
-					nextDir_ = Direction::LEFT;
-					break;
-				case sf::Keyboard::Key::Right:
-				case sf::Keyboard::Key::D:
-					nextDir_ = Direction::RIGHT;
-					break;
-				case sf::Keyboard::Key::Escape:
-					state_ = PacmanState::PAUSED;
-					return;
-				default:
-					break;
+		// Directional keys are read via live polling in pollDirection(); here we
+		// only handle discrete, one-shot actions.
+		if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+			using K = sf::Keyboard::Key;
+			switch (key->code) {
+			case K::Escape: quit = true; return;          // back to the menu
+			case K::R:
+				generateNewMap();
+				score_ = 0; lives_ = 3;
+				state_ = State::Playing;
+				reset();
+				break;
+			case K::Enter:
+				if (state_ != State::Playing) {
+					generateNewMap();
+					score_ = 0; lives_ = 3;
+					state_ = State::Playing;
+					reset();
 				}
-			}
-		}
-	}
-}
-
-void Pacman::update(float deltaTime) {
-	if (state_ != PacmanState::PLAYING) return;
-
-	updateAnimation(deltaTime);
-	movePlayer(deltaTime);
-	checkDotCollision();
-	updateGhosts(deltaTime);
-	checkGhostCollision();
-	updateGlobalMode(deltaTime);
-
-	if (dotsCollected_ >= totalDots_) {
-		state_ = PacmanState::WIN;
-	}
-}
-
-void Pacman::updateAnimation(float dt) {
-	animTimer_ += dt;
-	if (animTimer_ > 0.1f) {
-		animTimer_ = 0;
-		animFrame_ = (animFrame_ + 1) % 2;
-
-		int dirIndex = 2;
-		if (currentDir_ == Direction::UP) dirIndex = 0;
-		else if (currentDir_ == Direction::DOWN) dirIndex = 1;
-		else if (currentDir_ == Direction::LEFT) dirIndex = 2;
-		else if (currentDir_ == Direction::RIGHT) dirIndex = 3;
-
-		playerSprite_->setTexture(playerTextures_[dirIndex][animFrame_]);
-	}
-}
-
-void Pacman::movePlayer(float dt) {
-	float ts = static_cast<float>(map_.getTileSize());
-
-	// Nearest tile centre to Pacman's current position
-	float cx = std::floor(playerPos_.x / ts) * ts + ts * 0.5f;
-	float cy = std::floor(playerPos_.y / ts) * ts + ts * 0.5f;
-
-	// Turn window: one frame of movement + small grace so we never skip past it
-	float turnWindow = playerSpeed_ * dt + 2.0f;
-
-	bool nearColCentre = std::abs(playerPos_.x - cx) <= turnWindow;
-	bool nearRowCentre = std::abs(playerPos_.y - cy) <= turnWindow;
-
-	// --- Try to apply queued turn ---
-	if (nextDir_ != Direction::NONE && nextDir_ != currentDir_) {
-		bool changingToHoriz = (nextDir_ == Direction::LEFT || nextDir_ == Direction::RIGHT);
-		bool changingToVert = (nextDir_ == Direction::UP || nextDir_ == Direction::DOWN);
-
-		// Perpendicular axis must be near a tile centre, except for 180-degree reversal
-		bool reversing = (currentDir_ == Direction::UP && nextDir_ == Direction::DOWN)
-			|| (currentDir_ == Direction::DOWN && nextDir_ == Direction::UP)
-			|| (currentDir_ == Direction::LEFT && nextDir_ == Direction::RIGHT)
-			|| (currentDir_ == Direction::RIGHT && nextDir_ == Direction::LEFT)
-			|| (currentDir_ == Direction::NONE);
-
-		bool perpAligned = reversing
-			|| (changingToHoriz && nearRowCentre)
-			|| (changingToVert && nearColCentre);
-
-		if (perpAligned && canMove(playerPos_, nextDir_)) {
-			// Snap onto the perpendicular centre for a clean lane entry
-			if (changingToHoriz) playerPos_.y = cy;
-			if (changingToVert)  playerPos_.x = cx;
-			currentDir_ = nextDir_;
-			nextDir_ = Direction::NONE;
-		}
-	}
-
-	// --- Move in current direction ---
-	if (currentDir_ != Direction::NONE) {
-		if (canMove(playerPos_, currentDir_)) {
-			float movement = playerSpeed_ * dt;
-			switch (currentDir_) {
-			case Direction::UP:    playerPos_.y -= movement; break;
-			case Direction::DOWN:  playerPos_.y += movement; break;
-			case Direction::LEFT:  playerPos_.x -= movement; break;
-			case Direction::RIGHT: playerPos_.x += movement; break;
+				break;
 			default: break;
 			}
 		}
-		// Wall ahead: Pacman stops; nextDir_ will be retried next frame
-	}
-
-	// --- Update sprite ---
-	if (playerSprite_) {
-		playerSprite_->setPosition(sf::Vector2f(
-			playerPos_.x * gameScale_ + gameAreaOffset_.x,
-			playerPos_.y * gameScale_ + gameAreaOffset_.y
-		));
-	}
-}
-
-bool Pacman::canMove(sf::Vector2f pos, Direction dir) {
-	float ts = static_cast<float>(map_.getTileSize());
-
-	// Step just past the leading edge (centre + half-tile + 1px) to catch
-	// the boundary before Pacman visually overlaps the wall.
-	float half = ts * 0.5f + 1.0f;
-
-	float checkX = pos.x;
-	float checkY = pos.y;
-	switch (dir) {
-	case Direction::UP:    checkY = pos.y - half; break;
-	case Direction::DOWN:  checkY = pos.y + half; break;
-	case Direction::LEFT:  checkX = pos.x - half; break;
-	case Direction::RIGHT: checkX = pos.x + half; break;
-	default: return false;
-	}
-
-	int tx = static_cast<int>(checkX / ts);
-	int ty = static_cast<int>(checkY / ts);
-	return map_.getTileAt(tx, ty) != TileType::WALL;
-}
-
-void Pacman::checkDotCollision() {
-	float ts = static_cast<float>(map_.getTileSize());
-
-	int tileX = static_cast<int>(playerPos_.x / ts);
-	int tileY = static_cast<int>(playerPos_.y / ts);
-
-	if (tileX >= 0 && tileX < map_.getWidth() && tileY >= 0 && tileY < map_.getHeight()) {
-		TileType type = map_.getTileAt(tileX, tileY);
-		if (type == TileType::DOT || type == TileType::POWER_PELLET) {
-			int points = (type == TileType::DOT) ? 10 : 50;
-			map_.removeDot(tileX, tileY);
-			score_ += points;
-			dotsCollected_++;
-			
-			if (type == TileType::POWER_PELLET) {
-				powerPelletActive_ = true;
-				frightenedTimer_ = 8.0f; // 8 seconds of frightened mode
-				if (soundLoaded_) {
-					sf::Sound powerSound(powerPelletBuffer_);
-					powerSound.play();
-				}
-			} else if (soundLoaded_) {
-				chompSound_->play();
-			}
-			
-			scoreText_->setString("Score: " + std::to_string(score_));
-		}
-	}
-}
-
-void Pacman::initializeGhosts() {
-	sf::Vector2f ts = {static_cast<float>(map_.getTileSize()), static_cast<float>(map_.getTileSize())};
-	
-	// Ghost spawn positions from the map (b, p, i, c)
-	std::array<sf::Vector2f, 4> spawnPositions = {
-		sf::Vector2f(13.5f * ts.x, 14.5f * ts.y), // Blinky
-		sf::Vector2f(18.5f * ts.x, 14.5f * ts.y), // Pinky
-		sf::Vector2f(13.5f * ts.x, 16.5f * ts.y), // Inky
-		sf::Vector2f(18.5f * ts.x, 16.5f * ts.y)  // Clyde
-	};
-	
-	GhostType types[] = {GhostType::BLINKY, GhostType::PINKY, GhostType::INKY, GhostType::CLYDE};
-	
-	for (int i = 0; i < 4; i++) {
-		ghosts_[i] = std::make_unique<Ghost>(types[i], map_, spawnPositions[i], ts.x);
-		
-		// Load textures for this ghost
-		ghosts_[i]->loadTextures(ghostTextures_[i], frightenedTextures_, eyesTextures_);
-		
-		// Release ghosts with delay
-		ghosts_[i]->releaseFromHouse();
-	}
-}
-
-void Pacman::updateGhosts(float dt) {
-	Ghost* blinkyRef = ghosts_[0].get(); // Blinky is first
-	
-	for (auto& ghost : ghosts_) {
-		if (ghost) {
-			ghost->update(dt, playerPos_, currentDir_, blinkyRef, globalMode_, frightenedTimer_);
-		}
-	}
-}
-
-void Pacman::checkGhostCollision() {
-	float ts = static_cast<float>(map_.getTileSize());
-	
-	for (auto& ghost : ghosts_) {
-		if (!ghost || ghost->isInHouse() || ghost->isEaten()) continue;
-		
-		float dist = std::sqrt(
-			std::pow(playerPos_.x - ghost->getPosition().x, 2) +
-			std::pow(playerPos_.y - ghost->getPosition().y, 2)
-		);
-		
-		if (dist < ts * 0.8f) {
-			if (ghost->canBeEaten()) {
-				// Eat the ghost
-				ghost->setEaten();
-				int points = ghost->getPointsValue();
-				score_ += points;
-				scoreText_->setString("Score: " + std::to_string(score_));
-				
-				if (soundLoaded_) {
-					sf::Sound eatenSound(ghostEatenBuffer_);
-					eatenSound.play();
-				}
-			} else if (ghost->isDeadly()) {
-				// Pacman dies
-				lives_--;
-				livesText_->setString("Lives: " + std::to_string(lives_));
-				
-				if (soundLoaded_) {
-					sf::Sound gameOverSound(gameOverBuffer_);
-					gameOverSound.play();
-				}
-				
-				if (lives_ <= 0) {
-					state_ = PacmanState::GAME_OVER;
-				} else {
-					// Reset positions
-					sf::Vector2f spawnTopLeft = map_.getPlayerSpawnPos();
-					float halfTile = map_.getTileSize() * 0.5f;
-					playerPos_ = sf::Vector2f(spawnTopLeft.x + halfTile, spawnTopLeft.y + halfTile);
-					playerSprite_->setPosition(sf::Vector2f(
-						playerPos_.x * gameScale_ + gameAreaOffset_.x,
-						playerPos_.y * gameScale_ + gameAreaOffset_.y
-					));
-					
-					// Reset ghosts
-					for (auto& g : ghosts_) {
-						if (g) {
-							g->reset();
-							g->releaseFromHouse();
-						}
-					}
-					
-					currentDir_ = Direction::NONE;
-					nextDir_ = Direction::NONE;
-				}
+		if (const auto* jb = event->getIf<sf::Event::JoystickButtonPressed>()) {
+			if (jb->button == 1) { quit = true; return; }
+			if (state_ != State::Playing) {
+				generateNewMap();
+				score_ = 0; lives_ = 3;
+				state_ = State::Playing;
+				reset();
 			}
 		}
 	}
 }
 
-void Pacman::updateGlobalMode(float dt) {
-	if (powerPelletActive_) {
-		globalMode_ = GhostMode::FRIGHTENED;
-		frightenedTimer_ -= dt;
-		
-		if (frightenedTimer_ <= 0) {
-			powerPelletActive_ = false;
-			globalMode_ = GhostMode::CHASE;
+// Read movement from the live keyboard state every frame, matching Snake and
+// Flappy Bird. Relying on sf::Event::KeyPressed here made Pac-Man freeze until
+// an OS event (alt-tab / Win key) flushed the starved event queue; polling the
+// hardware key state directly sidesteps that entirely. A held key latches the
+// desired direction; releasing all keys keeps the last request (classic Pac-Man
+// buffered-turn behaviour), and movePac() only commits it when a tile opens up.
+void Pacman::pollDirection() {
+	using K = sf::Keyboard::Key;
+	if (sf::Keyboard::isKeyPressed(K::Up) || sf::Keyboard::isKeyPressed(K::W))
+		pacWant_ = Direction::UP;
+	else if (sf::Keyboard::isKeyPressed(K::Down) || sf::Keyboard::isKeyPressed(K::S))
+		pacWant_ = Direction::DOWN;
+	else if (sf::Keyboard::isKeyPressed(K::Left) || sf::Keyboard::isKeyPressed(K::A))
+		pacWant_ = Direction::LEFT;
+	else if (sf::Keyboard::isKeyPressed(K::Right) || sf::Keyboard::isKeyPressed(K::D))
+		pacWant_ = Direction::RIGHT;
+
+	if (!sf::Joystick::isConnected(0)) return;
+	const float t = 50.f;
+	const float x = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::X);
+	const float y = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::Y);
+	const float px = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovX);
+	const float py = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovY);
+	const bool up = y < -t || py > t;
+	const bool down = y > t || py < -t;
+	const bool left = x < -t || px < -t;
+	const bool right = x > t || px > t;
+	if (up) pacWant_ = Direction::UP;
+	else if (down) pacWant_ = Direction::DOWN;
+	else if (left) pacWant_ = Direction::LEFT;
+	else if (right) pacWant_ = Direction::RIGHT;
+}
+
+void Pacman::update(float dt) {
+	const float dist = kSpeed * dt;
+
+	// Animate Pac-Man (toggle 0/1 while moving).
+	if (pacDir_ != Direction::NONE) {
+		pacAnimTimer_ += dt;
+		if (pacAnimTimer_ >= kAnimRate) {
+			pacAnimTimer_ -= kAnimRate;
+			pacAnimFrame_ = 1 - pacAnimFrame_;
 		}
-	} else {
-		// Classic mode switching
-		globalModeTimer_ += dt;
-		
-		// Simple alternating pattern: scatter 7s, chase 20s, scatter 7s, chase 20s...
-		if (globalMode_ == GhostMode::SCATTER) {
-			if (globalModeTimer_ >= 7.0f) {
-				globalMode_ = GhostMode::CHASE;
-				globalModeTimer_ = 0.0f;
+	}
+
+	movePac(dist);
+	// Build current ghost positions, updating after each ghost moves so later
+	// ghosts see the most up-to-date positions for collision avoidance.
+	std::array<sf::Vector2f, 4> gpos;
+	for (int i = 0; i < 4; ++i) gpos[i] = ghosts_[i].pos();
+	for (int i = 0; i < 4; ++i) {
+		ghosts_[i].update(dt, dist, pacPos_, map_, gpos, rng_);
+		gpos[i] = ghosts_[i].pos();
+	}
+	collide();
+
+	if (map_.pelletsRemaining() == 0) state_ = State::Won;
+}
+
+void Pacman::movePac(float dist) {
+	// Only resolve turns/eating the frame we *arrive* at a tile centre (or while
+	// sitting stopped against a wall waiting for a new turn) — not every frame we
+	// linger inside the centre tolerance. Re-snapping every frame pinned Pac-Man
+	// in place whenever the per-frame step was smaller than that tolerance.
+	const bool atCenter = centered(pacPos_);
+	if (atCenter && (!pacWasCentered_ || pacDir_ == Direction::NONE)) {
+		pacPos_ = { std::round(pacPos_.x), std::round(pacPos_.y) };
+		int c = int(pacPos_.x), r = int(pacPos_.y);
+
+		if (pacWant_ != Direction::NONE) {
+			sf::Vector2i wd = dirDelta(pacWant_);
+			if (!map_.isWall(c + wd.x, r + wd.y)) pacDir_ = pacWant_;
+		}
+		sf::Vector2i cd = dirDelta(pacDir_);
+		if (map_.isWall(c + cd.x, r + cd.y)) pacDir_ = Direction::NONE;
+
+		Map::Eat eaten = map_.consume(c, r);
+		if (eaten == Map::Eat::Dot) {
+			score_ += 10;
+			if (foodSnd_) foodSnd_->play();
+		}
+		else if (eaten == Map::Eat::Power) {
+			score_ += 50;
+			if (powerSnd_) powerSnd_->play();
+			for (auto& g : ghosts_) g.setFrightened(7.f);
+		}
+	}
+	pacWasCentered_ = atCenter;
+
+	if (pacDir_ != Direction::NONE) {
+		sf::Vector2i d = dirDelta(pacDir_);
+		pacPos_.x += d.x * dist;
+		pacPos_.y += d.y * dist;
+		if (pacPos_.x < -1.f)             pacPos_.x = Map::COLS;   // tunnel wrap
+		else if (pacPos_.x > Map::COLS)   pacPos_.x = -1.f;
+	}
+}
+
+void Pacman::collide() {
+	for (auto& g : ghosts_) {
+		if (g.isDead() || g.isReviving()) continue;
+
+		float dx = g.pos().x - pacPos_.x;
+		float dy = g.pos().y - pacPos_.y;
+		if (dx * dx + dy * dy < 0.25f) {
+			if (g.isFrightened()) {
+				score_ += 200;
+				if (ghostSnd_) ghostSnd_->play();
+				g.eat();
 			}
-		} else {
-			if (globalModeTimer_ >= 20.0f) {
-				globalMode_ = GhostMode::SCATTER;
-				globalModeTimer_ = 0.0f;
+			else {
+				if (--lives_ <= 0) {
+					state_ = State::Lost;
+					if (gameOverSnd_) gameOverSnd_->play();
+				}
+				else {
+					if (hurtSnd_) hurtSnd_->play();
+					respawn();
+				}
+				return;
 			}
 		}
 	}
 }
 
 void Pacman::render() {
+	window_.setView(view_);
 	window_.clear(sf::Color::Black);
-
 	map_.render(window_);
-	
-	// Render ghosts
-	for (auto& ghost : ghosts_) {
-		if (ghost) {
-			ghost->render(window_, gameScale_, gameAreaOffset_);
+	drawPac();
+	for (auto& g : ghosts_) g.render(window_);
+	drawHud();
+	window_.display();
+}
+
+void Pacman::drawPac() {
+	const sf::Texture* tex = &playerNeutral_;
+	if (pacDir_ != Direction::NONE) tex = &playerTex_[dirIndex(pacDir_)][pacAnimFrame_];
+	if (tex->getSize().x == 0) return;
+
+	sf::Sprite sprite(*tex);
+	sprite.setPosition(Map::toPixel(pacPos_));
+	window_.draw(sprite);
+}
+
+// Minimal retro HUD, drawn in the window's default view (raw screen pixels) so
+// text is sized against the real window and never overflows the small logical
+// play area. Sizes are clamped so the HUD stays small and crisp on any display.
+void Pacman::drawHud() {
+	window_.setView(window_.getDefaultView());
+	const sf::Vector2f ws{ float(window_.getSize().x), float(window_.getSize().y) };
+	const float margin = std::max(12.f, ws.y * 0.02f);
+	const unsigned fontSize = std::clamp(unsigned(ws.y / 55.f), 14u, 20u);
+
+	// Score, top-left.
+	if (hasFont_) {
+		sf::Text t(font_, "SCORE  " + std::to_string(score_), fontSize);
+		t.setPosition({ margin, margin });
+		window_.draw(t);
+	}
+
+	// Lives, top-right: a row of small neutral Pac-Man icons instead of a number.
+	const float iconSize = fontSize * 1.1f;
+	const float gap = iconSize * 0.3f;
+	if (playerNeutral_.getSize().x > 0 && lives_ > 0) {
+		const float scale = iconSize / float(playerNeutral_.getSize().x);
+		sf::Sprite icon(playerNeutral_);
+		icon.setScale({ scale, scale });
+		for (int i = 0; i < lives_; ++i) {
+			icon.setPosition({ ws.x - margin - (lives_ - i) * (iconSize + gap) + gap, margin });
+			window_.draw(icon);
 		}
 	}
-	
-	if (playerSprite_) window_.draw(*playerSprite_);
-	if (scoreText_) window_.draw(*scoreText_);
-	if (livesText_) window_.draw(*livesText_);
 
-	if (state_ == PacmanState::WIN) {
-		sf::Text winText(font_);
-		winText.setString("YOU WIN!");
-		winText.setCharacterSize(48);
-		winText.setFillColor(sf::Color::Yellow);
-		winText.setPosition(sf::Vector2f(static_cast<float>(window_.getSize().x) / 2.0f - 100.0f, static_cast<float>(window_.getSize().y) / 2.0f));
-		window_.draw(winText);
+	// Win / lose banner, centred: a compact title plus a small "PRESS ENTER" hint.
+	if (state_ != State::Playing && hasFont_) {
+		auto centre = [&](sf::Text& txt, float y) {
+			const sf::FloatRect b = txt.getLocalBounds();
+			txt.setOrigin(b.position + b.size / 2.f);
+			txt.setPosition({ ws.x / 2.f, y });
+			window_.draw(txt);
+		};
+
+		sf::Text title(font_, state_ == State::Won ? "YOU WIN" : "GAME OVER",
+			std::clamp(unsigned(ws.y / 28.f), 22u, 40u));
+		title.setFillColor(state_ == State::Won ? sf::Color::Green : sf::Color::Red);
+		centre(title, ws.y / 2.f - fontSize);
+
+		sf::Text hint(font_, "PRESS ENTER", fontSize);
+		hint.setFillColor(sf::Color::White);
+		centre(hint, ws.y / 2.f + fontSize * 1.6f);
 	}
-
-	window_.display();
 }

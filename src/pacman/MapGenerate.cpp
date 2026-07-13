@@ -1,500 +1,668 @@
 #include "pacman/MapGenerate.h"
-#include <fstream>
-#include <stdexcept>
-#include <iostream>
-#include <random>
-#include <deque>
-#include <utility>
+
 #include <algorithm>
+#include <array>
+#include <random>
+#include <string>
+#include <utility>
+#include <vector>
 
-//using namespace std;
-
-// ===================== SEEDED RNG (xorshift32, matches the TS prototype) =====================
+// ---------------------------------------------------------------------------
+// Maze generation, ported verbatim (behaviourally) from ref.cpp's namespace
+// helpers + MapGenerator class. Kept private to this translation unit; the
+// public MapGenerator (declared in the header) is a thin wrapper over it.
+// ---------------------------------------------------------------------------
 namespace {
 
-	struct Xorshift32 {
-		uint32_t s;
-		explicit Xorshift32(uint32_t seed) : s(seed ? seed : 1u) {}
+	constexpr int kCols = 19;
+	constexpr int kRows = 21;
+
+	// XorShift32 — deterministic PRNG. All maze randomness flows through this,
+	// seeded once per round, so the same seed always reproduces the same maze.
+	struct XorShift32 {
+		uint32_t state;
+		explicit XorShift32(uint32_t seed) : state(seed != 0 ? seed : 0x9E3779B9u) {}
 
 		uint32_t next() {
-			uint32_t x = s;
+			uint32_t x = state;
 			x ^= x << 13;
 			x ^= x >> 17;
 			x ^= x << 5;
-			s = x;
+			state = x;
 			return x;
 		}
-
-		double randf() { return static_cast<double>(next()) / 4294967296.0; }
-		int randi(int maxExclusive) { return static_cast<int>(randf() * maxExclusive); }
+		bool coinFlip() { return (next() & 1u) != 0u; }
+		bool chance(int percent) { return int(next() % 100u) < percent; }          // percent, 0-100
+		bool chancePerMille(int perMille) { return int(next() % 1000u) < perMille; } // per-mille, 0-1000
+		uint32_t below(uint32_t n) { return n == 0 ? 0 : next() % n; }
 	};
 
-	constexpr int DCOL[4] = { 0, 1, 0, -1 };
-	constexpr int DROW[4] = { -1, 0, 1, 0 };
+	// MapGenerator — implements the 20-phase maze generation rulebook on a
+	// 21 row x 19 col grid (rows/cols 0-indexed; row0/row20 and col0/col18 are
+	// the outer border).
+	class MazeGen {
+	public:
+		static std::vector<std::string> generate(uint32_t seed) {
+			XorShift32 rng(seed);
+			std::vector<std::string> g(kRows, std::string(kCols, 'W'));
 
-	// ---- corridor carving on a local half-width field buffer ----
-	// open[y][x] == true means walkable. Only the left half (x in [0, halfW))
-	// is carved; the caller mirrors it into the right half of the real grid.
+			const int vColSeed = rng.coinFlip() ? 3 : 4;                 // Phase 1
+			const std::array<int, 7> hRows = { 1, 4, 7, 12, 14, 16, 19 };
+			const std::array<int, 3> vCols = { 1, vColSeed, 5 };
 
-	void carveSkeleton(std::vector<std::vector<bool>>& open, int halfW, int h, Xorshift32& rng) {
-		std::vector<int> hRows = { 0, h - 1 };
-		if (h > 4) hRows.push_back(h / 2);
-		if (h > 7) hRows.push_back(h / 3);
+			phase2_horizontalCorridors(g, hRows);
+			phase3_verticalCorridors(g, vCols);
+			phase4_centerColumn(g, rng, hRows);
+			phase5_breakIntersections(g, rng, hRows, vCols);
+			phase6_breakHorizontalRuns(g, rng, hRows, vCols);
+			phase7_verticalSidePaths(g, rng, hRows, vCols);
+			phase8_mirror(g);
+			phase9_centerConnections(g);
+			phase10_ghostHouse(g);
+			phase11_ghostHouseAccess(g);
+			phase12_tunnel(g);
+			phase13_pacmanStart(g);
+			phase14_removeDeadEnds(g, rng);          // Phase 14
+			phase15_breakRooms(g, rng);               // Phase 15
+			phase14_removeDeadEnds(g, rng);           // Phase 16 (re-run of 14)
+			phase17_connectivityRepair(g);            // Phase 17
+			phase15_breakRooms(g, rng);               // Phase 17.5 cleanup
+			phase14_removeDeadEnds(g, rng);
+			phase18_powerPellets(g, rng);
+			phase19_finalReinforce(g);
+			phase20_strayEmptyToDot(g);
+			removeFloatingWallFragments(g, /*minComponentSize=*/3);
+			phase15_breakRooms(g, rng);               // safety re-pass: fragment removal
+			phase14_removeDeadEnds(g, rng);            // can only open tiles, never break anything,
+			// but could in principle expose a new 3x3 room
 
-		for (int y : hRows) {
-			for (int x = 0; x < halfW; ++x) open[y][x] = true;
+			phase21_addLoopConnections(g, rng);        // Phase 21 — extra loops for route variety
+			phase19_finalReinforce(g);                 // re-assert protected structures before locking width
+			phase22_enforceSingleWidth(g, rng);        // Phase 22 — collapse every 2x2 to single-tile width
+
+			return toRenderChars(g);
 		}
 
-		std::vector<int> vCols = { 0 };
-		vCols.push_back(1 + rng.randi(2));          // inner column: 1 or 2
-		if (halfW > 6) vCols.push_back(halfW - 1);  // column hugging the centre divider
+	private:
+		static constexpr int kPacX = 9, kPacY = 16;
 
-		for (int x : vCols) {
-			for (int y = 0; y < h; ++y) open[y][x] = true;
+		// ---- small helpers ------------------------------------------------------
+		static bool inBounds(int x, int y) { return x >= 0 && x < kCols && y >= 0 && y < kRows; }
+		static bool isGhostZone(int x, int y) { return x >= 6 && x <= 12 && y >= 8 && y <= 11; }
+
+		static char get(const std::vector<std::string>& g, int x, int y) {
+			if (!inBounds(x, y)) return 'W';
+			return g[y][x];
+		}
+		static void set(std::vector<std::string>& g, int x, int y, char c) {
+			if (inBounds(x, y)) g[y][x] = c;
+		}
+		static bool isOpenTile(char c) { return c == '.' || c == ' ' || c == 'P'; }
+		static bool isPassable(char c) { return c != 'W'; }  // for Phase 17 flood-fill / BFS
+
+		static void carveIfWall(std::vector<std::string>& g, int x, int y) {
+			if (isGhostZone(x, y)) return;
+			if (get(g, x, y) == 'W') set(g, x, y, '.');
 		}
 
-		// A few extra random connector cells so every field looks different.
-		for (int y = 1; y < h - 1; ++y) {
-			for (int x = 1; x < halfW - 1; ++x) {
-				if (open[y][x]) continue;
-				if (rng.randf() < 0.06) open[y][x] = true;
+		// ---- Phase 2 — carve horizontal corridors --------------------------------
+		static void phase2_horizontalCorridors(std::vector<std::string>& g, const std::array<int, 7>& hRows) {
+			for (int y : hRows)
+				for (int x = 1; x <= 9; ++x)
+					carveIfWall(g, x, y);
+		}
+
+		// ---- Phase 3 — carve vertical corridors -----------------------------------
+		static void phase3_verticalCorridors(std::vector<std::string>& g, const std::array<int, 3>& vCols) {
+			for (int x : vCols)
+				for (int y = 1; y <= 17; ++y)
+					carveIfWall(g, x, y);
+		}
+
+		// ---- Phase 4 — open the center column --------------------------------------
+		static void phase4_centerColumn(std::vector<std::string>& g, XorShift32& rng, const std::array<int, 7>& hRows) {
+			for (int y : hRows) carveIfWall(g, 9, y);
+			for (int y = 1; y <= 19; ++y) {
+				if (std::find(hRows.begin(), hRows.end(), y) != hRows.end()) continue;
+				if (isGhostZone(9, y)) continue;
+				if (rng.chance(18)) set(g, 9, y, '.');
 			}
 		}
-	}
 
-	void breakIntersections(std::vector<std::vector<bool>>& open, int halfW, int h, Xorshift32& rng) {
-		for (int y = 1; y < h - 1; ++y) {
-			for (int x = 1; x < halfW - 1; ++x) {
-				if (!open[y][x]) continue;
-				int n = 0;
-				for (int d = 0; d < 4; ++d) {
-					int nx = x + DCOL[d], ny = y + DROW[d];
-					if (nx < 0 || nx >= halfW || ny < 0 || ny >= h) continue;
-					if (open[ny][nx]) n++;
+		// ---- Phase 5 — break up intersections with wall blocks ---------------------
+		static void phase5_breakIntersections(std::vector<std::string>& g, XorShift32& rng,
+			const std::array<int, 7>& hRows, const std::array<int, 3>& vCols) {
+			const std::array<int, 4> cols = { vCols[0], vCols[1], vCols[2], 9 };
+			for (int hRow : hRows) {
+				if (hRow == 1 || hRow == 19) continue;
+				for (int vCol : cols) {
+					if (vCol == 1) continue;
+					if (isGhostZone(vCol, hRow)) continue;
+					int pct = (vCol == 9) ? 28 : 40;
+					if (rng.chance(pct)) set(g, vCol, hRow, 'W');
 				}
-				// Only thin out genuine crossroads (3+ open neighbours) so we
-				// don't accidentally sever a simple corridor.
-				if (n >= 3 && rng.randf() < 0.35) open[y][x] = false;
 			}
 		}
-	}
 
-	// A dead end is an open cell with exactly one open neighbour (treating the
-	// field boundary itself as "open", since it connects to the border
-	// corridor). Punch a random adjacent wall to give it a second way out.
-	void removeDeadEnds(std::vector<std::vector<bool>>& open, int halfW, int h, Xorshift32& rng) {
-		for (int pass = 0; pass < 4; ++pass) {
-			bool changed = false;
-			for (int y = 1; y < h - 1; ++y) {
-				for (int x = 1; x < halfW - 1; ++x) {
-					if (!open[y][x]) continue;
-					int openCount = 0;
-					std::vector<int> wallDirs;
-					for (int d = 0; d < 4; ++d) {
-						int nx = x + DCOL[d], ny = y + DROW[d];
-						if (nx < 0 || nx >= halfW || ny < 0 || ny >= h) { openCount++; continue; }
-						if (open[ny][nx]) openCount++;
-						else wallDirs.push_back(d);
+		// ---- Phase 6 — add wall blocks within horizontal corridors -----------------
+		static void phase6_breakHorizontalRuns(std::vector<std::string>& g, XorShift32& rng,
+			const std::array<int, 7>& hRows, const std::array<int, 3>& vCols) {
+			const std::array<int, 4> cols = { vCols[0], vCols[1], vCols[2], 9 };
+			for (int y : hRows) {
+				if (y == 1 || y == 19 || y == 12) continue;
+				for (int x = 1; x <= 9; ++x) {
+					if (std::find(cols.begin(), cols.end(), x) != cols.end()) continue;
+					if (get(g, x, y) != '.') continue;
+					if (rng.chance(8)) set(g, x, y, 'W');
+				}
+			}
+		}
+
+		// ---- Phase 7 — vertical side paths between horizontal corridors ------------
+		static void phase7_verticalSidePaths(std::vector<std::string>& g, XorShift32& rng,
+			const std::array<int, 7>& hRows, const std::array<int, 3>& vCols) {
+			for (int y = 1; y <= 19; ++y) {
+				if (std::find(hRows.begin(), hRows.end(), y) != hRows.end()) continue;
+				for (int x = 1; x <= 8; ++x) {
+					if (isGhostZone(x, y)) continue;
+					if (get(g, x, y) != 'W') continue;
+					bool isVCol = std::find(vCols.begin(), vCols.end(), x) != vCols.end();
+					if (isVCol) {
+						if (rng.chance(22)) set(g, x, y, '.');
 					}
-					if (openCount == 1 && !wallDirs.empty()) {
-						int d = wallDirs[rng.randi(static_cast<int>(wallDirs.size()))];
-						int nx = x + DCOL[d], ny = y + DROW[d];
-						if (nx >= 0 && nx < halfW && ny >= 0 && ny < h) {
-							open[ny][nx] = true;
-							changed = true;
+					else {
+						if (rng.chancePerMille(35)) set(g, x, y, '.');  // 3.5%
+					}
+				}
+			}
+		}
+
+		// ---- Phase 8 — mirror left half to right half -------------------------------
+		static void phase8_mirror(std::vector<std::string>& g) {
+			for (int y = 1; y <= 19; ++y)
+				for (int x = 1; x <= 8; ++x)
+					if (g[y][x] == '.') set(g, 18 - x, y, '.');
+		}
+
+		// ---- Phase 9 — ensure center column has horizontal connections -------------
+		static void phase9_centerConnections(std::vector<std::string>& g) {
+			for (int y = 1; y <= 19; ++y) {
+				if (get(g, 9, y) != '.') continue;
+				if (get(g, 8, y) == 'W') set(g, 8, y, '.');
+				if (get(g, 10, y) == 'W') set(g, 10, y, '.');
+			}
+		}
+
+		// ---- Phase 10 — stamp down the ghost house -----------------------------------
+		static void phase10_ghostHouse(std::vector<std::string>& g) {
+			for (int x = 7; x <= 11; ++x)
+				for (int y = 9; y <= 10; ++y)
+					set(g, x, y, 'H');
+			for (int x = 6; x <= 12; ++x) { set(g, x, 8, 'W'); set(g, x, 11, 'W'); }
+			for (int y = 8; y <= 11; ++y) { set(g, 6, y, 'W'); set(g, 12, y, 'W'); }
+			set(g, 9, 8, 'D');  // door
+		}
+
+		// ---- Phase 11 — ghost house access corridor -----------------------------------
+		static void phase11_ghostHouseAccess(std::vector<std::string>& g) {
+			set(g, 9, 7, '.');
+			for (int x = 1; x <= 9; ++x)  if (get(g, x, 7) == 'W') set(g, x, 7, '.');
+			for (int x = 9; x <= 17; ++x) if (get(g, x, 7) == 'W') set(g, x, 7, '.');
+			for (int y = 1; y <= 7; ++y)  if (get(g, 9, y) == 'W') set(g, 9, y, '.');
+		}
+
+		// ---- Phase 12 — tunnel -----------------------------------------------------
+		static void phase12_tunnel(std::vector<std::string>& g) {
+			for (int x = 0; x < kCols; ++x) set(g, x, 12, ' ');
+			set(g, 0, 12, ' ');
+			set(g, kCols - 1, 12, ' ');
+		}
+
+		// ---- Phase 13 — pacman start area -------------------------------------------
+		static void phase13_pacmanStart(std::vector<std::string>& g) {
+			for (int x = 7; x <= 11; ++x)
+				for (int y = 15; y <= 17; ++y)
+					if (get(g, x, y) == 'W') set(g, x, y, '.');
+			set(g, kPacX, kPacY, ' ');
+			for (int y = 1; y <= 16; ++y) if (get(g, 9, y) == 'W') set(g, 9, y, '.');
+			for (int x = 1; x <= 9; ++x)  if (get(g, x, 16) == 'W') set(g, x, 16, '.');
+			for (int x = 9; x <= 17; ++x) if (get(g, x, 16) == 'W') set(g, x, 16, '.');
+		}
+
+		// ---- Phase 14 / 16 — remove dead ends -----------------------------------------
+		static void phase14_removeDeadEnds(std::vector<std::string>& g, XorShift32& rng) {
+			static const int dx[4] = { 0, 0, -1, 1 };
+			static const int dy[4] = { -1, 1, 0, 0 };
+			for (int pass = 0; pass < 4; ++pass) {
+				bool anyFixed = false;
+				for (int y = 0; y < kRows; ++y) {
+					for (int x = 0; x < kCols; ++x) {
+						if (!isOpenTile(g[y][x])) continue;
+						int openCount = 0;
+						for (int d = 0; d < 4; ++d)
+							if (isOpenTile(get(g, x + dx[d], y + dy[d]))) ++openCount;
+						if (openCount != 1) continue;
+
+						std::vector<int> wallDirs;
+						for (int d = 0; d < 4; ++d) {
+							int nx = x + dx[d], ny = y + dy[d];
+							if (get(g, nx, ny) == 'W' && !isGhostZone(nx, ny)) wallDirs.push_back(d);
+						}
+						if (!wallDirs.empty()) {
+							int d = wallDirs[rng.below((uint32_t)wallDirs.size())];
+							set(g, x + dx[d], y + dy[d], '.');
+							anyFixed = true;
 						}
 					}
 				}
+				if (!anyFixed) break;
 			}
-			if (!changed) break;
 		}
-	}
 
-	bool wouldCreateDeadEnd(const std::vector<std::vector<bool>>& open, int x, int y, int halfW, int h) {
-		for (int d = 0; d < 4; ++d) {
-			int nx = x + DCOL[d], ny = y + DROW[d];
-			if (nx <= 0 || nx >= halfW - 1 || ny <= 0 || ny >= h - 1) continue;
-			if (!open[ny][nx]) continue;
-			int openCount = 0;
-			for (int dd = 0; dd < 4; ++dd) {
-				int nnx = nx + DCOL[dd], nny = ny + DROW[dd];
-				if (nnx == x && nny == y) continue; // would become the new wall
-				if (nnx < 0 || nnx >= halfW || nny < 0 || nny >= h) { openCount++; continue; }
-				if (open[nny][nnx]) openCount++;
+		// ---- Phase 15 / 17.5 — break up large 3x3 rooms --------------------------------
+		static bool wouldCreateDeadEnd(const std::vector<std::string>& g, int x, int y) {
+			static const int dx[4] = { 0, 0, -1, 1 };
+			static const int dy[4] = { -1, 1, 0, 0 };
+			for (int d = 0; d < 4; ++d) {
+				int nx = x + dx[d], ny = y + dy[d];
+				if (!isOpenTile(get(g, nx, ny))) continue;
+				int openCount = 0;
+				for (int d2 = 0; d2 < 4; ++d2) {
+					int mx = nx + dx[d2], my = ny + dy[d2];
+					if (mx == x && my == y) continue;  // this tile is about to become WALL
+					if (isOpenTile(get(g, mx, my))) ++openCount;
+				}
+				if (openCount <= 1) return true;
 			}
-			if (openCount <= 1) return true;
+			return false;
 		}
-		return false;
-	}
 
-	// Break up leftover 3x3 open blocks so rooms don't feel like empty halls.
-	// Never blocks the outer field edge (that's the border corridor).
-	void breakRooms(std::vector<std::vector<bool>>& open, int halfW, int h, Xorshift32& rng) {
-		for (int pass = 0; pass < 3; ++pass) {
-			bool found = false;
-			for (int y = 1; y < h - 3; ++y) {
-				for (int x = 1; x < halfW - 3; ++x) {
-					bool allOpen = true;
-					for (int dy = 0; dy < 3 && allOpen; ++dy)
-						for (int dx = 0; dx < 3 && allOpen; ++dx)
-							if (!open[y + dy][x + dx]) allOpen = false;
-					if (!allOpen) continue;
-					found = true;
+		static bool isProtectedFromWalling(int x, int y) {
+			return x == 1 || x == 17 || y == 1 || y == 19 || isGhostZone(x, y) ||
+				(x == kPacX && y == kPacY) ||   // pac-man spawn tile — must stay open
+				(x == 9 && y == 7);             // ghost-house access corridor — sole exit
+		}
 
-					int cx = x + 1, cy = y + 1;
-					if (!wouldCreateDeadEnd(open, cx, cy, halfW, h)) {
-						open[cy][cx] = false;
+		static void phase15_breakRooms(std::vector<std::string>& g, XorShift32& rng) {
+			for (int pass = 0; pass < 3; ++pass) {
+				std::vector<std::pair<int, int>> rooms;
+				for (int y = 0; y <= kRows - 3; ++y) {
+					for (int x = 0; x <= kCols - 3; ++x) {
+						bool allOpen = true;
+						for (int yy = y; yy < y + 3 && allOpen; ++yy)
+							for (int xx = x; xx < x + 3; ++xx)
+								if (!isOpenTile(get(g, xx, yy))) { allOpen = false; break; }
+						if (allOpen) rooms.emplace_back(x, y);
+					}
+				}
+				if (rooms.empty()) break;
+
+				for (auto& room : rooms) {
+					int rx = room.first, ry = room.second;
+					bool stillRoom = true;
+					for (int yy = ry; yy < ry + 3 && stillRoom; ++yy)
+						for (int xx = rx; xx < rx + 3; ++xx)
+							if (!isOpenTile(get(g, xx, yy))) { stillRoom = false; break; }
+					if (!stillRoom) continue;
+
+					int cx = rx + 1, cy = ry + 1;
+					if (!isProtectedFromWalling(cx, cy) && !wouldCreateDeadEnd(g, cx, cy)) {
+						set(g, cx, cy, 'W');
 						continue;
 					}
 
-					std::vector<std::pair<int, int>> candidates;
-					for (int dy = 0; dy < 3; ++dy) {
-						for (int dx = 0; dx < 3; ++dx) {
-							if (dx == 1 && dy == 1) continue;
-							int px = x + dx, py = y + dy;
-							if (px <= 0 || px >= halfW - 1 || py <= 0 || py >= h - 1) continue;
-							candidates.emplace_back(px, py);
-						}
+					std::vector<std::pair<int, int>> edges;
+					for (int yy = ry; yy < ry + 3; ++yy)
+						for (int xx = rx; xx < rx + 3; ++xx)
+							if (!(xx == cx && yy == cy) && !isProtectedFromWalling(xx, yy))
+								edges.emplace_back(xx, yy);
+					for (size_t i = edges.size(); i > 1; --i) {
+						size_t j = rng.below((uint32_t)i);
+						std::swap(edges[i - 1], edges[j]);
 					}
-					for (int i = static_cast<int>(candidates.size()) - 1; i > 0; --i) {
-						int j = rng.randi(i + 1);
-						std::swap(candidates[i], candidates[j]);
-					}
-					for (auto& pos : candidates) {
-						if (!wouldCreateDeadEnd(open, pos.first, pos.second, halfW, h)) {
-							open[pos.second][pos.first] = false;
+					bool placed = false;
+					for (auto& e : edges) {
+						if (!wouldCreateDeadEnd(g, e.first, e.second)) {
+							set(g, e.first, e.second, 'W');
+							placed = true;
 							break;
 						}
 					}
+					if (!placed) set(g, cx, cy, 'W');  // no safe position — forced fallback
 				}
 			}
-			if (!found) break;
 		}
-	}
 
-} // namespace
+		// ---- Phase 17 — connectivity fix (BFS repair) -----------------------------------
+		static void phase17_connectivityRepair(std::vector<std::string>& g) {
+			static const int dx[4] = { 0, 0, -1, 1 };
+			static const int dy[4] = { -1, 1, 0, 0 };
 
-// ===================== GENERATE =====================
+			for (int iter = 0; iter < 30; ++iter) {
+				std::vector<std::vector<bool>> reached(kRows, std::vector<bool>(kCols, false));
+				std::vector<std::pair<int, int>> queue;
+				queue.emplace_back(kPacX, kPacY);
+				reached[kPacY][kPacX] = true;
+				size_t head = 0;
+				while (head < queue.size()) {
+					auto [cx, cy] = queue[head++];
+					for (int d = 0; d < 4; ++d) {
+						int nx = cx + dx[d], ny = cy + dy[d];
+						if (!inBounds(nx, ny) || reached[ny][nx]) continue;
+						if (!isPassable(g[ny][nx])) continue;
+						reached[ny][nx] = true;
+						queue.emplace_back(nx, ny);
+					}
+				}
+
+				int tx = -1, ty = -1;
+				for (int y = 0; y < kRows && tx < 0; ++y)
+					for (int x = 0; x < kCols; ++x)
+						if (isPassable(g[y][x]) && !reached[y][x]) { tx = x; ty = y; break; }
+				if (tx < 0) break;  // everything reachable — done
+
+				// BFS from the isolated tile through everything (including WALL) to
+				// find the shortest bridge back to the reachable region.
+				std::vector<std::vector<bool>> visited(kRows, std::vector<bool>(kCols, false));
+				std::vector<std::vector<std::pair<int, int>>> parent(
+					kRows, std::vector<std::pair<int, int>>(kCols, { -1, -1 }));
+				std::vector<std::pair<int, int>> bq;
+				bq.emplace_back(tx, ty);
+				visited[ty][tx] = true;
+				size_t bhead = 0;
+				std::pair<int, int> foundAt = { -1, -1 };
+				while (bhead < bq.size()) {
+					auto [cx, cy] = bq[bhead++];
+					if (reached[cy][cx]) { foundAt = { cx, cy }; break; }
+					for (int d = 0; d < 4; ++d) {
+						int nx = cx + dx[d], ny = cy + dy[d];
+						if (!inBounds(nx, ny) || visited[ny][nx]) continue;
+						visited[ny][nx] = true;
+						parent[ny][nx] = { cx, cy };
+						bq.emplace_back(nx, ny);
+					}
+				}
+				if (foundAt.first < 0) break;  // safety: shouldn't happen on a bounded grid
+
+				int cx = foundAt.first, cy = foundAt.second;
+				while (!(cx == tx && cy == ty)) {
+					if (g[cy][cx] == 'W') set(g, cx, cy, '.');
+					auto p = parent[cy][cx];
+					cx = p.first; cy = p.second;
+				}
+			}
+		}
+
+		// ---- Phase 18 — place power pellets ------------------------------------------
+		static void phase18_powerPellets(std::vector<std::string>& g, XorShift32& rng) {
+			const std::array<std::pair<int, int>, 4> corners = { {{1, 1}, {17, 1}, {1, 19}, {17, 19}} };
+			auto absInt = [](int v) { return v < 0 ? -v : v; };
+
+			for (auto& corner : corners) {
+				int ax = corner.first, ay = corner.second;
+				bool placed = false;
+				for (int dist = 0; dist <= 11 && !placed; ++dist) {
+					std::vector<std::pair<int, int>> candidates;
+					for (int y = ay - dist; y <= ay + dist; ++y) {
+						for (int x = ax - dist; x <= ax + dist; ++x) {
+							if (std::max(absInt(x - ax), absInt(y - ay)) != dist) continue;  // ring only
+							if (get(g, x, y) == '.') candidates.emplace_back(x, y);
+						}
+					}
+					if (!candidates.empty()) {
+						auto& pick = candidates[rng.below((uint32_t)candidates.size())];
+						set(g, pick.first, pick.second, 'P');
+						placed = true;
+					}
+				}
+			}
+		}
+
+		// ---- Phase 19 — final re-enforce ------------------------------------------------
+		static void phase19_finalReinforce(std::vector<std::string>& g) {
+			phase10_ghostHouse(g);
+			set(g, 9, 7, '.');
+			for (int y = 0; y < kRows; ++y) { set(g, 0, y, 'W'); set(g, kCols - 1, y, 'W'); }
+			for (int x = 0; x < kCols; ++x) { set(g, x, 0, 'W'); set(g, x, kRows - 1, 'W'); }
+			for (int x = 0; x < kCols; ++x) set(g, x, 12, ' ');
+			set(g, 0, 12, ' ');
+			set(g, kCols - 1, 12, ' ');
+		}
+
+		// ---- Phase 20 — convert stray EMPTY to DOT ---------------------------------------
+		static void phase20_strayEmptyToDot(std::vector<std::string>& g) {
+			for (int y = 0; y < kRows; ++y) {
+				for (int x = 0; x < kCols; ++x) {
+					if (g[y][x] != ' ') continue;
+					if (y == 12) continue;
+					if (x == kPacX && y == kPacY) continue;
+					g[y][x] = '.';
+				}
+			}
+		}
+
+		// ---- Visual cleanup — remove tiny floating wall fragments -----------------------
+		static void removeFloatingWallFragments(std::vector<std::string>& g, int minComponentSize) {
+			static const int dx[4] = { 0, 0, -1, 1 };
+			static const int dy[4] = { -1, 1, 0, 0 };
+			std::vector<std::vector<bool>> visited(kRows, std::vector<bool>(kCols, false));
+
+			for (int y = 1; y < kRows - 1; ++y) {
+				for (int x = 1; x < kCols - 1; ++x) {
+					if (g[y][x] != 'W' || visited[y][x]) continue;
+
+					std::vector<std::pair<int, int>> comp;
+					std::vector<std::pair<int, int>> stack;
+					stack.emplace_back(x, y);
+					visited[y][x] = true;
+					while (!stack.empty()) {
+						auto [cx, cy] = stack.back();
+						stack.pop_back();
+						comp.emplace_back(cx, cy);
+						for (int d = 0; d < 4; ++d) {
+							int nx = cx + dx[d], ny = cy + dy[d];
+							if (nx < 1 || nx >= kCols - 1 || ny < 1 || ny >= kRows - 1) continue;
+							if (visited[ny][nx] || g[ny][nx] != 'W') continue;
+							visited[ny][nx] = true;
+							stack.emplace_back(nx, ny);
+						}
+					}
+					if ((int)comp.size() < minComponentSize)
+						for (auto& t : comp) set(g, t.first, t.second, '.');
+				}
+			}
+		}
+
+		// ---- Phase 21 — add single-width loop connections (more route variety) ---------
+		static constexpr int kLoopOpenPercent = 40;  // tune: higher = more loops / more open
+		static void phase21_addLoopConnections(std::vector<std::string>& g, XorShift32& rng) {
+			for (int y = 1; y < kRows - 1; ++y) {
+				if (y == 12) continue;                       // tunnel row — leave alone
+				for (int x = 1; x < kCols - 1; ++x) {
+					if (g[y][x] != 'W') continue;
+					if (isGhostZone(x, y)) continue;         // sacred zone (covers ghost walls too)
+					bool up = isOpenTile(get(g, x, y - 1));
+					bool down = isOpenTile(get(g, x, y + 1));
+					bool left = isOpenTile(get(g, x - 1, y));
+					bool right = isOpenTile(get(g, x + 1, y));
+					bool horizLink = left && right && !up && !down;  // joins two vertical corridors
+					bool vertLink = up && down && !left && !right;   // joins two horizontal corridors
+					if ((horizLink || vertLink) && rng.chance(kLoopOpenPercent))
+						set(g, x, y, '.');
+				}
+			}
+		}
+
+		// ---- Phase 22 — enforce single-tile-wide corridors -----------------------------
+		static int reachableOpenCount(const std::vector<std::string>& g, int sx, int sy) {
+			static const int dx[4] = { 0, 0, -1, 1 };
+			static const int dy[4] = { -1, 1, 0, 0 };
+			if (!isOpenTile(get(g, sx, sy))) return 0;
+			std::vector<std::vector<bool>> seen(kRows, std::vector<bool>(kCols, false));
+			std::vector<std::pair<int, int>> q;
+			q.emplace_back(sx, sy);
+			seen[sy][sx] = true;
+			size_t head = 0; int count = 0;
+			while (head < q.size()) {
+				auto [cx, cy] = q[head++];
+				++count;
+				for (int d = 0; d < 4; ++d) {
+					int nx = cx + dx[d], ny = cy + dy[d];
+					if (!inBounds(nx, ny) || seen[ny][nx]) continue;
+					if (!isOpenTile(g[ny][nx])) continue;
+					seen[ny][nx] = true;
+					q.emplace_back(nx, ny);
+				}
+			}
+			return count;
+		}
+
+		static bool isProtectedFromEnforcement(const std::vector<std::string>& g, int x, int y) {
+			if (isProtectedFromWalling(x, y)) return true;   // border corridors + ghost zone
+			if (y == 12) return true;                        // tunnel row
+			if (x == 9 && y == 7) return true;               // ghost-house access tile
+			if (x == kPacX && y == kPacY) return true;       // pacman spawn tile
+			if (get(g, x, y) == 'P') return true;            // power pellet
+			return false;
+		}
+
+		static void phase22_enforceSingleWidth(std::vector<std::string>& g, XorShift32& rng) {
+			(void)rng;
+			for (int pass = 0; pass < 8; ++pass) {
+				bool anyWalled = false;
+				int baseReach = reachableOpenCount(g, kPacX, kPacY);
+				for (int y = 0; y < kRows - 1; ++y) {
+					for (int x = 0; x < kCols - 1; ++x) {
+						// detect a 2x2 window with top-left at (x, y) that is fully open
+						if (!(isOpenTile(get(g, x, y)) && isOpenTile(get(g, x + 1, y)) &&
+							isOpenTile(get(g, x, y + 1)) && isOpenTile(get(g, x + 1, y + 1))))
+							continue;
+
+						const std::pair<int, int> corners[4] = {
+							{x, y}, {x + 1, y}, {x, y + 1}, {x + 1, y + 1} };
+						int bestIdx = -1, bestScore = -1;
+						for (int c = 0; c < 4; ++c) {
+							int cx = corners[c].first, cy = corners[c].second;
+							if (isProtectedFromEnforcement(g, cx, cy)) continue;
+							if (wouldCreateDeadEnd(g, cx, cy)) continue;
+							// connectivity guard: walling must drop exactly the walled tile
+							char save = g[cy][cx];
+							g[cy][cx] = 'W';
+							int after = reachableOpenCount(g, kPacX, kPacY);
+							g[cy][cx] = save;
+							if (after != baseReach - 1) continue;   // would isolate something
+							// prefer corners that merge into existing walls (no floating speck)
+							int wallNbrs = (get(g, cx - 1, cy) == 'W') + (get(g, cx + 1, cy) == 'W')
+								+ (get(g, cx, cy - 1) == 'W') + (get(g, cx, cy + 1) == 'W');
+							if (wallNbrs > bestScore) { bestScore = wallNbrs; bestIdx = c; }
+						}
+						if (bestIdx >= 0) {
+							set(g, corners[bestIdx].first, corners[bestIdx].second, 'W');
+							--baseReach;              // one reachable open tile removed
+							anyWalled = true;
+						}
+					}
+				}
+				if (!anyWalled) break;
+			}
+		}
+
+		static bool isBorderCell(int x, int y) { return x == 0 || x == kCols - 1 || y == 0 || y == kRows - 1; }
+
+		static bool isGhostWallCell(int x, int y) {
+			if (y == 8 && x >= 6 && x <= 12) return true;
+			if (y == 11 && x >= 6 && x <= 12) return true;
+			if (x == 6 && y >= 8 && y <= 11) return true;
+			if (x == 12 && y >= 8 && y <= 11) return true;
+			return false;
+		}
+
+		static char borderGlyph(int x, int y) {
+			bool top = (y == 0), bottom = (y == kRows - 1), left = (x == 0), right = (x == kCols - 1);
+			if (top && left) return '!';
+			if (top && right) return '#';
+			if (bottom && left) return '%';
+			if (bottom && right) return '^';
+			if (top || bottom) return '@';
+			return '$';
+		}
+
+		static char ghostHouseGlyph(int x, int y) {
+			if (x == 6 && y == 8) return '!';
+			if (x == 12 && y == 8) return '#';
+			if (x == 6 && y == 11) return '%';
+			if (x == 12 && y == 11) return '^';
+			if (y == 8 || y == 11) return '@';
+			return '$';
+		}
+
+		// Classifies an interior generated wall tile into one of the six
+		// double-line "box" wall glyphs based on which orthogonal neighbors are
+		// also walls — an autotile pass.
+		static char autotileWall(const std::vector<std::string>& g, int x, int y) {
+			auto wallAt = [&](int xx, int yy) {
+				if (!inBounds(xx, yy)) return true;
+				return g[yy][xx] == 'W';
+				};
+			bool up = wallAt(x, y - 1), down = wallAt(x, y + 1), left = wallAt(x - 1, y), right = wallAt(x + 1, y);
+			if (left && right && !up && !down) return '@';
+			if (up && down && !left && !right) return '$';
+			if (right && down && !left && !up) return '!';
+			if (left && down && !right && !up) return '#';
+			if (right && up && !left && !down) return '%';
+			if (left && up && !right && !down) return '^';
+			int vCount = (up ? 1 : 0) + (down ? 1 : 0);
+			int hCount = (left ? 1 : 0) + (right ? 1 : 0);
+			if (vCount > hCount) return '$';
+			if (hCount > vCount) return '@';
+			if (vCount > 0) return '$';  // tie (e.g. a 4-way crossing) — pick an axis
+			return '@';                   // fully isolated — shouldn't occur post-cleanup
+		}
+
+		static std::vector<std::string> toRenderChars(const std::vector<std::string>& g) {
+			std::vector<std::string> out(kRows, std::string(kCols, ' '));
+			for (int y = 0; y < kRows; ++y) {
+				for (int x = 0; x < kCols; ++x) {
+					char c = g[y][x];
+					char rc = ' ';
+					switch (c) {
+					case 'H': rc = ' '; break;
+					case 'D': rc = '-'; break;
+					case '.': rc = '*'; break;
+					case 'P': rc = '0'; break;
+					case ' ': rc = ' '; break;
+					case 'W':
+						if (isBorderCell(x, y)) rc = borderGlyph(x, y);
+						else if (isGhostWallCell(x, y)) rc = ghostHouseGlyph(x, y);
+						else rc = autotileWall(g, x, y);
+						break;
+					default: rc = ' '; break;
+					}
+					out[y][x] = rc;
+				}
+			}
+			// Spawn markers, placed last so they overwrite the underlying tile.
+			out[kPacY][kPacX] = 'o';
+			out[9][8] = 'b';
+			out[9][9] = 'i';
+			out[9][10] = 'p';
+			out[10][9] = 'c';
+			return out;
+		}
+	};
+
+}  // namespace
+
 void MapGenerator::generate(uint32_t seed) {
 	if (seed == 0) {
 		std::random_device rd;
 		seed = rd();
 	}
-
-	initGrid();
-	paintOuterBorder();
-	generateDotField(seed);   // dynamic replacement for the old static paintDotField()
-	pasteGhostHouse();
-	fixConnectivity();        // guarantee every open tile is reachable from spawn
-	autotileWalls();          // give generated walls proper corner/straight glyphs
-	placePowerPellets(seed);
-
-	// seed abhi ko lagi variant selection ko lagi reserve gareko, jaba arko
-	// verified map variant thapinxa (selectVariant()), tesbela random hunxa.
-	(void)selectVariant(seed);
-}
-
-int MapGenerator::selectVariant(uint32_t seed) const {
-	std::mt19937 rng(seed == 0 ? std::random_device{}() : seed);
-	constexpr int kVariantCount = 1; // increase once more validated .map layouts are added
-	return static_cast<int>(rng() % kVariantCount);
-}
-
-bool MapGenerator::save(const std::string& path)const {
-	std::ofstream file(path);
-	if (!file.is_open()) {
-		std::cerr << "Map gen cant open for writing: " << path << std::endl;
-		return false;
-	}
-	for (int row = 0; row < ROWS; ++row) {
-		for (int col = 0; col < COLS; ++col) {
-			file << grid_[row][col];
-		}
-		file << "\r\n";
-	}
-	return file.good();
+	grid_ = MazeGen::generate(seed);
 }
 
 char MapGenerator::at(int col, int row) const {
-	if (col < 0 || col >= COLS || row < 0 || row >= ROWS) {
-		return ' ';
-	}
+	if (row < 0 || row >= static_cast<int>(grid_.size())) return ' ';
+	if (col < 0 || col >= static_cast<int>(grid_[row].size())) return ' ';
 	return grid_[row][col];
-}
-
-void MapGenerator::initGrid() {
-	grid_.assign(ROWS, std::vector<char>(COLS, ' '));
-
-}
-
-void MapGenerator::paintOuterBorder() {
-	set(0, 0, '!');				//map create garna lai for the playing area border.
-	hLine(1, 0, 12, '@');
-	set(13, 0, '#');
-	set(14, 0, '!');
-	hLine(15, 0, 12, '@');
-	set(27, 0, '#');
-
-	vLine(0, 1, 8, '$');		//left right wall
-	vLine(27, 1, 8, '$');
-
-	set(0, 9, '%'); hLine(1, 9, 4, '@'); set(5, 9, '#');		//ghost
-	set(22, 9, '!'); hLine(23, 9, 4, '@'); set(27, 9, '^');
-
-	vLine(5, 10, 3, '$');
-	vLine(22, 10, 3, '$');
-
-	set(0, 13, '!'); hLine(1, 13, 4, '@'); set(5, 13, '^');
-	set(22, 13, '%'); hLine(23, 13, 4, '@'); set(27, 13, '#');
-
-	set(0, 14, '$');
-	set(27, 14, '$');
-
-	set(0, 15, '%'); hLine(1, 15, 4, '@'); set(5, 15, '#');
-	set(22, 15, '!'); hLine(23, 15, 4, '@'); set(27, 15, '^');
-
-	vLine(5, 16, 3, '$');
-	vLine(22, 16, 3, '$');
-
-	set(0, 19, '!'); hLine(1, 19, 4, '@'); set(5, 19, '^');
-	set(22, 19, '%'); hLine(23, 19, 4, '@'); set(27, 19, '#');
-
-	vLine(0, 20, 4, '$');
-	vLine(27, 20, 4, '$');
-
-	set(0, 24, '%'); set(1, 24, '@'); set(2, 24, '#');
-	set(25, 24, '!'); set(26, 24, '@'); set(27, 24, '^');
-
-	set(0, 25, '!'); set(1, 25, '@'); set(2, 25, '^');
-	set(25, 25, '%'); set(26, 25, '@'); set(27, 25, '#');
-
-	vLine(0, 26, 4, '$');
-	vLine(27, 26, 4, '$');
-
-	set(0, 30, '%');
-	hLine(1, 30, 26, '@');
-	set(27, 30, '^');
-}
-
-// Seeded procedural replacement for the old hand-typed paintDotField().
-// Carves rows 1-8 (top field) and rows 20-29 (bottom field), cols 1-26,
-// mirrored left/right around the centre divider (cols 13/14). Border
-// cells (col 0/27) and the ghost house (rows 9-19) are never touched here.
-void MapGenerator::generateDotField(uint32_t seed) {
-	struct FieldSpec { int rowStart, rowEnd; uint32_t seedOffset; };
-	const FieldSpec fields[2] = {
-		{ 1,  8,  0x1u },
-		{ 20, 29, 0x9E3779B9u },
-	};
-
-	constexpr int fullW = 26;  // cols 1..26
-	constexpr int halfW = 13;  // cols 1..13, mirrored to 14..26
-	constexpr int colOffset = 1;
-
-	for (const auto& f : fields) {
-		int h = f.rowEnd - f.rowStart + 1;
-		uint32_t s = seed ^ f.seedOffset;
-		Xorshift32 rng(s == 0 ? 1u : s);
-
-		std::vector<std::vector<bool>> open(h, std::vector<bool>(halfW, false));
-		carveSkeleton(open, halfW, h, rng);
-		breakIntersections(open, halfW, h, rng);
-		removeDeadEnds(open, halfW, h, rng);
-		breakRooms(open, halfW, h, rng);
-		removeDeadEnds(open, halfW, h, rng);
-
-		for (int y = 0; y < h; ++y) {
-			int row = f.rowStart + y;
-			for (int x = 0; x < halfW; ++x) {
-				char c = open[y][x] ? '*' : '2'; // '2' = temp wall placeholder, shaped later by autotileWalls()
-				set(colOffset + x, row, c);
-				set(colOffset + (fullW - 1 - x), row, c); // mirrored column
-			}
-		}
-	}
-}
-
-void MapGenerator::pasteGhostHouse() {
-	static const char* const GHOST_ROWS[11] = {
-	"*45223 44 12264*",  // row  9
-	"*41226 56 52234*",  // row 10
-	"*44          44*",  // row 11
-	"*44 !@@--@@# 44*",  // row 12
-	"*56 $b    p$ 56*",  // row 13
-	"*   $      $   *",  // row 14
-	"*13 $i    c$ 13*",  // row 15
-	"*44 %@@@@@@^ 44*",  // row 16
-	"*44          44*",  // row 17
-	"*44 12222223 44*",  // row 18
-	"*56 52231226 56*",  // row 19
-	};
-
-	for (int i = 0; i < 11; ++i) {
-		int row = 9 + i;
-		pasteRow(6, row, GHOST_ROWS[i]);
-	}
-	set(1, 14, 'f');
-	set(26, 14, 'f');
-}
-
-bool MapGenerator::isWalkable(char c) const {
-	return !(c == '!' || c == '@' || c == '#' || c == '$' || c == '%' || c == '^'
-		|| (c >= '1' && c <= '6'));
-}
-
-bool MapGenerator::isProtectedWall(int col, int row) const {
-	if (col <= 0 || col >= COLS - 1 || row <= 0 || row >= ROWS - 1) return true; // outer border ring
-	if (col >= 6 && col <= 21 && row >= 9 && row <= 19) return true;             // hand-authored ghost house block
-	return false;
-}
-
-// Whole-map BFS from the player spawn tile ('f'). Any unreachable dot or
-// power pellet gets a shortest safe path carved to it, opening only our
-// own generated '2' wall placeholders -- never the border or the ghost
-// house art. Plain empty floor (e.g. the unused tunnel side-alcoves that
-// exist in the original hand-drawn border art) is intentionally NOT
-// required to be reachable -- it never was in the original static map
-// either, since those pockets have no dots and sit outside normal play.
-void MapGenerator::fixConnectivity() {
-	int startCol = -1, startRow = -1;
-	for (int row = 0; row < ROWS; ++row) {
-		for (int col = 0; col < COLS; ++col) {
-			if (grid_[row][col] == 'f') { startCol = col; startRow = row; } // last 'f' wins, matches Map::load's scan order
-		}
-	}
-	if (startCol < 0) return;
-
-	auto needsReach = [](char c) { return c == '*' || c == 'o'; };
-
-	for (int iteration = 0; iteration < 40; ++iteration) {
-		std::vector<std::vector<bool>> visited(ROWS, std::vector<bool>(COLS, false));
-		std::vector<std::pair<int, int>> stack{ { startCol, startRow } };
-		while (!stack.empty()) {
-			auto cell = stack.back(); stack.pop_back();
-			int col = cell.first, row = cell.second;
-			if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
-			if (visited[row][col]) continue;
-			if (!isWalkable(grid_[row][col])) continue;
-			visited[row][col] = true;
-			for (int d = 0; d < 4; ++d) stack.push_back({ col + DCOL[d], row + DROW[d] });
-		}
-
-		int uc = -1, ur = -1;
-		for (int row = 1; row < ROWS - 1 && uc < 0; ++row) {
-			for (int col = 1; col < COLS - 1; ++col) {
-				if (needsReach(grid_[row][col]) && !visited[row][col]) { uc = col; ur = row; break; }
-			}
-		}
-		if (uc < 0) return; // every dot/pellet is reachable
-
-		std::vector<std::vector<bool>> seen(ROWS, std::vector<bool>(COLS, false));
-		std::vector<std::vector<std::pair<int, int>>> parent(ROWS, std::vector<std::pair<int, int>>(COLS, { -1, -1 }));
-		std::deque<std::pair<int, int>> queue{ { uc, ur } };
-		seen[ur][uc] = true;
-		bool connected = false;
-
-		while (!queue.empty()) {
-			auto cell = queue.front(); queue.pop_front();
-			int col = cell.first, row = cell.second;
-			if (visited[row][col]) {
-				int c = col, r = row;
-				bool openedAny = false;
-				while (!(c == uc && r == ur)) {
-					if (grid_[r][c] == '2') { grid_[r][c] = '*'; openedAny = true; }
-					auto p = parent[r][c];
-					c = p.first; r = p.second;
-				}
-				// If the route was already all-open (nothing left to convert),
-				// then (uc, ur) was truly unreachable through modifiable walls
-				// only -- bail instead of burning iterations on a no-op.
-				connected = openedAny;
-				break;
-			}
-			for (int d = 0; d < 4; ++d) {
-				int nc = col + DCOL[d], nr = row + DROW[d];
-				if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
-				if (seen[nr][nc]) continue;
-				if (isProtectedWall(nc, nr)) continue; // never route through border / ghost house
-				seen[nr][nc] = true;
-				parent[nr][nc] = { col, row };
-				queue.push_back({ nc, nr });
-			}
-		}
-		if (!connected) return; // no safe route found this pass; bail rather than loop forever
-	}
-}
-
-void MapGenerator::autotileWalls() {
-	for (int row = 0; row < ROWS; ++row) {
-		for (int col = 0; col < COLS; ++col) {
-			if (grid_[row][col] != '2') continue; // only re-shape our own placeholders
-
-			bool openUp = row > 0 && isWalkable(grid_[row - 1][col]);
-			bool openDown = row < ROWS - 1 && isWalkable(grid_[row + 1][col]);
-			bool openLeft = col > 0 && isWalkable(grid_[row][col - 1]);
-			bool openRight = col < COLS - 1 && isWalkable(grid_[row][col + 1]);
-
-			char shape;
-			if (openDown && openRight)      shape = '1'; // left-top
-			else if (openDown && openLeft)  shape = '3'; // right-top
-			else if (openUp && openRight)   shape = '5'; // left-bottom
-			else if (openUp && openLeft)    shape = '6'; // right-bottom
-			else if (openLeft || openRight) shape = '2'; // horizontal
-			else                             shape = '4'; // vertical (also default fallback)
-
-			grid_[row][col] = shape;
-		}
-	}
-}
-
-void MapGenerator::placePowerPellets(uint32_t seed) {
-	uint32_t s = seed ^ 0xBEEFu;
-	Xorshift32 rng(s == 0 ? 1u : s);
-
-	struct Corner { int startCol, startRow, dCol, dRow; };
-	const Corner corners[4] = {
-		{ 1,        1,        1,  1 },
-		{ COLS - 2, 1,       -1,  1 },
-		{ 1,        ROWS - 2, 1, -1 },
-		{ COLS - 2, ROWS - 2,-1, -1 },
-	};
-
-	for (const auto& c : corners) {
-		bool placed = false;
-		for (int d = 0; d < 10 && !placed; ++d) {
-			std::vector<std::pair<int, int>> candidates;
-			for (int dy = 0; dy <= d; ++dy) {
-				for (int dx = 0; dx <= d; ++dx) {
-					int col = c.startCol + dx * c.dCol;
-					int row = c.startRow + dy * c.dRow;
-					if (col <= 0 || col >= COLS - 1 || row <= 0 || row >= ROWS - 1) continue;
-					if (grid_[row][col] == '*') candidates.emplace_back(col, row);
-				}
-			}
-			if (!candidates.empty()) {
-				auto pick = candidates[rng.randi(static_cast<int>(candidates.size()))];
-				grid_[pick.second][pick.first] = 'o';
-				placed = true;
-			}
-		}
-	}
-}
-
-void MapGenerator::set(int col, int row, char c) {
-	if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
-	grid_[row][col] = c;
-}
-
-void MapGenerator::hLine(int col, int row, int len, char c) {
-	for (int i = 0; i < len; ++i) set(col + i, row, c);
-}
-
-void MapGenerator::vLine(int col, int row, int len, char c) {
-	for (int i = 0; i < len; ++i) set(col, row + i, c);
-}
-
-void MapGenerator::pasteRow(int col, int row, const std::string& s) {
-	for (std::size_t i = 0; i < s.size(); ++i) {
-		set(col + static_cast<int>(i), row, s[i]);
-	}
 }

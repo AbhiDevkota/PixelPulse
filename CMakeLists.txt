@@ -21,6 +21,10 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
 
+# ref.cpp is the standalone reference build (it has its own main()); keep it in
+# the tree for reference but exclude it from the compiled target.
+list(REMOVE_ITEM SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/pacman/ref.cpp")
+
 file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
 )
@@ -29,11 +33,7 @@ add_executable(CoreZone
     ${SRC_FILES}
     ${HEADER_FILES}
     CoreZone.rc
-    "src/dino_game/game.cpp"
-    "include/Files.h" "src/Files.cpp"
-    "include/pacman/Pacman.h" "src/pacman/Pacman.cpp"
-    "include/pacman/Map.h" "src/pacman/Map.cpp" "include/pacman/MapGenerate.h" "src/pacman/MapGenerate.cpp")
-    "include/pacman/Map.h" "src/pacman/Map.cpp" "include/dino/dino.h")
+)
 
 if (MSVC)
     target_compile_options(CoreZone PRIVATE /W4)   # removed /WX so warnings don't kill build
