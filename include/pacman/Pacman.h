@@ -2,100 +2,64 @@
 #define PACMAN_H
 
 #include <SFML/Graphics.hpp>
-#include <SFML/Audio.hpp>
-#include <vector>
-#include <string>
-#include <optional>
 #include <array>
-#include "pacman/Map.h"
+#include <cstdint>
+#include <random>
+#include <string>
+
 #include "pacman/Ghost.h"
+#include "pacman/Map.h"
 
-enum class PacmanState {
-	PLAYING,
-	PAUSED,
-	GAME_OVER,
-	WIN
-};
-
+// Pac-Man game, ported from ref.cpp's Game class. Runs on the shared window
+// handed in by the main menu, drawing into a letterboxed sf::View so the fixed
+// logical play area fills ~60% of the screen. Escape returns to the menu.
 class Pacman {
 public:
-	Pacman(sf::RenderWindow& window);
-	~Pacman() = default;
+	explicit Pacman(sf::RenderWindow& window);
 
 	bool initialize();
 	void run();
-	void handleEvents();
-	void update(float deltaTime);
-	void render();
 
 private:
+	enum class State { Playing, Won, Lost };
+
+	void setupView();
+	bool loadTextures();
+	void generateNewMap();
+	void reset();     // fresh round: restore pellets + reposition everything
+	void respawn();   // after a death: reposition entities, keep pellets
+
+	void handleEvents(bool& quit);
+	void update(float dt);
+	void movePac(float dist);
+	void collide();
+	void render();
+	void drawPac();
+	void drawHud();
+
 	sf::RenderWindow& window_;
-	PacmanState state_ = PacmanState::PLAYING;
+	sf::View view_;
 
-	// Map
 	Map map_;
+	std::array<Ghost, 4> ghosts_;
 
-	// Game area (60% of screen resolution)
-	sf::Vector2f gameAreaSize_;
-	sf::Vector2f gameAreaOffset_;
-	float gameScale_ = 1.0f;
+	// Pac-Man entity (position in TILE units, fractional while moving).
+	sf::Vector2f pacPos_{};
+	Direction pacDir_ = Direction::NONE;
+	Direction pacWant_ = Direction::NONE;
+	float pacAnimTimer_ = 0.f;
+	int pacAnimFrame_ = 0;
 
-	// Textures - stored first
-	sf::Texture playerTextures_[4][2]; // [direction][frame]
-
-	// Player sprite - created after textures (SFML 3 requires texture at construction)
-	std::optional<sf::Sprite> playerSprite_;
-
-	Direction currentDir_ = Direction::NONE;
-	Direction nextDir_ = Direction::NONE;
-	sf::Vector2f playerPos_;
-	float playerSpeed_ = 100.0f;
-	int animFrame_ = 0;
-	float animTimer_ = 0.0f;
-	int lives_ = 3;
-
-	// Ghosts
-	std::array<std::unique_ptr<Ghost>, 4> ghosts_;
-	GhostMode globalMode_ = GhostMode::SCATTER;
-	float globalModeTimer_ = 0.0f;
-	float frightenedTimer_ = 0.0f;
-	bool powerPelletActive_ = false;
-
-	// Game
 	int score_ = 0;
-	int dotsCollected_ = 0;
-	int totalDots_ = 0;
+	int lives_ = 3;
+	State state_ = State::Playing;
+	std::mt19937 rng_;
+	uint32_t seed_ = 0;
 
-	// Font and text - sf::Text has no default ctor in SFML 3, must be constructed with a font
+	bool hasFont_ = false;
 	sf::Font font_;
-	std::optional<sf::Text> scoreText_;
-	std::optional<sf::Text> livesText_;
-
-	// Audio - sf::Sound has no default ctor in SFML 3, must be constructed with a buffer
-	sf::SoundBuffer chompBuffer_;
-	std::optional<sf::Sound> chompSound_;
-	bool soundLoaded_ = false;
-	sf::SoundBuffer powerPelletBuffer_;
-	sf::SoundBuffer ghostEatenBuffer_;
-	sf::SoundBuffer gameOverBuffer_;
-	
-	// Ghost textures
-	std::array<std::array<std::array<sf::Texture, 2>, 4>, 4> ghostTextures_;  // [ghost][direction][frame]
-	std::array<std::array<sf::Texture, 2>, 4> frightenedTextures_; // [direction][frame]
-	std::array<std::array<sf::Texture, 2>, 4> eyesTextures_;      // [direction][frame]
-
-	// Assets
-	bool loadAssets();
-	void updateAnimation(float dt);
-	void movePlayer(float dt);
-	void checkDotCollision();
-	bool canMove(sf::Vector2f pos, Direction dir);
-	
-	// Ghost system
-	void initializeGhosts();
-	void updateGhosts(float dt);
-	void checkGhostCollision();
-	void updateGlobalMode(float dt);
+	std::array<std::array<sf::Texture, 2>, 4> playerTex_;   // [dir][frame]
+	sf::Texture playerNeutral_;
 };
 
 void runPacMan(sf::RenderWindow& window);
