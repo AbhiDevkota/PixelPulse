@@ -34,8 +34,11 @@ public:
 
 	float velocity_y = 0.f;
 	float GRAVITY = 2000.f;
-	float JUMP_FORCE = -900.f;
+	float JUMP_FORCE = -850.f;
 	bool is_grounded = false;
+
+	float scaleX = w / static_cast<float>(frameWidth);
+	float scaleY = h / static_cast<float>(frameHeight);
 
 	Player() {
 		dinoSprite.setTextureRect(sf::IntRect({ 0, 0 }, { frameWidth, frameHeight }));
@@ -45,8 +48,6 @@ public:
 
 	//get bounds of player
 	sf::FloatRect getBounds() const {
-		float scaleX = w / static_cast<float>(frameWidth);
-		float scaleY = h / static_cast<float>(frameHeight);
 
 		// Precise pixel measurements of the dino sprite within the 24x24 frame
 		float artWidth = 16.f;
@@ -67,8 +68,10 @@ public:
 
 		y += velocity_y * dt;
 
-		if (y + h / 2.f >= ground_y) {
-			y = ground_y - h / 2.f;
+		float footOffset = 5.f;
+
+		if (y + h / 2.f - footOffset >= ground_y/ 2.f) {
+			y = ground_y / 2.f - h / 2.f + footOffset;
 			velocity_y = 0.f;
 			is_grounded = true;
 		}
@@ -144,6 +147,7 @@ class Obstacles {
 	//countdown timer
 	float duration_start = 2.f;
 	float duration = duration_start;
+	float min_duration = 0.9f;
 	float timer = duration;
 
 	sf::Texture cactusTexture{ "assets/dinosaurs/cactus.png" };
@@ -180,12 +184,12 @@ public:
 		if (timer <= 0.f)
 		{
 			duration *= 0.95f;
-			timer = duration;
+			timer = duration + (static_cast<float>(rand() % 6) / 10.f);
 
 			int num_obstacles = (rand() % 3) + 1;
 
 			for (int i = 0; i < num_obstacles; i++) {
-				Spawn(spawn_x + (i * (w * 0.6f)), spawn_y);
+				Spawn(spawn_x + (i * (w * 0.6f)), spawn_y + 20.f);
 			}
 		}
 
@@ -232,9 +236,9 @@ public:
 
 		// precise pixel measurements of the large cactus sprites inside the 64x64 frame
 		float artWidth = 38.f;
-		float artHeight = 54.f;
+		float artHeight = 43.f;
 		float offsetX = 13.f;
-		float offsetY = 10.f;
+		float offsetY = 15.f;
 
 		for (int i = 0; i < n; i++) {
 			if (!array[i].active) continue;
@@ -267,27 +271,142 @@ public:
 class Ground {
 
 	float y;
-	//shape 
-	sf::RectangleShape rectangle;
+
+	sf::Texture groundTexture{ "assets/dinosaurs/ground.png" };
+	sf::Sprite groundSprite{ groundTexture };
+
+	float textureOffset = 0.f;
+	int currentRow = 0;
 
 public:
 	void Spawn(float window_width, float ground_y) {
 		y = ground_y;
-
-		// Create a line spanning the entire width of the screen
-		rectangle.setSize({ window_width, 5.f });
-		rectangle.setPosition({ 0.f, y });
-		rectangle.setFillColor(sf::Color::White);
 	}
 
+	// Change to a random theme
+	void Randomize() {
+		int nextRow = rand() % 4;
+		while (nextRow == currentRow) {
+			nextRow = rand() % 4;
+		}
+		currentRow = nextRow;
+	}
+
+	void Reset() {
+		currentRow = 0; // Start back at green grass
+		textureOffset = 0.f;
+	}
+
+	void Update(float dt, float speed) {
+		textureOffset += speed * dt;
+
+		float tileWidth = static_cast<float>(groundTexture.getSize().x);
+		if (textureOffset >= tileWidth) {
+			textureOffset -= tileWidth;
+		}
+	}
 	//Getter function
 	float GetY() const {
 		return y;
 	}
+	
+	//get height of surface tile
+	int GetTexHeight() const {
+		if (groundTexture.getSize().y == 0) return 0;
+		return groundTexture.getSize().y / 4;
+	}
 
 	// Draw function
 	void Draw(sf::RenderWindow& window) {
-		window.draw(rectangle);
+		int texWidth = groundTexture.getSize().x;
+		int texHeight = groundTexture.getSize().y / 4;
+
+		int yOffset = currentRow * texHeight;
+
+		groundSprite.setTextureRect(sf::IntRect({ 0, yOffset }, { texWidth, texHeight }));
+
+		float windowWidth = static_cast<float>(window.getSize().x);
+
+		// tile the row horizontally across the screen
+		for (float startX = -textureOffset; startX < windowWidth; startX += texWidth) {
+			groundSprite.setPosition({ startX, y / 2.f });
+			window.draw(groundSprite);
+		}
+	}
+};
+
+class Background {
+	sf::Texture bgTexture{ "assets/dinosaurs/background.png" };
+	sf::Sprite bgSprite{ bgTexture };
+	float textureOffset = 0.f;
+
+public:
+	void Update(float dt, float speed) {
+		textureOffset += speed * dt;
+		float tileWidth = static_cast<float>(bgTexture.getSize().x);
+
+		// Guard against division by zero if asset fails to load
+		if (tileWidth > 0.f && textureOffset >= tileWidth) {
+			textureOffset -= tileWidth;
+		}
+	}
+
+	void Draw(sf::RenderWindow& window, float ground_y) {
+		int texWidth = bgTexture.getSize().x;
+		int texHeight = bgTexture.getSize().y;
+		if (texWidth <= 0 || texHeight <= 0) return;
+
+		float targetHeight = ground_y / 2.f;
+
+		// Uniformly scale the background to fit the height above the ground perfectly
+		float scaleFactor = targetHeight / static_cast<float>(texHeight);
+		bgSprite.setScale({ scaleFactor, scaleFactor });
+
+		float windowWidth = static_cast<float>(window.getSize().x);
+		float scaledWidth = static_cast<float>(texWidth) * scaleFactor;
+
+		// Tile horizontally across the screen
+		for (float startX = -textureOffset; startX < windowWidth; startX += scaledWidth) {
+			bgSprite.setPosition({ startX, 0.f });
+			window.draw(bgSprite);
+		}
+	}
+};
+
+class Underground {
+	sf::Texture ugTexture{ "assets/dinosaurs/underground.png" };
+	sf::Sprite ugSprite{ ugTexture };
+	float textureOffset = 0.f;
+
+public:
+	void Update(float dt, float speed) {
+		textureOffset += speed * dt;
+		float tileWidth = static_cast<float>(ugTexture.getSize().x);
+
+		if (tileWidth > 0.f && textureOffset >= tileWidth) {
+			textureOffset -= tileWidth;
+		}
+	}
+
+	void Draw(sf::RenderWindow& window, float ground_y, int groundTexHeight) {
+		int texWidth = ugTexture.getSize().x;
+		int texHeight = ugTexture.getSize().y;
+		if (texWidth <= 0 || texHeight <= 0) return;
+
+		// calculate where the surface grass ends and the dirt should begin
+		float startY = (ground_y / 2.f) + static_cast<float>(groundTexHeight);
+		float windowWidth = static_cast<float>(window.getSize().x);
+		float windowHeight = static_cast<float>(window.getSize().y);
+
+		// 1:1 scaling so the pixel art stays perfectly
+		ugSprite.setScale({ 1.f, 1.f });
+
+		for (float startX = -textureOffset; startX < windowWidth; startX += texWidth) {
+			for (float currentY = startY; currentY < windowHeight; currentY += texHeight) {
+				ugSprite.setPosition({ startX, currentY });
+				window.draw(ugSprite);
+			}
+		}
 	}
 };
 

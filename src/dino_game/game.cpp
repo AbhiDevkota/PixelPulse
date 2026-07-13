@@ -9,7 +9,13 @@ void RunDino(sf::RenderWindow& window) {
 
 		//create ground
 		Ground ground;
-		ground.Spawn(static_cast<float>(window.getSize().x), 500.f);
+		ground.Spawn(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y));
+
+		//create background
+		Background background;
+
+		//create underground
+		Underground underground;
 
 		//create player
 		Player player;
@@ -21,9 +27,9 @@ void RunDino(sf::RenderWindow& window) {
 
 		//font and text
 		sf::Font font("fonts/regular.ttf");
-		sf::Text text(font, "Game Over", 60);
+		sf::Text text(font, "Game Over", 90);
 		auto bounds = text.getLocalBounds();
-		text.setOrigin({ bounds.position.x + 0.5f * bounds.size.x, 0.6f * text.getCharacterSize() });
+		text.setOrigin({ bounds.position.x + 0.5f * bounds.size.x, 2.f * text.getCharacterSize() });
 
 		//Score
 		sf::Text scoreText(font, "Score: 0", 30);
@@ -33,6 +39,7 @@ void RunDino(sf::RenderWindow& window) {
 		bool gameover = false;
 
 		float score = 0.f;
+		float lastMilestone = 0.f;
 
 		//start clock
 		sf::Clock clock;
@@ -67,14 +74,16 @@ void RunDino(sf::RenderWindow& window) {
 						if (pressed->scancode == sf::Keyboard::Scan::R)
 						{
 							obstacles.Reset();
+							ground.Reset();
 							player.y = static_cast<float>(ground.GetY()) - (player.h / 2.f);
 							player.velocity_y = 0.f;
 							score = 0.f;
+							lastMilestone = 0.f;
 							gameover = false;
 						}
 						else if (pressed->scancode == sf::Keyboard::Scan::Escape)
 						{
-							window.close();
+							return;
 						}
 					}
 				}
@@ -83,11 +92,26 @@ void RunDino(sf::RenderWindow& window) {
 				{
 					//update position
 					player.Update(dt, ground.GetY());
-					obstacles.Update(dt, static_cast<float>(window.getSize().x), static_cast<float>(ground.GetY()));
+					obstacles.Update(dt, static_cast<float>(window.getSize().x), static_cast<float>(ground.GetY()/ 2.f));
 
+					//update ground
+					ground.Update(dt, 600.f);
+
+					//update background
+					background.Update(dt, 100.f);
+
+					//update underground
+					underground.Update(dt, 600.f);
 					//increase score
 					score += dt * 10.f;
 					scoreText.setString("Score: " + std::to_string(static_cast<int>(score)));
+
+					// Check if a new 500-point milestone has been reached
+					int currentMilestone = static_cast<int>(score) / 200;
+					if (currentMilestone > lastMilestone) {
+						ground.Randomize();
+						lastMilestone = currentMilestone;
+					}
 
 					//check hit 
 					gameover = obstacles.CheckHit(player);
@@ -95,8 +119,14 @@ void RunDino(sf::RenderWindow& window) {
 
 				window.clear({ 64,64,64 });  
 
+				//draw background
+				background.Draw(window, ground.GetY());
+
 				//draw ground
 				ground.Draw(window);
+
+				//draw underground
+				underground.Draw(window, ground.GetY(), ground.GetTexHeight());
 				//draw player
 				player.Draw(window);
 				//draw obstacles

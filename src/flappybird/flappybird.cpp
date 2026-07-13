@@ -1,202 +1,144 @@
-#include <SFML/Audio.hpp>
-#include <SFML/Graphics.hpp>
+#include "flappy/flappybird.h"
+#include "flappy/background.h"
+#include "flappy/bird.h"
+#include "flappy/pipepair.h"
+#include "flappy/gameaudio.h"
+#include "Files.h"
 #include <cstdlib>
 #include <ctime>
-#include <vector>
-#include <string>
 
-
-void runFlappyBird(sf::RenderWindow& window) {
-
+void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager) {
     std::srand((unsigned int)std::time(nullptr));
 
-    //background music
-    sf::Music music;
-    if (!music.openFromFile("audios/Flappy/flappy.mp3")) return;
-    music.setVolume(50.f);    //set volume to 50%
-    music.setLooping(true);  
-    music.play();
+    // Persistent high-score storage (same pattern as Snake)
+    corezone::GameDataManager gameData(filemanager, "FLAPPYBIRD");
 
-	//Sound effect
-    sf::SoundBuffer jumpSoundBuffer;
-    if (!jumpSoundBuffer.loadFromFile("audios/Flappy/jumpsound.mp3")) return;
-    sf::Sound jumpSound(jumpSoundBuffer);
-    jumpSound.setVolume(50.f);
-    jumpSound.setLooping(true);
-    jumpSound.play();
-
-    
+    // Load game audio
+    GameAudio audio;
+    if (!audio.load()) return;
 
     float cellW = (float)window.getSize().x / 12.f;
     float cellH = (float)window.getSize().y / 16.f;
 
-    //bird
-    sf::Texture birdTexture;
-    if (!birdTexture.loadFromFile("assets/Flappy/Popat.png")) return;
-    sf::Sprite popat(birdTexture);
-    float birdScaleX = (float)window.getSize().x / birdTexture.getSize().x * 0.05f;
-    float birdScaleY = (float)window.getSize().y / birdTexture.getSize().y * 0.1f;
-    popat.setScale({ birdScaleX, birdScaleY });
-    popat.setPosition({ cellW * 2.f, cellH * 8.f });           //popat position
+    // Create game objects
+    Background background(window);
+    Bird bird(window, cellW, cellH);
+    if (!bird.isLoaded()) return;
 
-    //load all backgrounds once
-    std::vector<sf::Texture> bgTextures(4);
-    bgTextures[0].loadFromFile("assets/Flappy/Sky.png");
-    bgTextures[1].loadFromFile("assets/Flappy/Sky2.png");
-    bgTextures[2].loadFromFile("assets/Flappy/Sky3.png");
-    bgTextures[3].loadFromFile("assets/Flappy/Sky4.png");
+    PipePair pipes(window, cellW, cellH);
+    if (!pipes.isLoaded()) return;
 
-    //pick random background
-    int bgIndex = std::rand() % 4;
-    sf::Sprite background(bgTextures[bgIndex]);
-    float scaleX = (float)window.getSize().x / bgTextures[bgIndex].getSize().x;
-    float scaleY = (float)window.getSize().y / bgTextures[bgIndex].getSize().y;
-    background.setScale({ scaleX, scaleY });
+    // Score values
+    int score = 0;
+    int highScore = 0;
+    gameData.getHighScore(highScore);   // load saved high score on start
 
- 
-    //pipes
-    sf::Texture upTexture;
-    if (!upTexture.loadFromFile("assets/Flappy/Up.png")) return;
-    sf::Sprite pipeUp(upTexture);
-    float pipeScaleX = (float)window.getSize().x / upTexture.getSize().x * 0.15f;
-    float pipeScaleY = (float)window.getSize().y / upTexture.getSize().y * 0.4f;
-    pipeUp.setScale({ pipeScaleX, pipeScaleY });        //bottom pipe size
+    // Load font from fonts folder
+    sf::Font font;
+    font.openFromFile("fonts/regular.ttf");
 
-    sf::Texture downTexture;
-    if (!downTexture.loadFromFile("assets/Flappy/Down.png")) return;
-    sf::Sprite pipeDown(downTexture);
-    pipeDown.setScale({ pipeScaleX, pipeScaleY });      //top pipe size
+    // Score text at top-left
+    sf::Text scoreText(font);
+    scoreText.setCharacterSize(40);
+    scoreText.setFillColor(sf::Color::White);
+    scoreText.setPosition({ 20.f, 15.f });
+    scoreText.setString("Score: 0");
 
-    
+    // High score text below score
+    sf::Text highScoreText(font);
+    highScoreText.setCharacterSize(28);
+    highScoreText.setFillColor(sf::Color::White);
+    highScoreText.setPosition({ 20.f, 60.f });
+    highScoreText.setString("High Score: " + std::to_string(highScore));
 
-    // anchor pipeDown by its top-left -> top stays fixed at y=0 when scaled
-    pipeDown.setOrigin({ 0.f, 0.f });
+    sf::Text gameOverText(font);
+    gameOverText.setCharacterSize(42);
+    gameOverText.setFillColor(sf::Color::White);
 
-    // anchor pipeUp by its bottom-left -> bottom stays fixed at screen bottom when scaled
-    pipeUp.setOrigin({ 0.f, (float)upTexture.getSize().y });
-
-    float pipeX = cellW * 12.f;            //pipe starts from the right edge of the screen
-    float gapY = cellH * 8.f;              //gap center
-    float gapSize = cellH * 4.f;           //gap size
-
-    // scale first pipe using the same formula as later spawns
-    float pipeDownHeight = gapY - gapSize / 2.f;
-    pipeDown.setScale({ pipeScaleX, pipeDownHeight / downTexture.getSize().y });
-
-    float pipeUpHeight = (float)window.getSize().y - (gapY + gapSize / 2.f);
-    pipeUp.setScale({ pipeScaleX, pipeUpHeight / upTexture.getSize().y });
-
-    pipeDown.setPosition({ pipeX, 0.f });
-    pipeUp.setPosition({ pipeX, (float)window.getSize().y });
-
-    //physics
-    float vy = 0.f;                      //bird velocity
-    float gravity = 1000.f;              //gravity
+    bool gameOver = false;
 
     sf::Clock clock;
 
-    while (window.isOpen()) {
+    while (window.isOpen()) {                           // ← outer game loop
 
-		float dt = clock.restart().asSeconds();     //get time between frames as sf::time and convert it to seconds as float
-       
-        while (auto event = window.pollEvent()) {
+        float dt = clock.restart().asSeconds();
+
+        while (auto event = window.pollEvent()) {       // ← inner event loop
+
             if (event->is<sf::Event::Closed>())
                 window.close();
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape)) {
+
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
                 return;
+
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::R) && gameOver) {
+                background.pickRandom(window);
+                bird.reset(cellW, cellH);
+                pipes.reset(window, cellW, cellH);
+                score = 0;
+                scoreText.setString("Score: 0");
+                gameOver = false;
             }
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space)) {
-				vy = -600.f;                   //jump velocity
-				jumpSound.play();              //play jump sound
-			}
-            
+
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !gameOver) {
+                bird.flap();
+                audio.playJump();
+            }
         }
 
-		//update
-		vy += gravity * dt;                 //vertical velocity affected by gravity
-        popat.move({ 0.f, vy * dt });      //bird position
+        // freeze all game logic when game over
+        if (!gameOver) {
+            bird.update(dt, window);
+            pipes.update(dt, window, cellW, cellH);
+            background.update(dt, window);
 
-        //popat boundary
+            // add 1 if bird just passed a pipe, 0 otherwise
+            score += pipes.getScorePoint(bird.getBounds().position.x);
 
-        float birdH = popat.getGlobalBounds().size.y;
-        float birdY = popat.getPosition().y;
+            // update and save high score immediately when beaten
+            if (score > highScore) {
+                highScore = score;
+                gameData.saveHighScore(highScore);
+            }
 
-        if (birdY < 0.f) {
-            popat.setPosition({ popat.getPosition().x, 0.f });     //prevent bird from going above the screen
-            vy = 0.f;                      //stop vertical movement
+            // refresh HUD text every frame
+            scoreText.setString("Score: " + std::to_string(score));
+            highScoreText.setString("High Score: " + std::to_string(highScore));
+
+            // collision with any pipe triggers game over
+            if (pipes.collides(bird.getBounds()))
+                gameOver = true;
         }
 
-        if (birdH + birdY > window.getSize().y) {
-            popat.setPosition({ popat.getPosition().x, window.getSize().y - birdH });
-            vy = 0.f;
-        }
-       
-        if (birdH + birdY > window.getSize().y) {
-            popat.setPosition({ popat.getPosition().x, window.getSize().y - birdH });
-            vy = 0.f;
-        }
-
-        pipeX -= cellW * 3.f * dt;
-        pipeDown.setPosition({ pipeX, 0.f });
-        pipeUp.setPosition({ pipeX, (float)window.getSize().y });
-
-        if (pipeX + pipeUp.getGlobalBounds().size.x < 0.f) {
-            pipeX = cellW * 12.f;
-
-            // pick a random gap centre (gap SIZE stays constant)
-            float minGapY = cellH * 4.f;
-            float maxGapY = cellH * 12.f;
-            gapY = minGapY + (float)(std::rand() % (int)(maxGapY - minGapY));
-
-            // pipeDown: from top of screen (y=0) to gap start
-            float pipeDownHeight = gapY - gapSize / 2.f;
-            pipeDown.setScale({ pipeScaleX, pipeDownHeight / downTexture.getSize().y });
-
-            // pipeUp: from gap end to bottom of screen
-            float pipeUpHeight = (float)window.getSize().y - (gapY + gapSize / 2.f);
-            pipeUp.setScale({ pipeScaleX, pipeUpHeight / upTexture.getSize().y });
-
-            pipeDown.setPosition({ pipeX, 0.f });
-            pipeUp.setPosition({ pipeX, (float)window.getSize().y });
-        }
-
-
-
-        if (popat.getGlobalBounds().findIntersection(pipeUp.getGlobalBounds()) ||
-            popat.getGlobalBounds().findIntersection(pipeDown.getGlobalBounds())) {
-
-            // pick new random background on game over
-            bgIndex = std::rand() % 4;
-            background.setTexture(bgTextures[bgIndex]);
-            background.setScale({
-                (float)window.getSize().x / bgTextures[bgIndex].getSize().x,
-                (float)window.getSize().y / bgTextures[bgIndex].getSize().y
-                });
-
-            // reset bird
-            popat.setPosition({ cellW * 2.f, cellH * 8.f });
-            vy = 0.f;
-
-            // reset pipe
-            pipeX = cellW * 12.f;
-            gapY = cellH * 8.f;
-            pipeDown.setScale({ pipeScaleX, (gapY - gapSize / 2.f) / downTexture.getSize().y });
-            pipeUp.setScale({ pipeScaleX, ((float)window.getSize().y - (gapY + gapSize / 2.f)) / upTexture.getSize().y });
-            pipeDown.setPosition({ pipeX, 0.f });
-            pipeUp.setPosition({ pipeX, (float)window.getSize().y });
-
-            sf::sleep(sf::milliseconds(500));
-        }
-
-        //draw
-
+        // draw background, pipes, bird every frame
         window.clear();
-        window.draw(background);
-        window.draw(pipeDown);
-        window.draw(pipeUp);
-		window.draw(popat);
-		
-        
+        background.draw(window);
+        pipes.draw(window);
+        bird.draw(window);
+
+        // show HUD only while playing
+        if (!gameOver) {
+            window.draw(scoreText);
+            window.draw(highScoreText);
+        }
+
+
+        // draw game over overlay on top when game over
+        if (gameOver) {
+            gameOverText.setString(
+                "Game Over!  Score: " + std::to_string(score) +
+                "\nHigh Score: " + std::to_string(highScore) +
+                "\n\nPress R to Restart"
+            );
+
+            // center the text on screen
+            sf::FloatRect bounds = gameOverText.getLocalBounds();
+            gameOverText.setPosition({
+                window.getSize().x / 2.f - bounds.size.x / 2.f - bounds.position.x,
+                window.getSize().y / 2.f - bounds.size.y / 2.f - bounds.position.y
+                });
+            window.draw(gameOverText);
+        }
 
         window.display();
     }
