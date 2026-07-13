@@ -5,3 +5,4 @@ build/
 out/
 Saved/
 # Added /Saved cause my this project is at Document/CoreZone/ so. Only affects my local machine. :)
+/src/pacman/ref.cpp
