@@ -23,6 +23,9 @@ public:
     void respawnFood();
     sf::Vector2i getFoodPosition() const;
 
+    //direction getter 
+    sf::Vector2i getDirection() const;
+
     // Restart
     void reset(sf::Vector2i startPos, sf::Vector2i startDir);
     const std::deque<sf::Vector2i>& getBody() const;
