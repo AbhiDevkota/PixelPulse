@@ -192,11 +192,9 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win)
         music.play();
     }
 
-    const char* fontCandidates[] = { // Multi-platform font paths
-        "assets/fonts/regular.ttf",
-        "C:/Windows/Fonts/arial.ttf",
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    const char* fontCandidates[] = { // Multi-platform font paths targeting regular.ttf variants exclusively
+        "D:\\projects\\PixelPulse\\fonts\\regular.ttf",
+        "assets/fonts/regular.ttf"
     };
 
     for (const char* path : fontCandidates) {
@@ -471,17 +469,11 @@ void RocketShooterGame::render() {
         }
     }
 
-    if (fontLoaded) {
+    if (fontLoaded) { // Only rendering live parameters HUD layout if regular.ttf validated
         sf::Text hudText(font, "", 34u);
         hudText.setFillColor(sf::Color::White);
         hudText.setPosition({ 15.f, 15.f });
-        hudText.setString(
-            "Score: " + std::to_string(score) +
-            "    High Score: " + std::to_string(highScore) +
-            "    Coins: " + std::to_string(coins) +
-            "    Lives: " + std::to_string(lives) +
-            (isPaused ? "    [PAUSED]" : "")
-        );
+        hudText.setString("Score: " + std::to_string(score) + "    High Score: " + std::to_string(highScore) + "    Coins: " + std::to_string(coins) + "    Lives: " + std::to_string(lives) + (isPaused ? "    [PAUSED]" : ""));
         window.draw(hudText);
     };
 
@@ -490,11 +482,10 @@ void RocketShooterGame::render() {
         overlay.setFillColor(sf::Color(0, 0, 0, 160)); // Translucent backdrop matrix
         window.draw(overlay);
 
-        if (fontLoaded && gameOverText) {
+        if (fontLoaded && gameOverText) { // Enforces local regular.ttf execution over text rendering
             window.draw(*gameOverText);
 
-            sf::Text finalScoreText(font, "Final Score: " + std::to_string(score) +
-                "  (High Score: " + std::to_string(highScore) + " | Coins: " + std::to_string(coins) + ")", 24u);
+            sf::Text finalScoreText(font, "Final Score: " + std::to_string(score) + "  (High Score: " + std::to_string(highScore) + " | Coins: " + std::to_string(coins) + ")", 24u);
             finalScoreText.setFillColor(sf::Color::White);
             sf::FloatRect sBounds = finalScoreText.getLocalBounds();
             finalScoreText.setOrigin({ sBounds.size.x / 2.f, sBounds.size.y / 2.f });
@@ -503,7 +494,7 @@ void RocketShooterGame::render() {
         }
         else window.draw(gameOverFallbackBar);
 
-        if (fontLoaded && restartText) window.draw(*restartText);
+        if (fontLoaded && restartText) window.draw(*restartText); // Enforces absolute path match condition
         else window.draw(restartFallbackBar);
     }
 
