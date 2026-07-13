@@ -275,21 +275,51 @@ void Pacman::drawPac() {
 	window_.draw(sprite);
 }
 
+// The HUD is drawn in the window's default view (raw screen pixels) rather than
+// the letterboxed game view, so text is sized/positioned against the real window
+// and can never overflow the small logical play area and get clipped.
 void Pacman::drawHud() {
-	if (!hasFont_) return;
+	window_.setView(window_.getDefaultView());
+	const sf::Vector2f ws{ float(window_.getSize().x), float(window_.getSize().y) };
+	const float margin = ws.y * 0.03f;
+	const unsigned fontSize = std::max(18u, unsigned(ws.y / 40.f));
 
-	sf::Text t(font_, "Score: " + std::to_string(score_) +
-		"   Lives: " + std::to_string(lives_) +
-		"   Seed: " + std::to_string(seed_), 20);
-	t.setPosition({ 8.f, 8.f });
-	window_.draw(t);
+	// Score + seed, top-left.
+	if (hasFont_) {
+		sf::Text t(font_, "Score: " + std::to_string(score_) +
+			"    Seed: " + std::to_string(seed_), fontSize);
+		t.setPosition({ margin, margin });
+		window_.draw(t);
+	}
 
-	if (state_ != State::Playing) {
+	// Lives, top-right: a row of neutral Pac-Man icons instead of a number.
+	const float iconSize = fontSize * 1.4f;
+	const float gap = iconSize * 0.25f;
+	if (hasFont_) {
+		sf::Text label(font_, "Lives:", fontSize);
+		label.setPosition({ ws.x - margin - lives_ * (iconSize + gap)
+			- label.getLocalBounds().size.x - gap, margin });
+		window_.draw(label);
+	}
+	if (playerNeutral_.getSize().x > 0 && lives_ > 0) {
+		const float scale = iconSize / float(playerNeutral_.getSize().x);
+		sf::Sprite icon(playerNeutral_);
+		icon.setScale({ scale, scale });
+		for (int i = 0; i < lives_; ++i) {
+			icon.setPosition({ ws.x - margin - (lives_ - i) * (iconSize + gap) + gap, margin });
+			window_.draw(icon);
+		}
+	}
+
+	// Win / lose banner, centred on the whole window.
+	if (state_ != State::Playing && hasFont_) {
 		sf::Text msg(font_,
 			state_ == State::Won ? "YOU WIN!  Press Enter to restart"
-			: "GAME OVER  Press Enter to restart", 26);
+			: "GAME OVER  Press Enter to restart", unsigned(ws.y / 20.f));
 		msg.setFillColor(sf::Color::Yellow);
-		msg.setPosition({ Map::COLS * Map::TILE / 2.f - 210.f, Map::ROWS * Map::TILE / 2.f });
+		const sf::FloatRect b = msg.getLocalBounds();
+		msg.setOrigin(b.position + b.size / 2.f);
+		msg.setPosition({ ws.x / 2.f, ws.y / 2.f });
 		window_.draw(msg);
 	}
 }
