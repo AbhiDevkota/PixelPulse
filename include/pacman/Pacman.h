@@ -1,9 +1,11 @@
 #ifndef PACMAN_H
 #define PACMAN_H
 
+#include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <random>
 #include <string>
 
@@ -25,6 +27,7 @@ private:
 
 	void setupView();
 	bool loadTextures();
+	bool loadAudio();
 	void generateNewMap();
 	void reset();     // fresh round: restore pellets + reposition everything
 	void respawn();   // after a death: reposition entities, keep pellets
@@ -62,6 +65,10 @@ private:
 	sf::Font font_;
 	std::array<std::array<sf::Texture, 2>, 4> playerTex_;   // [dir][frame]
 	sf::Texture playerNeutral_;
+
+	sf::Music bgMusic_;
+	sf::SoundBuffer foodBuf_, powerBuf_, ghostBuf_, hurtBuf_, gameOverBuf_;
+	std::unique_ptr<sf::Sound> foodSnd_, powerSnd_, ghostSnd_, hurtSnd_, gameOverSnd_;
 };
 
 void runPacMan(sf::RenderWindow& window);

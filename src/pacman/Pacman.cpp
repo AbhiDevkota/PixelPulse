@@ -48,6 +48,7 @@ bool Pacman::initialize() {
 
 	generateNewMap();
 	reset();
+	loadAudio();
 	return true;
 }
 
@@ -79,6 +80,29 @@ bool Pacman::loadTextures() {
 				std::cerr << "Warning: failed to load " << path << "\n";
 		}
 	}
+	return true;
+}
+
+bool Pacman::loadAudio() {
+	auto loadSnd = [&](sf::SoundBuffer& buf, std::unique_ptr<sf::Sound>& snd, const std::string& path, float vol) {
+		if (!buf.loadFromFile(path)) {
+			std::cerr << "Warning: failed to load audio: " << path << "\n";
+			return;
+		}
+		snd = std::make_unique<sf::Sound>(buf);
+		snd->setVolume(vol);
+		};
+	if (!bgMusic_.openFromFile("audios/pacman/background_music.wav"))
+		std::cerr << "Warning: failed to load audios/pacman/background_music.wav\n";
+	else {
+		bgMusic_.setLooping(true);
+		bgMusic_.setVolume(90.f);
+	}
+	loadSnd(foodBuf_, foodSnd_, "audios/pacman/food_chomp.wav", 50.f);
+	loadSnd(powerBuf_, powerSnd_, "audios/pacman/power_pellet_chomp.wav", 65.f);
+	loadSnd(ghostBuf_, ghostSnd_, "audios/pacman/ghost_chomp.wav", 65.f);
+	loadSnd(hurtBuf_, hurtSnd_, "audios/pacman/hurt.wav", 65.f);
+	loadSnd(gameOverBuf_, gameOverSnd_, "audios/pacman/game_over.wav", 65.f);
 	return true;
 }
 
@@ -116,6 +140,7 @@ void Pacman::respawn() {
 void Pacman::run() {
 	sf::Clock clock;
 	bool quit = false;
+	bgMusic_.play();
 	while (window_.isOpen() && !quit) {
 		float dt = clock.restart().asSeconds();
 		dt = std::min(dt, 0.05f);   // clamp so alt-tab/stalls can't cause a huge step
@@ -126,6 +151,7 @@ void Pacman::run() {
 		}
 		render();
 	}
+	bgMusic_.stop();
 	if (window_.isOpen()) window_.setView(window_.getDefaultView());
 }
 
@@ -249,9 +275,11 @@ void Pacman::movePac(float dist) {
 		Map::Eat eaten = map_.consume(c, r);
 		if (eaten == Map::Eat::Dot) {
 			score_ += 10;
+			if (foodSnd_) foodSnd_->play();
 		}
 		else if (eaten == Map::Eat::Power) {
 			score_ += 50;
+			if (powerSnd_) powerSnd_->play();
 			for (auto& g : ghosts_) g.setFrightened(7.f);
 		}
 	}
@@ -275,11 +303,18 @@ void Pacman::collide() {
 		if (dx * dx + dy * dy < 0.25f) {
 			if (g.isFrightened()) {
 				score_ += 200;
+				if (ghostSnd_) ghostSnd_->play();
 				g.eat();
 			}
 			else {
-				if (--lives_ <= 0) state_ = State::Lost;
-				else respawn();
+				if (--lives_ <= 0) {
+					state_ = State::Lost;
+					if (gameOverSnd_) gameOverSnd_->play();
+				}
+				else {
+					if (hurtSnd_) hurtSnd_->play();
+					respawn();
+				}
 				return;
 			}
 		}
