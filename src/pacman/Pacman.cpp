@@ -158,6 +158,15 @@ void Pacman::handleEvents(bool& quit) {
 			default: break;
 			}
 		}
+		if (const auto* jb = event->getIf<sf::Event::JoystickButtonPressed>()) {
+			if (jb->button == 1) { quit = true; return; }
+			if (state_ != State::Playing) {
+				generateNewMap();
+				score_ = 0; lives_ = 3;
+				state_ = State::Playing;
+				reset();
+			}
+		}
 	}
 }
 
@@ -177,6 +186,21 @@ void Pacman::pollDirection() {
 		pacWant_ = Direction::LEFT;
 	else if (sf::Keyboard::isKeyPressed(K::Right) || sf::Keyboard::isKeyPressed(K::D))
 		pacWant_ = Direction::RIGHT;
+
+	if (!sf::Joystick::isConnected(0)) return;
+	const float t = 50.f;
+	const float x = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::X);
+	const float y = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::Y);
+	const float px = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovX);
+	const float py = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovY);
+	const bool up = y < -t || py > t;
+	const bool down = y > t || py < -t;
+	const bool left = x < -t || px < -t;
+	const bool right = x > t || px > t;
+	if (up) pacWant_ = Direction::UP;
+	else if (down) pacWant_ = Direction::DOWN;
+	else if (left) pacWant_ = Direction::LEFT;
+	else if (right) pacWant_ = Direction::RIGHT;
 }
 
 void Pacman::update(float dt) {
