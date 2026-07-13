@@ -275,32 +275,25 @@ void Pacman::drawPac() {
 	window_.draw(sprite);
 }
 
-// The HUD is drawn in the window's default view (raw screen pixels) rather than
-// the letterboxed game view, so text is sized/positioned against the real window
-// and can never overflow the small logical play area and get clipped.
+// Minimal retro HUD, drawn in the window's default view (raw screen pixels) so
+// text is sized against the real window and never overflows the small logical
+// play area. Sizes are clamped so the HUD stays small and crisp on any display.
 void Pacman::drawHud() {
 	window_.setView(window_.getDefaultView());
 	const sf::Vector2f ws{ float(window_.getSize().x), float(window_.getSize().y) };
-	const float margin = ws.y * 0.03f;
-	const unsigned fontSize = std::max(18u, unsigned(ws.y / 40.f));
+	const float margin = std::max(12.f, ws.y * 0.02f);
+	const unsigned fontSize = std::clamp(unsigned(ws.y / 55.f), 14u, 20u);
 
-	// Score + seed, top-left.
+	// Score, top-left.
 	if (hasFont_) {
-		sf::Text t(font_, "Score: " + std::to_string(score_) +
-			"    Seed: " + std::to_string(seed_), fontSize);
+		sf::Text t(font_, "SCORE  " + std::to_string(score_), fontSize);
 		t.setPosition({ margin, margin });
 		window_.draw(t);
 	}
 
-	// Lives, top-right: a row of neutral Pac-Man icons instead of a number.
-	const float iconSize = fontSize * 1.4f;
-	const float gap = iconSize * 0.25f;
-	if (hasFont_) {
-		sf::Text label(font_, "Lives:", fontSize);
-		label.setPosition({ ws.x - margin - lives_ * (iconSize + gap)
-			- label.getLocalBounds().size.x - gap, margin });
-		window_.draw(label);
-	}
+	// Lives, top-right: a row of small neutral Pac-Man icons instead of a number.
+	const float iconSize = fontSize * 1.1f;
+	const float gap = iconSize * 0.3f;
 	if (playerNeutral_.getSize().x > 0 && lives_ > 0) {
 		const float scale = iconSize / float(playerNeutral_.getSize().x);
 		sf::Sprite icon(playerNeutral_);
@@ -311,15 +304,22 @@ void Pacman::drawHud() {
 		}
 	}
 
-	// Win / lose banner, centred on the whole window.
+	// Win / lose banner, centred: a compact title plus a small "PRESS ENTER" hint.
 	if (state_ != State::Playing && hasFont_) {
-		sf::Text msg(font_,
-			state_ == State::Won ? "YOU WIN!  Press Enter to restart"
-			: "GAME OVER  Press Enter to restart", unsigned(ws.y / 20.f));
-		msg.setFillColor(sf::Color::Yellow);
-		const sf::FloatRect b = msg.getLocalBounds();
-		msg.setOrigin(b.position + b.size / 2.f);
-		msg.setPosition({ ws.x / 2.f, ws.y / 2.f });
-		window_.draw(msg);
+		auto centre = [&](sf::Text& txt, float y) {
+			const sf::FloatRect b = txt.getLocalBounds();
+			txt.setOrigin(b.position + b.size / 2.f);
+			txt.setPosition({ ws.x / 2.f, y });
+			window_.draw(txt);
+		};
+
+		sf::Text title(font_, state_ == State::Won ? "YOU WIN" : "GAME OVER",
+			std::clamp(unsigned(ws.y / 28.f), 22u, 40u));
+		title.setFillColor(state_ == State::Won ? sf::Color::Green : sf::Color::Red);
+		centre(title, ws.y / 2.f - fontSize);
+
+		sf::Text hint(font_, "PRESS ENTER", fontSize);
+		hint.setFillColor(sf::Color::White);
+		centre(hint, ws.y / 2.f + fontSize * 1.6f);
 	}
 }
