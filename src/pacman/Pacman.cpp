@@ -110,12 +110,12 @@ void Pacman::run() {
 	sf::Clock clock;
 	bool quit = false;
 	while (window_.isOpen() && !quit) {
-		const float dt = clock.restart().asSeconds();
+		float dt = clock.restart().asSeconds();
+		dt = std::min(dt, 0.05f);   // clamp so alt-tab/stalls can't cause a huge step
 		handleEvents(quit);
 		if (state_ == State::Playing) update(dt);
 		render();
 	}
-	// Hand the window back to the menu with a clean view.
 	if (window_.isOpen()) window_.setView(window_.getDefaultView());
 }
 

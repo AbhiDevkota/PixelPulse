@@ -278,7 +278,9 @@ namespace {
 		}
 
 		static bool isProtectedFromWalling(int x, int y) {
-			return x == 1 || x == 17 || y == 1 || y == 19 || isGhostZone(x, y);
+			return x == 1 || x == 17 || y == 1 || y == 19 || isGhostZone(x, y) ||
+				(x == kPacX && y == kPacY) ||   // pac-man spawn tile — must stay open
+				(x == 9 && y == 7);             // ghost-house access corridor — sole exit
 		}
 
 		static void phase15_breakRooms(std::vector<std::string>& g, XorShift32& rng) {
