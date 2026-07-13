@@ -216,7 +216,14 @@ void Pacman::update(float dt) {
 	}
 
 	movePac(dist);
-	for (auto& g : ghosts_) g.update(dt, dist, pacPos_, map_, rng_);
+	// Build current ghost positions, updating after each ghost moves so later
+	// ghosts see the most up-to-date positions for collision avoidance.
+	std::array<sf::Vector2f, 4> gpos;
+	for (int i = 0; i < 4; ++i) gpos[i] = ghosts_[i].pos();
+	for (int i = 0; i < 4; ++i) {
+		ghosts_[i].update(dt, dist, pacPos_, map_, gpos, rng_);
+		gpos[i] = ghosts_[i].pos();
+	}
 	collide();
 
 	if (map_.pelletsRemaining() == 0) state_ = State::Won;
@@ -261,7 +268,7 @@ void Pacman::movePac(float dist) {
 
 void Pacman::collide() {
 	for (auto& g : ghosts_) {
-		if (g.isDead()) continue;   // eyes can't collide
+		if (g.isDead() || g.isReviving()) continue;
 
 		float dx = g.pos().x - pacPos_.x;
 		float dy = g.pos().y - pacPos_.y;
