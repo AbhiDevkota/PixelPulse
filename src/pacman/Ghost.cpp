@@ -58,6 +58,7 @@ void Ghost::reset(sf::Vector2f spawnTile, sf::Vector2f homeTile) {
 	pos_ = spawnTile;
 	home_ = homeTile;
 	dir_ = Direction::UP;
+	wasCentered_ = false;
 	animTimer_ = 0.f;
 	animFrame_ = 0;
 	frightened_ = 0.f;
@@ -103,7 +104,11 @@ void Ghost::update(float dt, float baseDist, sf::Vector2f pacPos, const Map& map
 }
 
 void Ghost::moveGhost(float dist, sf::Vector2f pac, const Map& map, std::mt19937& rng) {
-	if (centered(pos_)) {
+	// Pick a new heading only the frame we arrive at a tile centre, not every
+	// frame we stay inside the centre tolerance — otherwise tiny per-frame steps
+	// keep snapping the ghost back to the same tile and it never advances.
+	const bool atCenter = centered(pos_);
+	if (atCenter && !wasCentered_) {
 		pos_ = { std::round(pos_.x), std::round(pos_.y) };
 		int c = int(pos_.x), r = int(pos_.y);
 
@@ -153,6 +158,7 @@ void Ghost::moveGhost(float dist, sf::Vector2f pac, const Map& map, std::mt19937
 			dir_ = best;
 		}
 	}
+	wasCentered_ = atCenter;
 	step(dist);
 }
 

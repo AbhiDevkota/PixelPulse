@@ -30,6 +30,11 @@ Pacman::Pacman(sf::RenderWindow& window)
 
 bool Pacman::initialize() {
 	setupView();
+	// Cap the frame rate. Without this the loop free-runs at thousands of FPS, so
+	// each frame's movement step is far smaller than the tile-centre tolerance and
+	// entities snap back to their tile every frame (see movePac / Ghost::moveGhost).
+	// It also keeps the OS event queue responsive instead of CPU-starved.
+	window_.setFramerateLimit(60);
 	map_.loadTextures();
 	loadTextures();
 
@@ -86,6 +91,7 @@ void Pacman::reset() {
 	map_.reset();
 	pacPos_ = map_.pacSpawn();
 	pacDir_ = pacWant_ = Direction::NONE;
+	pacWasCentered_ = false;
 	pacAnimTimer_ = 0.f;
 	pacAnimFrame_ = 0;
 
@@ -98,6 +104,7 @@ void Pacman::respawn() {
 	// Reposition entities but keep the pellets already eaten this round.
 	pacPos_ = map_.pacSpawn();
 	pacDir_ = pacWant_ = Direction::NONE;
+	pacWasCentered_ = false;
 	pacAnimTimer_ = 0.f;
 	pacAnimFrame_ = 0;
 
@@ -192,7 +199,12 @@ void Pacman::update(float dt) {
 }
 
 void Pacman::movePac(float dist) {
-	if (centered(pacPos_)) {
+	// Only resolve turns/eating the frame we *arrive* at a tile centre (or while
+	// sitting stopped against a wall waiting for a new turn) — not every frame we
+	// linger inside the centre tolerance. Re-snapping every frame pinned Pac-Man
+	// in place whenever the per-frame step was smaller than that tolerance.
+	const bool atCenter = centered(pacPos_);
+	if (atCenter && (!pacWasCentered_ || pacDir_ == Direction::NONE)) {
 		pacPos_ = { std::round(pacPos_.x), std::round(pacPos_.y) };
 		int c = int(pacPos_.x), r = int(pacPos_.y);
 
@@ -212,6 +224,7 @@ void Pacman::movePac(float dist) {
 			for (auto& g : ghosts_) g.setFrightened(7.f);
 		}
 	}
+	pacWasCentered_ = atCenter;
 
 	if (pacDir_ != Direction::NONE) {
 		sf::Vector2i d = dirDelta(pacDir_);

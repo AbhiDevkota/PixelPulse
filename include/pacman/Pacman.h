@@ -48,6 +48,7 @@ private:
 	sf::Vector2f pacPos_{};
 	Direction pacDir_ = Direction::NONE;
 	Direction pacWant_ = Direction::NONE;
+	bool pacWasCentered_ = false;   // edge-trigger so tile decisions fire once per centre
 	float pacAnimTimer_ = 0.f;
 	int pacAnimFrame_ = 0;
 

@@ -48,6 +48,7 @@ private:
 	std::string name_;
 	sf::Vector2f pos_{};
 	Direction dir_ = Direction::UP;
+	bool wasCentered_ = false;   // edge-trigger so a tile decision fires once per centre
 	float animTimer_ = 0.f;
 	int animFrame_ = 0;
 	float frightened_ = 0.f;   // seconds of fright remaining
