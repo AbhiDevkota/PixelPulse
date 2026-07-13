@@ -11,6 +11,12 @@ void RunDino(sf::RenderWindow& window) {
 		Ground ground;
 		ground.Spawn(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y));
 
+		//create background
+		Background background;
+
+		//create underground
+		Underground underground;
+
 		//create player
 		Player player;
 		player.x = 50.f;
@@ -91,6 +97,11 @@ void RunDino(sf::RenderWindow& window) {
 					//update ground
 					ground.Update(dt, 600.f);
 
+					//update background
+					background.Update(dt, 100.f);
+
+					//update underground
+					underground.Update(dt, 600.f);
 					//increase score
 					score += dt * 10.f;
 					scoreText.setString("Score: " + std::to_string(static_cast<int>(score)));
@@ -108,8 +119,14 @@ void RunDino(sf::RenderWindow& window) {
 
 				window.clear({ 64,64,64 });  
 
+				//draw background
+				background.Draw(window, ground.GetY());
+
 				//draw ground
 				ground.Draw(window);
+
+				//draw underground
+				underground.Draw(window, ground.GetY(), ground.GetTexHeight());
 				//draw player
 				player.Draw(window);
 				//draw obstacles

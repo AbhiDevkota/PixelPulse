@@ -309,6 +309,12 @@ public:
 	float GetY() const {
 		return y;
 	}
+	
+	//get height of surface tile
+	int GetTexHeight() const {
+		if (groundTexture.getSize().y == 0) return 0;
+		return groundTexture.getSize().y / 4;
+	}
 
 	// Draw function
 	void Draw(sf::RenderWindow& window) {
@@ -325,6 +331,81 @@ public:
 		for (float startX = -textureOffset; startX < windowWidth; startX += texWidth) {
 			groundSprite.setPosition({ startX, y / 2.f });
 			window.draw(groundSprite);
+		}
+	}
+};
+
+class Background {
+	sf::Texture bgTexture{ "assets/dinosaurs/background.png" };
+	sf::Sprite bgSprite{ bgTexture };
+	float textureOffset = 0.f;
+
+public:
+	void Update(float dt, float speed) {
+		textureOffset += speed * dt;
+		float tileWidth = static_cast<float>(bgTexture.getSize().x);
+
+		// Guard against division by zero if asset fails to load
+		if (tileWidth > 0.f && textureOffset >= tileWidth) {
+			textureOffset -= tileWidth;
+		}
+	}
+
+	void Draw(sf::RenderWindow& window, float ground_y) {
+		int texWidth = bgTexture.getSize().x;
+		int texHeight = bgTexture.getSize().y;
+		if (texWidth <= 0 || texHeight <= 0) return;
+
+		float targetHeight = ground_y / 2.f;
+
+		// Uniformly scale the background to fit the height above the ground perfectly
+		float scaleFactor = targetHeight / static_cast<float>(texHeight);
+		bgSprite.setScale({ scaleFactor, scaleFactor });
+
+		float windowWidth = static_cast<float>(window.getSize().x);
+		float scaledWidth = static_cast<float>(texWidth) * scaleFactor;
+
+		// Tile horizontally across the screen
+		for (float startX = -textureOffset; startX < windowWidth; startX += scaledWidth) {
+			bgSprite.setPosition({ startX, 0.f });
+			window.draw(bgSprite);
+		}
+	}
+};
+
+class Underground {
+	sf::Texture ugTexture{ "assets/dinosaurs/underground.png" };
+	sf::Sprite ugSprite{ ugTexture };
+	float textureOffset = 0.f;
+
+public:
+	void Update(float dt, float speed) {
+		textureOffset += speed * dt;
+		float tileWidth = static_cast<float>(ugTexture.getSize().x);
+
+		if (tileWidth > 0.f && textureOffset >= tileWidth) {
+			textureOffset -= tileWidth;
+		}
+	}
+
+	void Draw(sf::RenderWindow& window, float ground_y, int groundTexHeight) {
+		int texWidth = ugTexture.getSize().x;
+		int texHeight = ugTexture.getSize().y;
+		if (texWidth <= 0 || texHeight <= 0) return;
+
+		// calculate where the surface grass ends and the dirt should begin
+		float startY = (ground_y / 2.f) + static_cast<float>(groundTexHeight);
+		float windowWidth = static_cast<float>(window.getSize().x);
+		float windowHeight = static_cast<float>(window.getSize().y);
+
+		// 1:1 scaling so the pixel art stays perfectly
+		ugSprite.setScale({ 1.f, 1.f });
+
+		for (float startX = -textureOffset; startX < windowWidth; startX += texWidth) {
+			for (float currentY = startY; currentY < windowHeight; currentY += texHeight) {
+				ugSprite.setPosition({ startX, currentY });
+				window.draw(ugSprite);
+			}
 		}
 	}
 };
