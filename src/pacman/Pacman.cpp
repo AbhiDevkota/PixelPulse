@@ -729,31 +729,24 @@ void Pacman::renderSeedsMenu() {
 		title.setFillColor(sf::Color(255, 220, 100));
 		auto tb = title.getLocalBounds();
 		title.setOrigin(tb.position + sf::Vector2f(tb.size.x / 2.f, 0.f));
-		title.setPosition({ cx, ws.y * 0.10f });
+		title.setPosition({ cx, ws.y * 0.08f });
 		window_.draw(title);
 	}
 
-	if (hasFont_) {
-		sf::Text seedText(font_, "Current Seed:  " + std::to_string(seed_), 22);
-		seedText.setFillColor(sf::Color(180, 180, 200));
-		auto sb = seedText.getLocalBounds();
-		seedText.setOrigin(sb.position + sf::Vector2f(sb.size.x / 2.f, 0.f));
-		seedText.setPosition({ cx, ws.y * 0.30f });
-		window_.draw(seedText);
-	}
-
-	const std::vector<std::string> items = { "SHOW CURRENT", "ENTER SEED", "BACK" };
-	const float itemW = 320.f;
-	const float itemH = 50.f;
-	const float gap = 16.f;
+	const std::vector<std::string> items = { "SEED", "ENTER SEED", "BACK" };
+	const float itemW = 360.f;
+	const float itemH = 54.f;
+	const float gap = 20.f;
 	const int n = static_cast<int>(items.size());
 	float blockH = n * itemH + (n - 1) * gap;
-	float startY = (ws.y - blockH) / 2.f + 40.f;
+	float startY = ws.y * 0.20f;
 
 	for (int i = 0; i < n; ++i) {
+		float y = startY + i * (itemH + gap);
 		bool sel = (i == seedsIndex_);
+
 		sf::RectangleShape bg({ itemW, itemH });
-		bg.setPosition({ cx - itemW / 2.f, startY + i * (itemH + gap) });
+		bg.setPosition({ cx - itemW / 2.f, y });
 		if (sel) {
 			bg.setFillColor(sf::Color(60, 60, 70));
 			bg.setOutlineColor(sf::Color(255, 255, 255));
@@ -767,26 +760,32 @@ void Pacman::renderSeedsMenu() {
 		window_.draw(bg);
 
 		if (hasFont_) {
-			std::string label = items[i];
-			if (i == 0) label = "Current Seed:  " + std::to_string(seed_);
-			else if (i == 1) {
-				if (seedInputActive_) label = "Enter Seed:  " + seedInputStr_ + "_";
-				else label = "ENTER SEED";
+			std::string label;
+			if (i == 0) {
+				label = "Current Seed:  " + std::to_string(seed_);
 			}
-			sf::Text txt(font_, label, 22);
+			else if (i == 1) {
+				label = seedInputActive_ ? "Enter Seed:  " + seedInputStr_ + "_" : "ENTER NEW SEED";
+			}
+			else {
+				label = "BACK";
+			}
+
+			unsigned charSize = (i == 0) ? 20u : 24u;
+			sf::Text txt(font_, label, charSize);
+			if (i == 0) txt.setFillColor(sf::Color(180, 180, 200));
+			else txt.setFillColor(sel ? sf::Color(255, 255, 0) : sf::Color(200, 200, 200));
 			auto tb = txt.getLocalBounds();
 			txt.setOrigin(tb.position + sf::Vector2f(tb.size.x / 2.f, 0.f));
-			txt.setPosition({ cx, startY + i * (itemH + gap) + (itemH - tb.size.y) / 2.f - tb.position.y });
-			if (sel) txt.setFillColor(sf::Color(255, 255, 0));
-			else txt.setFillColor(sf::Color(200, 200, 200));
+			txt.setPosition({ cx, y + (itemH - tb.size.y) / 2.f - tb.position.y });
 			window_.draw(txt);
 		}
 
 		if (sel && hasFont_) {
-			sf::Text arrow(font_, ">", 22);
+			sf::Text arrow(font_, ">", 24);
 			auto ab = arrow.getLocalBounds();
 			arrow.setOrigin(ab.position + sf::Vector2f(ab.size.x / 2.f, 0.f));
-			arrow.setPosition({ cx - itemW / 2.f - 18.f, startY + i * (itemH + gap) + (itemH - ab.size.y) / 2.f - ab.position.y });
+			arrow.setPosition({ cx - itemW / 2.f - 22.f, y + (itemH - ab.size.y) / 2.f - ab.position.y });
 			arrow.setFillColor(sf::Color(255, 255, 0));
 			window_.draw(arrow);
 		}
