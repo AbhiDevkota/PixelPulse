@@ -53,6 +53,7 @@ bool Pacman::initialize() {
 	generateNewMap();
 	reset();
 	loadAudio();
+	loadMenuTextures();
 	return true;
 }
 
@@ -156,6 +157,7 @@ void Pacman::run() {
 
 		if (inMenu_) {
 			processMenuEvents(quit);
+			updateMenuAnimation(dt);
 			renderMenu();
 		}
 		else {
@@ -646,6 +648,8 @@ void Pacman::renderMenu() {
 	window_.setView(window_.getDefaultView());
 	window_.clear(sf::Color::Black);
 
+	drawMenuBackground();
+
 	switch (menuPage_) {
 	case MenuPage::Main:  renderMainMenu(); break;
 	case MenuPage::Seeds: renderSeedsMenu(); break;
@@ -738,7 +742,6 @@ void Pacman::renderSeedsMenu() {
 	const float itemH = 54.f;
 	const float gap = 20.f;
 	const int n = static_cast<int>(items.size());
-	float blockH = n * itemH + (n - 1) * gap;
 	float startY = ws.y * 0.20f;
 
 	for (int i = 0; i < n; ++i) {
@@ -973,4 +976,95 @@ void Pacman::updateSoundVolumes() {
 	if (ghostSnd_) ghostSnd_->setVolume(effectVol_);
 	if (hurtSnd_) hurtSnd_->setVolume(effectVol_);
 	if (gameOverSnd_) gameOverSnd_->setVolume(effectVol_);
+}
+
+// ===========================================================================
+// Menu background animation
+// ===========================================================================
+void Pacman::loadMenuTextures() {
+	if (!menuGhostTex_.loadFromFile("assets/pacman/ghost/blinky/left_1.png"))
+		std::cerr << "Warning: failed to load menu ghost texture\n";
+
+	auto ws = window_.getSize();
+	menuAnimDir_ = static_cast<int>(rng_() % 4);
+	float w = ws.x > 0 ? static_cast<float>(ws.x) : 800.f;
+	float h = ws.y > 0 ? static_cast<float>(ws.y) : 600.f;
+	float pad = 50.f;
+	switch (menuAnimDir_) {
+	case 0: menuPacPos_ = { pad, float(rng_() % static_cast<int>(h)) }; break;
+	case 1: menuPacPos_ = { w - pad, float(rng_() % static_cast<int>(h)) }; break;
+	case 2: menuPacPos_ = { float(rng_() % static_cast<int>(w)), pad }; break;
+	case 3: menuPacPos_ = { float(rng_() % static_cast<int>(w)), h - pad }; break;
+	}
+	menuGhostPos_ = menuPacPos_;
+}
+
+void Pacman::updateMenuAnimation(float dt) {
+	float speed = 220.f;
+	float offset = 90.f;
+
+	sf::Vector2f dirVecs[4] = { {1,0}, {-1,0}, {0,1}, {0,-1} };
+	sf::Vector2f d = dirVecs[menuAnimDir_] * speed * dt;
+	menuPacPos_ += d;
+	menuGhostPos_ = menuPacPos_ + dirVecs[menuAnimDir_] * offset;
+
+	auto ws = window_.getSize();
+	sf::Vector2f ws_f = { float(ws.x), float(ws.y) };
+	float m = 100.f;
+
+	bool offscreen = false;
+	if (menuPacPos_.x > ws_f.x + m || menuPacPos_.x < -m ||
+		menuPacPos_.y > ws_f.y + m || menuPacPos_.y < -m)
+		offscreen = true;
+	if (menuGhostPos_.x > ws_f.x + m || menuGhostPos_.x < -m ||
+		menuGhostPos_.y > ws_f.y + m || menuGhostPos_.y < -m)
+		offscreen = true;
+
+	if (offscreen) {
+		menuAnimDir_ = rng_() % 4;
+		float margin = 120.f;
+		switch (menuAnimDir_) {
+		case 0: menuPacPos_ = { -margin, float(rng_() % ws.y) }; break;
+		case 1: menuPacPos_ = { float(ws.x) + margin, float(rng_() % ws.y) }; break;
+		case 2: menuPacPos_ = { float(rng_() % ws.x), -margin }; break;
+		case 3: menuPacPos_ = { float(rng_() % ws.x), float(ws.y) + margin }; break;
+		}
+		menuGhostPos_ = menuPacPos_ + dirVecs[menuAnimDir_] * (-offset);
+	}
+
+	menuAnimTimer_ += dt;
+	if (menuAnimTimer_ >= 0.12f) {
+		menuAnimTimer_ -= 0.12f;
+		menuAnimFrame_ = 1 - menuAnimFrame_;
+	}
+}
+
+void Pacman::drawMenuBackground() {
+	float scale = 2.5f;
+	// Direction 0=right->RIGHT(3), 1=left->LEFT(2), 2=down->DOWN(1), 3=up->UP(0)
+	const int dirMap[4] = { 3, 2, 1, 0 };
+	int texDir = dirMap[menuAnimDir_];
+
+	// Ghost
+	if (menuGhostTex_.getSize().x > 0) {
+		sf::Sprite ghost(menuGhostTex_);
+		sf::Vector2f gs = { float(menuGhostTex_.getSize().x), float(menuGhostTex_.getSize().y) };
+		ghost.setOrigin(gs / 2.f);
+		ghost.setScale({ scale, scale });
+		ghost.setPosition(menuGhostPos_);
+		if (menuAnimDir_ == 1) ghost.setScale({ -scale, scale });
+		window_.draw(ghost);
+	}
+
+	// Pac-Man
+	if (playerTex_[texDir][0].getSize().x > 0) {
+		const sf::Texture& tex = playerTex_[texDir][menuAnimFrame_];
+		sf::Sprite pac(tex);
+		sf::Vector2f ps = { float(tex.getSize().x), float(tex.getSize().y) };
+		pac.setOrigin(ps / 2.f);
+		pac.setScale({ scale, scale });
+		pac.setPosition(menuPacPos_);
+		if (menuAnimDir_ == 1) pac.setScale({ -scale, scale });
+		window_.draw(pac);
+	}
 }

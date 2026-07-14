@@ -59,6 +59,9 @@ private:
 	void saveSoundSettings();
 	void handleMenuJoystick();
 	void updateSoundVolumes();
+	void loadMenuTextures();
+	void updateMenuAnimation(float dt);
+	void drawMenuBackground();
 
 	sf::RenderWindow& window_;
 	sf::View view_;
@@ -96,6 +99,14 @@ private:
 	float masterVol_ = 90.f;
 	float effectVol_ = 65.f;
 	sf::Clock menuJoyClock_;
+
+	// Menu background animation
+	int menuAnimFrame_ = 0;
+	float menuAnimTimer_ = 0.f;
+	sf::Vector2f menuPacPos_{ -100.f, 200.f };
+	sf::Vector2f menuGhostPos_{ -20.f, 200.f };
+	int menuAnimDir_ = 0;
+	sf::Texture menuGhostTex_;
 
 	bool hasFont_ = false;
 	sf::Font font_;
