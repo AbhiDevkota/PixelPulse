@@ -9,8 +9,8 @@ Player::Player() {
 sf::FloatRect Player::getBounds() const {
 	float artWidth = 16.f;
 	float artHeight = 18.f;
-	float offsetX = 6.f;
-	float offsetY = 3.f;
+	float offsetX = 3.f;
+	float offsetY = 1.f;
 
 	float startX = x + (offsetX * scaleX);
 	float startY = (y - (h / 2.f)) + (offsetY * scaleY);
@@ -62,6 +62,51 @@ void Player::Update(float dt, float ground_y) {
 
 void Player::Draw(sf::RenderWindow& window) {
 	window.draw(dinoSprite);
+}
+
+Food::Food() {}
+void Food::Spawn(float x, float y) {
+	array[current] = { true, x, y, sf::IntRect({20,20}, {20, 20}) };
+	current = (current + 1) % n;
+}
+
+void Food::Update(float dt, float spawn_x, float spawn_y) {
+	timer -= dt;
+	if (timer <= 0.f) {
+		Spawn(spawn_x, spawn_y - 200.f); 
+		timer = 2.0f + (rand() % 3);    
+	}
+
+	for (int i = 0; i < n; i++) {
+		if (!array[i].active) continue;
+		array[i].x -= SPEED * dt;
+		if (array[i].x + 50 < 0) array[i].active = false;
+	}
+}
+
+void Food::Draw(sf::RenderWindow& window) {
+	for (int i = 0; i < n; i++) {
+		if (array[i].active) {
+			foodSprite.setPosition({ array[i].x, array[i].y });
+			window.draw(foodSprite);
+		}
+	}
+}
+
+bool Food::CheckCollection(Player& player) {
+	sf::FloatRect playerBounds = player.getBounds();
+	for (int i = 0; i < n; i++) {
+		if (!array[i].active) continue;
+
+		foodSprite.setPosition({ array[i].x, array[i].y });
+		sf::FloatRect meatBounds = foodSprite.getGlobalBounds();
+
+		if (playerBounds.findIntersection(meatBounds)) {
+			array[i].active = false;
+			return true;
+		}
+	}
+	return false;
 }
 
 Obstacles::Obstacles() {
@@ -199,21 +244,16 @@ void Ground::Draw(sf::RenderWindow& window) {
 }
 
 void Background::Draw(sf::RenderWindow& window, float ground_y) {
-	// Get sizes
 	sf::Vector2f windowSize(static_cast<float>(window.getSize().x),
 		static_cast<float>(window.getSize().y));
 	sf::Vector2u texSize = bgTexture.getSize();
 
-	// 1. Force X scale to fill window width
 	float scaleX = windowSize.x / static_cast<float>(texSize.x);
 
-	// 2. Force Y scale to fill EXATCLY down to ground_y
 	float scaleY = ground_y / static_cast<float>(texSize.y);
 
-	// Apply the stretch
 	bgSprite.setScale({ scaleX, scaleY });
 
-	// Force the origin and position to top-left
 	bgSprite.setOrigin({ 0.f, 0.f });
 	bgSprite.setPosition({ 0.f, 0.f });
 
@@ -251,6 +291,7 @@ void RunDino(sf::RenderWindow& window) {
 	srand(static_cast<unsigned>(time(nullptr)));
 	sf::ContextSettings settings;
 	settings.antiAliasingLevel = 0;
+	sf::Font font("fonts/regular.ttf");
 
 	float surface_y = static_cast<float>(window.getSize().y) * 0.7f;
 
@@ -259,7 +300,6 @@ void RunDino(sf::RenderWindow& window) {
 
 	Background background;
 
-
 	Underground underground;
 
 	Player player;
@@ -267,11 +307,17 @@ void RunDino(sf::RenderWindow& window) {
 	player.y = surface_y - (player.h / 2.f);
 
 	Obstacles obstacles;
+	
+	Food food;
+	int foodScore = 0;
+	sf::Text foodText(font, "Food: 0", 30);
+	foodText.setPosition({ 20.f, 60.f }); // Position below main score
+	foodText.setFillColor(sf::Color::Red);
 
-	sf::Font font("fonts/regular.ttf");
 	sf::Text text(font, "Game Over", 90);
 	auto bounds = text.getLocalBounds();
 	text.setOrigin({ bounds.position.x + 0.5f * bounds.size.x, 2.f * text.getCharacterSize() });
+	text.setFillColor(sf::Color::Black);
 
 	sf::Text scoreText(font, "Score: 0", 30);
 	scoreText.setPosition({ 20.f, 20.f });
@@ -316,7 +362,15 @@ void RunDino(sf::RenderWindow& window) {
 			if (not gameover) {
 				player.Update(dt, surface_y);
 				obstacles.Update(dt, static_cast<float>(window.getSize().x), surface_y );
+				food.Update(dt, static_cast<float>(window.getSize().x), surface_y);
+
+				if (food.CheckCollection(player)) {
+					foodScore++;
+					foodText.setString("Food: " + std::to_string(foodScore));
+				}
+
 				ground.Update(dt, 600.f);
+
 				underground.Update(dt, 600.f);
 
 				score += dt * 10.f;
@@ -338,6 +392,8 @@ void RunDino(sf::RenderWindow& window) {
 			underground.Draw(window, surface_y, ground.GetTexHeight());
 			player.Draw(window);
 			obstacles.Draw(window);
+			food.Draw(window);
+			window.draw(foodText);
 			window.draw(scoreText);
 
 			if (gameover) {

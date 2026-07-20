@@ -47,6 +47,28 @@ public:
 	void Draw(sf::RenderWindow& window);
 };
 
+class Food {
+	struct Item {
+		bool active; 
+		float x, y; 
+		sf::IntRect textureRect; 
+	};
+	int n = 5;
+	int current = 0;
+	float timer = 2.0f;
+	float SPEED = 700.f;
+	sf::Texture foodTexture{ "assets/dinosaurs/food.png" };
+	sf::Sprite foodSprite{ foodTexture };
+	Item array[5];
+
+public:
+	Food();
+	void Spawn(float x, float y);
+	void Update(float dt, float spawn_x, float spawn_y);
+	bool CheckCollection(Player& player);
+	void Draw(sf::RenderWindow& window);
+};
+
 class Obstacles {
 private:
 	struct Obstacle {
