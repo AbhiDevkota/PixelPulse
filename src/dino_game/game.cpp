@@ -9,7 +9,7 @@ Player::Player() {
 sf::FloatRect Player::getBounds() const {
 	float artWidth = 16.f;
 	float artHeight = 18.f;
-	float offsetX = 4.f;
+	float offsetX = 6.f;
 	float offsetY = 3.f;
 
 	float startX = x + (offsetX * scaleX);
@@ -22,10 +22,10 @@ void Player::Update(float dt, float ground_y) {
 	velocity_y += GRAVITY * dt;
 	y += velocity_y * dt;
 
-	float footOffset = 5.f;
+	float footOffset = 10.f;
 
-	if (y + h / 2.f - footOffset >= ground_y / 2.f) {
-		y = ground_y / 2.f - h / 2.f + footOffset;
+	if (y + h / 2.f - footOffset >= ground_y) {
+		y = ground_y - h / 2.f + footOffset;
 		velocity_y = 0.f;
 		is_grounded = true;
 	}
@@ -85,9 +85,15 @@ void Obstacles::Update(float dt, float spawn_x, float spawn_y) {
 		duration *= 0.95f;
 		timer = duration + (static_cast<float>(rand() % 6) / 10.f);
 
-		int num_obstacles = (rand() % 3) + 1;
+		if (duration < min_duration) {
+			duration = min_duration;
+		}
+
+		timer = duration + (static_cast<float>(rand() % 5) / 10.f);
+
+		int num_obstacles = (duration > 0.8f) ? ((rand() % 3) + 1) : ((rand() % 2) + 1);
 		for (int i = 0; i < num_obstacles; i++) {
-			Spawn(spawn_x + (i * (w * 0.6f)), spawn_y + 20.f);
+			Spawn(spawn_x + (i * (w * 0.6f)), spawn_y + 25.f);
 		}
 	}
 
@@ -121,7 +127,7 @@ bool Obstacles::CheckHit(Player& player) {
 	float artWidth = 38.f;
 	float artHeight = 43.f;
 	float offsetX = 13.f;
-	float offsetY = 15.f;
+	float offsetY = 18.f;
 
 	for (int i = 0; i < n; i++) {
 		if (!array[i].active) continue;
@@ -187,35 +193,31 @@ void Ground::Draw(sf::RenderWindow& window) {
 	float windowWidth = static_cast<float>(window.getSize().x);
 
 	for (float startX = -textureOffset; startX < windowWidth; startX += texWidth) {
-		groundSprite.setPosition({ startX, y / 2.f });
+		groundSprite.setPosition({ startX, y });
 		window.draw(groundSprite);
 	}
 }
 
-void Background::Update(float dt, float speed) {
-	textureOffset += speed * dt;
-	float tileWidth = static_cast<float>(bgTexture.getSize().x);
-	if (tileWidth > 0.f && textureOffset >= tileWidth) {
-		textureOffset -= tileWidth;
-	}
-}
-
 void Background::Draw(sf::RenderWindow& window, float ground_y) {
-	int texWidth = bgTexture.getSize().x;
-	int texHeight = bgTexture.getSize().y;
-	if (texWidth <= 0 || texHeight <= 0) return;
+	// Get sizes
+	sf::Vector2f windowSize(static_cast<float>(window.getSize().x),
+		static_cast<float>(window.getSize().y));
+	sf::Vector2u texSize = bgTexture.getSize();
 
-	float targetHeight = ground_y / 2.f;
-	float scaleFactor = targetHeight / static_cast<float>(texHeight);
-	bgSprite.setScale({ scaleFactor, scaleFactor });
+	// 1. Force X scale to fill window width
+	float scaleX = windowSize.x / static_cast<float>(texSize.x);
 
-	float windowWidth = static_cast<float>(window.getSize().x);
-	float scaledWidth = static_cast<float>(texWidth) * scaleFactor;
+	// 2. Force Y scale to fill EXATCLY down to ground_y
+	float scaleY = ground_y / static_cast<float>(texSize.y);
 
-	for (float startX = -textureOffset; startX < windowWidth; startX += scaledWidth) {
-		bgSprite.setPosition({ startX, 0.f });
-		window.draw(bgSprite);
-	}
+	// Apply the stretch
+	bgSprite.setScale({ scaleX, scaleY });
+
+	// Force the origin and position to top-left
+	bgSprite.setOrigin({ 0.f, 0.f });
+	bgSprite.setPosition({ 0.f, 0.f });
+
+	window.draw(bgSprite);
 }
 
 void Underground::Update(float dt, float speed) {
@@ -231,7 +233,7 @@ void Underground::Draw(sf::RenderWindow& window, float ground_y, int groundTexHe
 	int texHeight = ugTexture.getSize().y;
 	if (texWidth <= 0 || texHeight <= 0) return;
 
-	float startY = (ground_y / 2.f) + static_cast<float>(groundTexHeight);
+	float startY = ground_y + static_cast<float>(groundTexHeight);
 	float windowWidth = static_cast<float>(window.getSize().x);
 	float windowHeight = static_cast<float>(window.getSize().y);
 
@@ -250,15 +252,19 @@ void RunDino(sf::RenderWindow& window) {
 	sf::ContextSettings settings;
 	settings.antiAliasingLevel = 0;
 
+	float surface_y = static_cast<float>(window.getSize().y) * 0.7f;
+
 	Ground ground;
-	ground.Spawn(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y));
+	ground.Spawn(static_cast<float>(window.getSize().x), surface_y);
 
 	Background background;
+
+
 	Underground underground;
 
 	Player player;
 	player.x = 50.f;
-	player.y = static_cast<float>(ground.GetY()) - (player.h / 2.f);
+	player.y = surface_y - (player.h / 2.f);
 
 	Obstacles obstacles;
 
@@ -269,7 +275,7 @@ void RunDino(sf::RenderWindow& window) {
 
 	sf::Text scoreText(font, "Score: 0", 30);
 	scoreText.setPosition({ 20.f, 20.f });
-	scoreText.setFillColor(sf::Color::White);
+	scoreText.setFillColor(sf::Color::Black);
 
 	bool gameover = false;
 	float score = 0.f;
@@ -295,7 +301,7 @@ void RunDino(sf::RenderWindow& window) {
 					if (pressed->scancode == sf::Keyboard::Scan::R) {
 						obstacles.Reset();
 						ground.Reset();
-						player.y = static_cast<float>(ground.GetY()) - (player.h / 2.f);
+						player.y = surface_y - (player.h / 2.f);
 						player.velocity_y = 0.f;
 						score = 0.f;
 						lastMilestone = 0.f;
@@ -308,10 +314,9 @@ void RunDino(sf::RenderWindow& window) {
 			}
 
 			if (not gameover) {
-				player.Update(dt, ground.GetY());
-				obstacles.Update(dt, static_cast<float>(window.getSize().x), static_cast<float>(ground.GetY() / 2.f));
+				player.Update(dt, surface_y);
+				obstacles.Update(dt, static_cast<float>(window.getSize().x), surface_y );
 				ground.Update(dt, 600.f);
-				background.Update(dt, 100.f);
 				underground.Update(dt, 600.f);
 
 				score += dt * 10.f;
@@ -328,9 +333,9 @@ void RunDino(sf::RenderWindow& window) {
 
 			window.clear({ 64, 64, 64 });
 
-			background.Draw(window, ground.GetY());
+			background.Draw(window, surface_y);
 			ground.Draw(window);
-			underground.Draw(window, ground.GetY(), ground.GetTexHeight());
+			underground.Draw(window, surface_y, ground.GetTexHeight());
 			player.Draw(window);
 			obstacles.Draw(window);
 			window.draw(scoreText);

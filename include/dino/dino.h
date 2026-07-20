@@ -27,15 +27,15 @@ private:
 	float frameDuration = 0.1f;
 
 public:
-	float w = 50.f;
-	float h = 50.f;
+	float w = 90.f;
+	float h = 90.f;
 
 	float x;
 	float y;
 
 	float velocity_y = 0.f;
 	float GRAVITY = 2000.f;
-	float JUMP_FORCE = -850.f;
+	float JUMP_FORCE = -900.f;
 	bool is_grounded = false;
 
 	float scaleX = w / static_cast<float>(frameWidth);
@@ -60,13 +60,13 @@ private:
 	Obstacle array[n];
 	int current = 0;
 
-	float w = 100.f;
-	float h = 100.f;
-	float SPEED = 600.f;
+	float w = 150.f;
+	float h = 150.f;
+	float SPEED = 700.f;
 
 	float duration_start = 2.f;
 	float duration = duration_start;
-	float min_duration = 0.9f;
+	float min_duration = 1.2f;
 	float timer = duration;
 
 	sf::Texture cactusTexture{ "assets/dinosaurs/cactus.png" };
@@ -106,10 +106,8 @@ class Background {
 private:
 	sf::Texture bgTexture{ "assets/dinosaurs/background.png" };
 	sf::Sprite bgSprite{ bgTexture };
-	float textureOffset = 0.f;
-
+	
 public:
-	void Update(float dt, float speed);
 	void Draw(sf::RenderWindow& window, float ground_y);
 };
 
