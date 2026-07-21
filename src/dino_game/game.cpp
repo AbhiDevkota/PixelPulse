@@ -1,4 +1,6 @@
 #include "dino/dino.h"
+#include "Files.h"
+#include <cstdlib>
 
 Player::Player() {
 	dinoSprite.setTextureRect(sf::IntRect({ 0, 0 }, { frameWidth, frameHeight }));
@@ -287,11 +289,18 @@ void Underground::Draw(sf::RenderWindow& window, float ground_y, int groundTexHe
 	}
 }
 
-void RunDino(sf::RenderWindow& window) {
+void RunDino(sf::RenderWindow& window, corezone::FileManager& filemanager) {
+
+	corezone::GameDataManager gameData(filemanager, "DINO RUN");
+
 	srand(static_cast<unsigned>(time(nullptr)));
 	sf::ContextSettings settings;
 	settings.antiAliasingLevel = 0;
 	sf::Font font("fonts/regular.ttf");
+
+	int highscore = 0;
+
+	gameData.getHighScore(highscore);
 
 	float surface_y = static_cast<float>(window.getSize().y) * 0.7f;
 
@@ -307,19 +316,17 @@ void RunDino(sf::RenderWindow& window) {
 	player.y = surface_y - (player.h / 2.f);
 
 	Obstacles obstacles;
-	
+
+	sf::Text text(font, "", 60);
+	text.setFillColor(sf::Color::Black);
+
 	Food food;
 	int foodScore = 0;
 	sf::Text foodText(font, "Food: 0", 30);
 	foodText.setPosition({ 20.f, 60.f }); // Position below main score
 	foodText.setFillColor(sf::Color::Red);
 
-	sf::Text text(font, "Game Over", 90);
-	auto bounds = text.getLocalBounds();
-	text.setOrigin({ bounds.position.x + 0.5f * bounds.size.x, 2.f * text.getCharacterSize() });
-	text.setFillColor(sf::Color::Black);
-
-	sf::Text scoreText(font, "Score: 0", 30);
+	sf::Text scoreText(font, "Score: 0     Highscore: 0", 30);
 	scoreText.setPosition({ 20.f, 20.f });
 	scoreText.setFillColor(sf::Color::Black);
 
@@ -374,7 +381,12 @@ void RunDino(sf::RenderWindow& window) {
 				underground.Update(dt, 600.f);
 
 				score += dt * 10.f;
-				scoreText.setString("Score: " + std::to_string(static_cast<int>(score)));
+				if (score > highscore) {
+					highscore = score;
+					gameData.saveHighScore(highscore);
+				}
+				scoreText.setCharacterSize(30);
+				scoreText.setString("Score: " + std::to_string(static_cast<int>(score)) + "  High Score: " + std::to_string(highscore));
 
 				int currentMilestone = static_cast<int>(score) / 200;
 				if (currentMilestone > lastMilestone) {
@@ -397,6 +409,9 @@ void RunDino(sf::RenderWindow& window) {
 			window.draw(scoreText);
 
 			if (gameover) {
+				text.setString("      Gameover\n     Score: " + std::to_string(static_cast<int>(score)) + "\nPress R to Restart");
+				auto bounds = text.getLocalBounds();
+				text.setOrigin({ bounds.position.x + bounds.size.x / 2.f, bounds.position.y + bounds.size.y / 2.f });
 				text.setPosition(window.getView().getSize() / 2.f);
 				window.draw(text);
 			}
