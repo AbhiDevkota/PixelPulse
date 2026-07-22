@@ -56,6 +56,8 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
     gameOverText.setFillColor(sf::Color::White);
 
     bool gameOver = false;
+    bool paused = false;
+    bool pWasPressed = false;
 
     sf::Clock clock;
 
@@ -71,23 +73,33 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
                 return;
 
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::P) && !gameOver && !pWasPressed) {
+                paused = !paused;
+                pWasPressed = true;
+            }
+
+            if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::P)) {
+                pWasPressed = false;
+            }
+
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::R) && gameOver) {
                 background.pickRandom(window);
                 bird.reset(cellW, cellH);
                 pipes.reset(window, cellW, cellH);
                 score = 0;
                 scoreText.setString("Score: 0");
+                paused = false;
                 gameOver = false;
             }
 
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !gameOver) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !gameOver && !paused) {
                 bird.flap();
                 audio.playJump();
             }
         }
 
         // freeze all game logic when game over
-        if (!gameOver) {
+        if (!gameOver && !paused) {
             bird.update(dt, window);
             pipes.update(dt, window, cellW, cellH);
             background.update(dt, window);
