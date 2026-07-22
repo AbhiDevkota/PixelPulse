@@ -3,6 +3,7 @@
 #include <ctime>
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 
 // Instantiating static shape fields allocated across memory scopes
 sf::RectangleShape RocketBullet::shape;
@@ -45,7 +46,7 @@ RocketObstacle::RocketObstacle(int totalCols, float cellSize, const sf::Texture&
 
     obstacleSprite.emplace(texture);
     sf::Vector2u textureSize = texture.getSize();
-    float targetSize = 1.5f * cellSize;
+    float targetSize = 2.0f * cellSize;
     obstacleSprite->setScale({ targetSize / textureSize.x, targetSize / textureSize.y });
     obstacleSprite->setPosition(data.visualPos);
 }
@@ -123,10 +124,14 @@ void RocketShooterPlayer::handleInput(sf::Keyboard::Key key) {
 }
 
 void RocketShooterPlayer::clampPosition(int cols, int rows) {
-    if (gridPos.x < 0)        gridPos.x = 0; // Left boundary
-    if (gridPos.x > cols - 2) gridPos.x = cols - 2; // Right boundary (2 cells wide)
-    if (gridPos.y < rows - 3) gridPos.y = rows - 3; // Top vertical boundary
-    if (gridPos.y > rows - 2) gridPos.y = rows - 2; // Bottom vertical boundary
+    // Player occupies a 2x2 grid footprint, so it must stay within
+    // [0, cols-2] horizontally and [0, rows-2] vertically to remain
+    // fully on screen. This now spans the entire play field instead
+    // of being restricted to the bottom rows.
+    if (gridPos.x < 0)        gridPos.x = 0;        // Left boundary
+    if (gridPos.x > cols - 2) gridPos.x = cols - 2;  // Right boundary (2 cells wide)
+    if (gridPos.y < 0)        gridPos.y = 0;         // Top boundary
+    if (gridPos.y > rows - 2) gridPos.y = rows - 2;  // Bottom boundary (2 cells tall)
 }
 
 void RocketShooterPlayer::updateVisual(float slideSpeed, float dt, float cellSize) {
@@ -165,7 +170,7 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win)
 
     player.init(cols, rows, CELL_SIZE, playerTexture);
 
-    RocketObstacle::shape.setSize({ static_cast<float>(1.5 * CELL_SIZE), static_cast<float>(1.5 * CELL_SIZE) });
+    RocketObstacle::shape.setSize({ static_cast<float>(2.0 * CELL_SIZE), static_cast<float>(2.0 * CELL_SIZE) });
     RocketObstacle::shape.setFillColor(sf::Color::Blue);
 
     RocketBullet::shape.setSize({ static_cast<float>(CELL_SIZE) * 0.2f, static_cast<float>(CELL_SIZE) * 0.6f });
@@ -215,6 +220,8 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win)
     restartFallbackBar.setSize({ 400.f, 40.f });
     restartFallbackBar.setOrigin({ 200.f, 20.f }); // Center origin
     restartFallbackBar.setPosition({ window.getSize().x / 2.f, window.getSize().y / 2.f + 30.f });
+
+    loadHighScore(); // Restore persisted high score from disk, if any
 }
 
 void RocketShooterGame::setupGameOverText() {
@@ -230,6 +237,31 @@ void RocketShooterGame::setupGameOverText() {
     sf::FloatRect rBounds = restartText->getLocalBounds();
     restartText->setOrigin({ rBounds.size.x / 2.f, rBounds.size.y / 2.f });
     restartText->setPosition({ window.getSize().x / 2.f, window.getSize().y / 2.f + 30.f });
+}
+
+void RocketShooterGame::loadHighScore() {
+    std::ifstream in(HIGH_SCORE_FILE, std::ios::in | std::ios::binary);
+    if (!in.is_open()) {
+        highScore = 0; // No save file yet - start fresh
+        return;
+    }
+
+    int savedScore = 0;
+    if (in >> savedScore && savedScore >= 0) {
+        highScore = savedScore;
+    }
+    else {
+        highScore = 0; // Corrupt or unreadable file - fall back safely
+    }
+}
+
+void RocketShooterGame::saveHighScore() {
+    std::ofstream out(HIGH_SCORE_FILE, std::ios::out | std::ios::trunc | std::ios::binary);
+    if (!out.is_open()) {
+        std::cerr << "Failed to write " << HIGH_SCORE_FILE << "!\n";
+        return;
+    }
+    out << highScore;
 }
 
 void RocketShooterGame::restartGame() {
@@ -253,19 +285,37 @@ void RocketShooterGame::restartGame() {
 }
 
 bool RocketShooterGame::playerCollidesWithObstacle(const RocketObstacle& obs) const {
-    int ox = obs.data.gridPos.x;
-    int oy = obs.data.gridPos.y;
-    for (int dx = 0; dx < 2; dx++) { // Check all 4 cells occupied by 2x2 player
-        for (int dy = 0; dy < 2; dy++) {
-            if (player.gridPos.x + dx == ox && player.gridPos.y + dy == oy)
-                return true;
-        }
-    }
-    return false;
+    // Both the player and the obstacle now occupy a 2x2 footprint of grid
+    // cells (asteroid sprite is 2 * CELL_SIZE). A single-cell equality
+    // check missed most real overlaps, so this does a proper axis-aligned
+    // bounding box (AABB) test between the two 2x2 footprints. Using <= / >=
+    // means even edges just touching count as a collision.
+    int playerMinX = player.gridPos.x;
+    int playerMaxX = player.gridPos.x + 1;
+    int playerMinY = player.gridPos.y;
+    int playerMaxY = player.gridPos.y + 1;
+
+    int obsMinX = obs.data.gridPos.x;
+    int obsMaxX = obs.data.gridPos.x + 1;
+    int obsMinY = obs.data.gridPos.y;
+    int obsMaxY = obs.data.gridPos.y + 1;
+
+    return playerMinX <= obsMaxX && playerMaxX >= obsMinX &&
+        playerMinY <= obsMaxY && playerMaxY >= obsMinY;
 }
 
 bool RocketShooterGame::bulletCollidesWithObstacle(const RocketBullet& b, const RocketObstacle& obs) const {
-    return b.data.gridPos.x == obs.data.gridPos.x && b.data.gridPos.y == obs.data.gridPos.y; // Perfect cell match
+    // The obstacle occupies a 2x2 footprint of grid cells (asteroid sprite
+    // is 2 * CELL_SIZE), so a bullet should register a hit if its cell
+    // falls anywhere within that footprint, not just an exact match with
+    // the obstacle's single reference cell.
+    int obsMinX = obs.data.gridPos.x;
+    int obsMaxX = obs.data.gridPos.x + 1;
+    int obsMinY = obs.data.gridPos.y;
+    int obsMaxY = obs.data.gridPos.y + 1;
+
+    return b.data.gridPos.x >= obsMinX && b.data.gridPos.x <= obsMaxX &&
+        b.data.gridPos.y >= obsMinY && b.data.gridPos.y <= obsMaxY;
 }
 
 bool RocketShooterGame::bulletCollidesWithCoin(const RocketBullet& b, const RocketCoin& coin) const {
@@ -293,7 +343,10 @@ void RocketShooterGame::checkCollisions() {
         if (obstacleHit[i]) {
             obstacles.erase(obstacles.begin() + i);
             score++;
-            if (score > highScore) highScore = score;
+            if (score > highScore) {
+                highScore = score;
+                saveHighScore(); // Persist new high score immediately
+            }
         }
     }
 
