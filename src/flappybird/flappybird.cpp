@@ -120,6 +120,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
                 if (!newRecordSet) {
                     bannerTimer = 1.f;
                     newRecordSet = true;
+                    audio.playHighScore();
                 }
                 highScore = score;
                 gameData.saveHighScore(highScore);
