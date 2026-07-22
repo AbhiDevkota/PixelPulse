@@ -32,6 +32,8 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
     int score = 0;
     int highScore = 0;
     gameData.getHighScore(highScore);   // load saved high score on start
+    float bannerTimer = 0.f;            // counts down while "New High Score!" is shown
+    bool newRecordSet = false;         // true only for the point that first breaks the old record
 
     // Load font from fonts folder
     sf::Font font;
@@ -90,6 +92,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
                 scoreText.setString("Score: 0");
                 paused = false;
                 gameOver = false;
+                newRecordSet = false;
             }
 
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !gameOver && !paused) {
@@ -109,13 +112,36 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
 
             // update and save high score immediately when beaten
             if (score > highScore) {
+                if (!newRecordSet) {
+                    bannerTimer = 1.f;
+                    newRecordSet = true;
+                }
                 highScore = score;
                 gameData.saveHighScore(highScore);
             }
+            bannerTimer -= dt;
 
             // refresh HUD text every frame
             scoreText.setString("Score: " + std::to_string(score));
-            highScoreText.setString("High Score: " + std::to_string(highScore));
+
+            // briefly show "New High Score!" in place of the usual high score text
+            sf::FloatRect b = highScoreText.getLocalBounds();
+            if (bannerTimer > 0.f) {
+                highScoreText.setCharacterSize(48);
+                highScoreText.setFillColor(sf::Color::Yellow);
+                highScoreText.setOutlineColor(sf::Color::Black);
+                highScoreText.setOutlineThickness(3.f);
+                highScoreText.setString("New High Score!");
+                b = highScoreText.getLocalBounds();
+                highScoreText.setPosition({ window.getSize().x / 2.f - b.size.x / 2.f, window.getSize().y / 2.f });
+            }
+            else {
+                highScoreText.setCharacterSize(28);
+                highScoreText.setFillColor(sf::Color::White);
+                highScoreText.setOutlineThickness(0.f);
+                highScoreText.setString("High Score: " + std::to_string(highScore));
+                highScoreText.setPosition({ 20.f, 60.f });
+            }
 
             // collision with any pipe triggers game over
             if (pipes.collides(bird.getBounds()))
