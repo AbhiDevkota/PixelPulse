@@ -8,7 +8,7 @@ Background::Background(sf::RenderWindow& window)
 {
     // Store all background image paths
     std::vector<std::string> paths = {
-        "assets/Flappy/Sky.png",
+        "assets/Flappy/Sky1.png",
         "assets/Flappy/Sky2.png",
         "assets/Flappy/Sky3.png",
         "assets/Flappy/Sky4.png"
