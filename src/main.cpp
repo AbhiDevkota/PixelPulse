@@ -4,7 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
-void RunDino(sf::RenderWindow& window);
+void RunDino(sf::RenderWindow& window, corezone::FileManager& filemanager);
 void runRocketShooter(sf::RenderWindow& window);
 void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager);
 void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager); //Conflict resolved by Abhi Devkota
@@ -94,7 +94,7 @@ int main() {
 
             if (game == "DINO RUN") {
                 home.pauseMusic();
-                RunDino(window);
+                RunDino(window, fileManager);
                 home.resumeMusic();
                 continue;
             }
