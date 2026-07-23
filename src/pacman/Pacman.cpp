@@ -375,36 +375,34 @@ void Pacman::drawPac() {
 	window_.draw(sprite);
 }
 
-// Minimal retro HUD, drawn in the window's default view (raw screen pixels) so
-// text is sized against the real window and never overflows the small logical
-// play area. Sizes are clamped so the HUD stays small and crisp on any display.
 void Pacman::drawHud() {
 	window_.setView(window_.getDefaultView());
 	const sf::Vector2f ws{ float(window_.getSize().x), float(window_.getSize().y) };
-	const float margin = std::max(12.f, ws.y * 0.02f);
-	const unsigned fontSize = std::clamp(unsigned(ws.y / 55.f), 14u, 20u);
+	const float margin = ws.x * 0.03f;
+	const unsigned fontSize = std::clamp(unsigned(ws.y / 28.f), 20u, 36u);
 
 	// Score, top-left.
 	if (hasFont_) {
 		sf::Text t(font_, "SCORE  " + std::to_string(score_), fontSize);
-		t.setPosition({ margin, margin });
+		t.setFillColor(sf::Color(255, 255, 100));
+		t.setPosition({ margin, margin * 0.4f });
 		window_.draw(t);
 	}
 
-	// Lives, top-right: a row of small neutral Pac-Man icons instead of a number.
-	const float iconSize = fontSize * 1.1f;
+	// Lives, top-right: a row of small neutral Pac-Man icons.
+	const float iconSize = fontSize * 1.0f;
 	const float gap = iconSize * 0.3f;
 	if (playerNeutral_.getSize().x > 0 && lives_ > 0) {
 		const float scale = iconSize / float(playerNeutral_.getSize().x);
 		sf::Sprite icon(playerNeutral_);
 		icon.setScale({ scale, scale });
 		for (int i = 0; i < lives_; ++i) {
-			icon.setPosition({ ws.x - margin - (lives_ - i) * (iconSize + gap) + gap, margin });
+			icon.setPosition({ ws.x - margin - (lives_ - i) * (iconSize + gap) + gap, margin * 0.4f });
 			window_.draw(icon);
 		}
 	}
 
-	// Win / lose banner, centred: a compact title plus a small "PRESS ENTER" hint.
+	// Win / lose banner, centred.
 	if (state_ != State::Playing && hasFont_) {
 		auto centre = [&](sf::Text& txt, float y) {
 			const sf::FloatRect b = txt.getLocalBounds();
@@ -414,7 +412,7 @@ void Pacman::drawHud() {
 		};
 
 		sf::Text title(font_, state_ == State::Won ? "YOU WIN" : "GAME OVER",
-			std::clamp(unsigned(ws.y / 28.f), 22u, 40u));
+			std::clamp(unsigned(ws.y / 22.f), 28u, 52u));
 		title.setFillColor(state_ == State::Won ? sf::Color::Green : sf::Color::Red);
 		centre(title, ws.y / 2.f - fontSize);
 
