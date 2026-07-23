@@ -206,7 +206,7 @@ void Ghost::moveGhost(float dist, sf::Vector2f pac, const Map& map,
 			sf::Vector2i dd = dirDelta(d);
 			int nx = c + dd.x, ny = r + dd.y;
 			if (map.isWallForGhost(nx, ny)) continue;
-			if (dd == -dirDelta(dir_) && dir_ != Direction::NONE) continue;
+			if (dd == -dirDelta(dir_) && dir_ != Direction::NONE && !dead_) continue;
 			if (tileOccupied(nx, ny)) continue;
 			opts.push_back(d);
 		}

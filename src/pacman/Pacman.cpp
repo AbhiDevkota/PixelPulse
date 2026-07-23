@@ -921,7 +921,7 @@ void Pacman::applySeed(uint32_t seed) {
 	customSeedSet_ = true;
 }
 
-void Pacman::saveContinueData() {
+void Pacman::saveContinueData() {			//save data
 	std::ostringstream ss;
 	ss << "seed=" << seed_ << "\n";
 	ss << "score=" << score_ << "\n";
