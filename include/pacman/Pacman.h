@@ -103,6 +103,7 @@ private:
 	// Menu background animation
 	int menuAnimFrame_ = 0;
 	float menuAnimTimer_ = 0.f;
+	float menuDirTimer_ = 2.f;
 	sf::Vector2f menuPacPos_{ -100.f, 200.f };
 	sf::Vector2f menuGhostPos_{ -20.f, 200.f };
 	int menuAnimDir_ = 0;

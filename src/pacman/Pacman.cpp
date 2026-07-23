@@ -545,7 +545,11 @@ void Pacman::processMenuEvents(bool& quit) {
 					seedsIndex_ = (seedsIndex_ + 1) % n;
 				}
 				else if (key->code == K::Enter || key->code == K::Space) {
-					if (seedsIndex_ == 1) {
+					if (seedsIndex_ == 0) {
+						seedInputStr_ = std::to_string(seed_);
+						seedInputActive_ = true;
+					}
+					else if (seedsIndex_ == 1) {
 						seedInputActive_ = true;
 						seedInputStr_.clear();
 					}
@@ -624,7 +628,8 @@ void Pacman::processMenuEvents(bool& quit) {
 			}
 			else if (menuPage_ == MenuPage::Seeds) {
 				if (jb->button == 0) {
-					if (seedsIndex_ == 1) { seedInputActive_ = true; seedInputStr_.clear(); }
+					if (seedsIndex_ == 0) { seedInputStr_ = std::to_string(seed_); seedInputActive_ = true; }
+					else if (seedsIndex_ == 1) { seedInputActive_ = true; seedInputStr_.clear(); }
 					else if (seedsIndex_ == 2) { menuPage_ = MenuPage::Main; menuIndex_ = 0; }
 				}
 				if (jb->button == 1) { menuPage_ = MenuPage::Main; menuIndex_ = 0; }
@@ -736,7 +741,7 @@ void Pacman::renderSeedsMenu() {
 	}
 
 	const std::vector<std::string> items = { "SEED", "ENTER SEED", "BACK" };
-	const float itemW = 360.f;
+	const float itemW = 460.f;
 	const float itemH = 54.f;
 	const float gap = 20.f;
 	const int n = static_cast<int>(items.size());
@@ -987,6 +992,7 @@ void Pacman::loadMenuTextures() {
 	float w = ws.x > 0 ? static_cast<float>(ws.x) : 800.f;
 	float h = ws.y > 0 ? static_cast<float>(ws.y) : 600.f;
 	menuAnimDir_ = static_cast<int>(rng_() % 4);
+	menuDirTimer_ = 2.f + static_cast<float>(rng_() % 4);
 	float margin = 120.f;
 	switch (menuAnimDir_) {
 	case 0: menuPacPos_ = { -margin, float(rng_() % static_cast<int>(h)) }; break;
@@ -998,10 +1004,22 @@ void Pacman::loadMenuTextures() {
 }
 
 void Pacman::updateMenuAnimation(float dt) {
-	float speed = 220.f;
+	float speed = 360.f;
 	float offset = 90.f;
 
 	sf::Vector2f dirVecs[4] = { {1,0}, {-1,0}, {0,1}, {0,-1} };
+
+	menuDirTimer_ -= dt;
+	if (menuDirTimer_ <= 0.f) {
+		int newDir;
+		do {
+			newDir = static_cast<int>(rng_() % 4);
+		} while (newDir == menuAnimDir_);
+		menuAnimDir_ = newDir;
+		menuDirTimer_ = 2.f + static_cast<float>(rng_() % 4);
+		menuGhostPos_ = menuPacPos_ + dirVecs[menuAnimDir_] * offset;
+	}
+
 	sf::Vector2f d = dirVecs[menuAnimDir_] * speed * dt;
 	menuPacPos_ += d;
 	menuGhostPos_ = menuPacPos_ + dirVecs[menuAnimDir_] * offset;
