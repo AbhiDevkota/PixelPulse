@@ -85,8 +85,12 @@ bool Pacman::loadTextures() {
 				std::cerr << "Warning: failed to load " << path << "\n";
 		}
 	}
-	if (!fruitTex_.loadFromFile("assets/pacman/edibles/apple.png"))
-		std::cerr << "Warning: failed to load fruit texture\n";
+	const char* fruitFiles[6] = { "apple", "cherry", "lime", "peach", "pineapple", "strawberry" };
+	for (int i = 0; i < 6; ++i) {
+		std::string path = std::string("assets/pacman/edibles/") + fruitFiles[i] + ".png";
+		if (!fruitTex_[i].loadFromFile(path))
+			std::cerr << "Warning: failed to load " << path << "\n";
+	}
 	return true;
 }
 
@@ -339,10 +343,8 @@ void Pacman::movePac(float dist) {
 			score_ += 20;
 			fruitActive_ = false;
 			fruitPos_ = { -1.f, -1.f };
-			for (auto& g : ghosts_) {
-				if (g.isFrightened())
-					g.setFrightened(g.frightenedTime() * 2.f);
-			}
+			for (auto& g : ghosts_)
+				g.setFrightened(4.f);
 		}
 	}
 	pacWasCentered_ = atCenter;
@@ -387,8 +389,8 @@ void Pacman::render() {
 	window_.setView(view_);
 	window_.clear(sf::Color::Black);
 	map_.render(window_);
-	if (fruitActive_ && fruitTex_.getSize().x > 0) {
-		sf::Sprite fruit(fruitTex_);
+	if (fruitActive_ && fruitTex_[fruitIndex_].getSize().x > 0) {
+		sf::Sprite fruit(fruitTex_[fruitIndex_]);
 		fruit.setPosition(Map::toPixel(fruitPos_));
 		window_.draw(fruit);
 	}
@@ -1040,6 +1042,7 @@ void Pacman::spawnFruit() {
 	}
 	if (candidates.empty()) return;
 	fruitPos_ = candidates[rng_() % candidates.size()];
+	fruitIndex_ = static_cast<int>(rng_() % 6);
 	fruitActive_ = true;
 }
 

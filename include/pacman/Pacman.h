@@ -119,7 +119,8 @@ private:
 
 	// Fruit
 	sf::Vector2f fruitPos_{ -1.f, -1.f };
-	sf::Texture fruitTex_;
+	std::array<sf::Texture, 6> fruitTex_;
+	int fruitIndex_ = 0;
 	bool fruitActive_ = false;
 	int pelletsEaten_ = 0;
 
