@@ -62,6 +62,7 @@ private:
 	void loadMenuTextures();
 	void updateMenuAnimation(float dt);
 	void drawMenuBackground();
+	void spawnFruit();
 
 	sf::RenderWindow& window_;
 	sf::View view_;
@@ -115,6 +116,12 @@ private:
 	sf::Font font_;
 	std::array<std::array<sf::Texture, 2>, 4> playerTex_;   // [dir][frame]
 	sf::Texture playerNeutral_;
+
+	// Fruit
+	sf::Vector2f fruitPos_{ -1.f, -1.f };
+	sf::Texture fruitTex_;
+	bool fruitActive_ = false;
+	int pelletsEaten_ = 0;
 
 	sf::Music bgMusic_;
 	sf::SoundBuffer foodBuf_, powerBuf_, ghostBuf_, hurtBuf_, gameOverBuf_;

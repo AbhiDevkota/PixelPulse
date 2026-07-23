@@ -85,6 +85,8 @@ bool Pacman::loadTextures() {
 				std::cerr << "Warning: failed to load " << path << "\n";
 		}
 	}
+	if (!fruitTex_.loadFromFile("assets/pacman/edibles/apple.png"))
+		std::cerr << "Warning: failed to load fruit texture\n";
 	return true;
 }
 
@@ -123,6 +125,10 @@ void Pacman::reset() {
 	pacWasCentered_ = false;
 	pacAnimTimer_ = 0.f;
 	pacAnimFrame_ = 0;
+
+	fruitActive_ = false;
+	fruitPos_ = { -1.f, -1.f };
+	pelletsEaten_ = 0;
 
 	const auto& spawns = map_.ghostSpawns();
 	for (int i = 0; i < 4; ++i)
@@ -288,6 +294,9 @@ void Pacman::update(float dt) {
 	}
 	collide();
 
+	if (!fruitActive_ && pelletsEaten_ > 0 && pelletsEaten_ % 10 == 0)
+		spawnFruit();
+
 	if (map_.pelletsRemaining() == 0) {
 		level_++;
 		seed_ = rng_();
@@ -316,12 +325,24 @@ void Pacman::movePac(float dist) {
 		Map::Eat eaten = map_.consume(c, r);
 		if (eaten == Map::Eat::Dot) {
 			score_ += 10;
+			pelletsEaten_++;
 			if (foodSnd_) foodSnd_->play();
 		}
 		else if (eaten == Map::Eat::Power) {
 			score_ += 50;
+			pelletsEaten_++;
 			if (powerSnd_) powerSnd_->play();
 			for (auto& g : ghosts_) g.setFrightened(7.f);
+		}
+
+		if (fruitActive_ && int(fruitPos_.x) == c && int(fruitPos_.y) == r) {
+			score_ += 20;
+			fruitActive_ = false;
+			fruitPos_ = { -1.f, -1.f };
+			for (auto& g : ghosts_) {
+				if (g.isFrightened())
+					g.setFrightened(g.frightenedTime() * 2.f);
+			}
 		}
 	}
 	pacWasCentered_ = atCenter;
@@ -366,6 +387,11 @@ void Pacman::render() {
 	window_.setView(view_);
 	window_.clear(sf::Color::Black);
 	map_.render(window_);
+	if (fruitActive_ && fruitTex_.getSize().x > 0) {
+		sf::Sprite fruit(fruitTex_);
+		fruit.setPosition(Map::toPixel(fruitPos_));
+		window_.draw(fruit);
+	}
 	drawPac();
 	for (auto& g : ghosts_) g.render(window_);
 	drawHud();
@@ -1002,6 +1028,19 @@ void Pacman::updateSoundVolumes() {
 	if (ghostSnd_) ghostSnd_->setVolume(effectVol_);
 	if (hurtSnd_) hurtSnd_->setVolume(effectVol_);
 	if (gameOverSnd_) gameOverSnd_->setVolume(effectVol_);
+}
+
+void Pacman::spawnFruit() {
+	std::vector<sf::Vector2f> candidates;
+	for (int r = 0; r < Map::ROWS; ++r) {
+		for (int c = 0; c < Map::COLS; ++c) {
+			if (map_.tileChar(c, r) == ' ')
+				candidates.push_back({ float(c), float(r) });
+		}
+	}
+	if (candidates.empty()) return;
+	fruitPos_ = candidates[rng_() % candidates.size()];
+	fruitActive_ = true;
 }
 
 // ===========================================================================

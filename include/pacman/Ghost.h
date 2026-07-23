@@ -29,6 +29,7 @@ public:
 	void eat();
 
 	bool isFrightened() const { return frightened_ > 0.f; }
+	float frightenedTime() const { return frightened_; }
 	bool isDead() const { return dead_; }
 	bool isReviving() const { return reviving_; }
 	sf::Vector2f pos() const { return pos_; }
