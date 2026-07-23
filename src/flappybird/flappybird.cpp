@@ -32,6 +32,8 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
     int score = 0;
     int highScore = 0;
     gameData.getHighScore(highScore);   // load saved high score on start
+    float bannerTimer = 0.f;            // counts down while "New High Score!" is shown
+    bool newRecordSet = false;         // true only for the point that first breaks the old record
 
     // Load font from fonts folder
     sf::Font font;
@@ -56,6 +58,8 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
     gameOverText.setFillColor(sf::Color::White);
 
     bool gameOver = false;
+    bool paused = false;
+    bool pWasPressed = false;
 
     sf::Clock clock;
 
@@ -71,24 +75,40 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
                 return;
 
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::P) && !gameOver && !pWasPressed) {
+                paused = !paused;
+                pWasPressed = true;
+            }
+
+            if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::P)) {
+                pWasPressed = false;
+            }
+
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::R) && gameOver) {
                 background.pickRandom(window);
                 bird.reset(cellW, cellH);
                 pipes.reset(window, cellW, cellH);
                 score = 0;
                 scoreText.setString("Score: 0");
+                paused = false;
                 gameOver = false;
+                newRecordSet = false;
             }
 
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !gameOver) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !gameOver && !paused) {
                 bird.flap();
                 audio.playJump();
             }
         }
 
         // freeze all game logic when game over
-        if (!gameOver) {
+        if (!gameOver && !paused) {
             bird.update(dt, window);
+
+            // end the game if the bird hits the top or bottom of the screen
+            if (bird.sprite.getPosition().y <= 0.f ||
+                bird.sprite.getPosition().y + bird.sprite.getGlobalBounds().size.y >= (float)window.getSize().y)
+                gameOver = true;
             pipes.update(dt, window, cellW, cellH);
             background.update(dt, window);
 
@@ -97,13 +117,37 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
 
             // update and save high score immediately when beaten
             if (score > highScore) {
+                if (!newRecordSet) {
+                    bannerTimer = 1.f;
+                    newRecordSet = true;
+                    audio.playHighScore();
+                }
                 highScore = score;
                 gameData.saveHighScore(highScore);
             }
+            bannerTimer -= dt;
 
             // refresh HUD text every frame
             scoreText.setString("Score: " + std::to_string(score));
-            highScoreText.setString("High Score: " + std::to_string(highScore));
+
+            // briefly show "New High Score!" in place of the usual high score text
+            sf::FloatRect b = highScoreText.getLocalBounds();
+            if (bannerTimer > 0.f) {
+                highScoreText.setCharacterSize(48);
+                highScoreText.setFillColor(sf::Color::Yellow);
+                highScoreText.setOutlineColor(sf::Color::Black);
+                highScoreText.setOutlineThickness(3.f);
+                highScoreText.setString("New High Score!");
+                b = highScoreText.getLocalBounds();
+                highScoreText.setPosition({ window.getSize().x / 2.f - b.size.x / 2.f, window.getSize().y / 2.f });
+            }
+            else {
+                highScoreText.setCharacterSize(28);
+                highScoreText.setFillColor(sf::Color::White);
+                highScoreText.setOutlineThickness(0.f);
+                highScoreText.setString("High Score: " + std::to_string(highScore));
+                highScoreText.setPosition({ 20.f, 60.f });
+            }
 
             // collision with any pipe triggers game over
             if (pipes.collides(bird.getBounds()))

@@ -14,8 +14,8 @@ public:
     int currentPose = 1;   // which pose is showing right now: 0 = up, 1 = neutral, 2 = down
 
     // size of ONE pose inside the spritesheet image (all 3 poses are this same size)
-    static const int CELL_W = 1003;
-    static const int CELL_H = 924;
+    static const int CELL_W = 624;
+    static const int CELL_H = 575;
 
     // the size we WANT the bird to appear on screen, no matter which pose is showing
     float targetWidth = 0.f;

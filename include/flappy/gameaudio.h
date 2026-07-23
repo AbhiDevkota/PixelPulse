@@ -7,6 +7,9 @@ public:
     sf::Music music;
     sf::SoundBuffer jumpSoundBuffer;
     sf::Sound jumpSound;
+    sf::SoundBuffer highScoreBuffer;
+    sf::Sound highScoreSound{ highScoreBuffer };
+    void playHighScore();
 
     GameAudio();
 
