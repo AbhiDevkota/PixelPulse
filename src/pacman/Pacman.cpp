@@ -2,7 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 
 namespace {
 	constexpr float kSpeed = 5.0f;      // tiles per second
@@ -49,6 +53,7 @@ bool Pacman::initialize() {
 	generateNewMap();
 	reset();
 	loadAudio();
+	loadMenuTextures();
 	return true;
 }
 
@@ -79,6 +84,12 @@ bool Pacman::loadTextures() {
 			if (!playerTex_[d][f].loadFromFile(path))
 				std::cerr << "Warning: failed to load " << path << "\n";
 		}
+	}
+	const char* fruitFiles[6] = { "apple", "cherry", "lime", "peach", "pineapple", "strawberry" };
+	for (int i = 0; i < 6; ++i) {
+		std::string path = std::string("assets/pacman/edibles/") + fruitFiles[i] + ".png";
+		if (!fruitTex_[i].loadFromFile(path))
+			std::cerr << "Warning: failed to load " << path << "\n";
 	}
 	return true;
 }
@@ -119,6 +130,10 @@ void Pacman::reset() {
 	pacAnimTimer_ = 0.f;
 	pacAnimFrame_ = 0;
 
+	fruitActive_ = false;
+	fruitPos_ = { -1.f, -1.f };
+	pelletsEaten_ = 0;
+
 	const auto& spawns = map_.ghostSpawns();
 	for (int i = 0; i < 4; ++i)
 		ghosts_[i].reset(spawns[i], map_.ghostHome());
@@ -140,33 +155,55 @@ void Pacman::respawn() {
 void Pacman::run() {
 	sf::Clock clock;
 	bool quit = false;
-	bgMusic_.play();
+	loadContinueData();
+	loadSoundSettings();
+	inMenu_ = true;
+	menuPage_ = MenuPage::Main;
+	menuIndex_ = 0;
+
 	while (window_.isOpen() && !quit) {
 		float dt = clock.restart().asSeconds();
-		dt = std::min(dt, 0.05f);   // clamp so alt-tab/stalls can't cause a huge step
-		handleEvents(quit);
-		if (state_ == State::Playing) {
-			pollDirection();
-			update(dt);
+		dt = std::min(dt, 0.05f);
+
+		if (inMenu_) {
+			processMenuEvents(quit);
+			updateMenuAnimation(dt);
+			renderMenu();
 		}
-		render();
+		else {
+			processGameEvents(quit);
+			if (state_ == State::Playing) {
+				pollDirection();
+				update(dt);
+			}
+			if (!inMenu_) {
+				render();
+			}
+		}
 	}
+	// Save game state when quitting mid-game
+	if (!inMenu_) saveContinueData();
 	bgMusic_.stop();
+	saveSoundSettings();
 	if (window_.isOpen()) window_.setView(window_.getDefaultView());
 }
 
-void Pacman::handleEvents(bool& quit) {
+void Pacman::processGameEvents(bool&) {
 	while (const std::optional event = window_.pollEvent()) {
 		if (event->is<sf::Event::Closed>()) {
 			window_.close();
 			return;
 		}
-		// Directional keys are read via live polling in pollDirection(); here we
-		// only handle discrete, one-shot actions.
 		if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
 			using K = sf::Keyboard::Key;
 			switch (key->code) {
-			case K::Escape: quit = true; return;          // back to the menu
+			case K::Escape:
+				saveContinueData();
+				bgMusic_.stop();
+				inMenu_ = true;
+				menuPage_ = MenuPage::Main;
+				menuIndex_ = 0;
+				return;
 			case K::R:
 				generateNewMap();
 				score_ = 0; lives_ = 3;
@@ -174,9 +211,10 @@ void Pacman::handleEvents(bool& quit) {
 				reset();
 				break;
 			case K::Enter:
-				if (state_ != State::Playing) {
+				if (state_ == State::Lost) {
 					generateNewMap();
 					score_ = 0; lives_ = 3;
+					level_ = 1;
 					state_ = State::Playing;
 					reset();
 				}
@@ -185,10 +223,18 @@ void Pacman::handleEvents(bool& quit) {
 			}
 		}
 		if (const auto* jb = event->getIf<sf::Event::JoystickButtonPressed>()) {
-			if (jb->button == 1) { quit = true; return; }
-			if (state_ != State::Playing) {
+			if (jb->button == 1) {
+				saveContinueData();
+				bgMusic_.stop();
+				inMenu_ = true;
+				menuPage_ = MenuPage::Main;
+				menuIndex_ = 0;
+				return;
+			}
+			if (state_ == State::Lost) {
 				generateNewMap();
 				score_ = 0; lives_ = 3;
+				level_ = 1;
 				state_ = State::Playing;
 				reset();
 			}
@@ -252,7 +298,15 @@ void Pacman::update(float dt) {
 	}
 	collide();
 
-	if (map_.pelletsRemaining() == 0) state_ = State::Won;
+	if (!fruitActive_ && pelletsEaten_ > 0 && pelletsEaten_ % 10 == 0)
+		spawnFruit();
+
+	if (map_.pelletsRemaining() == 0) {
+		level_++;
+		seed_ = rng_();
+		map_.loadGenerated(seed_);
+		reset();
+	}
 }
 
 void Pacman::movePac(float dist) {
@@ -275,12 +329,22 @@ void Pacman::movePac(float dist) {
 		Map::Eat eaten = map_.consume(c, r);
 		if (eaten == Map::Eat::Dot) {
 			score_ += 10;
+			pelletsEaten_++;
 			if (foodSnd_) foodSnd_->play();
 		}
 		else if (eaten == Map::Eat::Power) {
 			score_ += 50;
+			pelletsEaten_++;
 			if (powerSnd_) powerSnd_->play();
 			for (auto& g : ghosts_) g.setFrightened(7.f);
+		}
+
+		if (fruitActive_ && int(fruitPos_.x) == c && int(fruitPos_.y) == r) {
+			score_ += 20;
+			fruitActive_ = false;
+			fruitPos_ = { -1.f, -1.f };
+			for (auto& g : ghosts_)
+				g.setFrightened(4.f);
 		}
 	}
 	pacWasCentered_ = atCenter;
@@ -325,6 +389,11 @@ void Pacman::render() {
 	window_.setView(view_);
 	window_.clear(sf::Color::Black);
 	map_.render(window_);
+	if (fruitActive_ && fruitTex_[fruitIndex_].getSize().x > 0) {
+		sf::Sprite fruit(fruitTex_[fruitIndex_]);
+		fruit.setPosition(Map::toPixel(fruitPos_));
+		window_.draw(fruit);
+	}
 	drawPac();
 	for (auto& g : ghosts_) g.render(window_);
 	drawHud();
@@ -341,36 +410,44 @@ void Pacman::drawPac() {
 	window_.draw(sprite);
 }
 
-// Minimal retro HUD, drawn in the window's default view (raw screen pixels) so
-// text is sized against the real window and never overflows the small logical
-// play area. Sizes are clamped so the HUD stays small and crisp on any display.
 void Pacman::drawHud() {
 	window_.setView(window_.getDefaultView());
 	const sf::Vector2f ws{ float(window_.getSize().x), float(window_.getSize().y) };
-	const float margin = std::max(12.f, ws.y * 0.02f);
-	const unsigned fontSize = std::clamp(unsigned(ws.y / 55.f), 14u, 20u);
+	const float margin = ws.x * 0.03f;
+	const unsigned fontSize = std::clamp(unsigned(ws.y / 28.f), 20u, 36u);
 
 	// Score, top-left.
 	if (hasFont_) {
 		sf::Text t(font_, "SCORE  " + std::to_string(score_), fontSize);
-		t.setPosition({ margin, margin });
+		t.setFillColor(sf::Color(255, 255, 100));
+		t.setPosition({ margin, margin * 0.4f });
 		window_.draw(t);
 	}
 
-	// Lives, top-right: a row of small neutral Pac-Man icons instead of a number.
-	const float iconSize = fontSize * 1.1f;
+	// Level, top-centre.
+	if (hasFont_) {
+		sf::Text lvl(font_, "LEVEL " + std::to_string(level_), fontSize);
+		lvl.setFillColor(sf::Color(100, 200, 255));
+		auto lb = lvl.getLocalBounds();
+		lvl.setOrigin(lb.position + sf::Vector2f(lb.size.x / 2.f, 0.f));
+		lvl.setPosition({ ws.x / 2.f, margin * 0.4f });
+		window_.draw(lvl);
+	}
+
+	// Lives, top-right: a row of small neutral Pac-Man icons.
+	const float iconSize = fontSize * 1.0f;
 	const float gap = iconSize * 0.3f;
 	if (playerNeutral_.getSize().x > 0 && lives_ > 0) {
 		const float scale = iconSize / float(playerNeutral_.getSize().x);
 		sf::Sprite icon(playerNeutral_);
 		icon.setScale({ scale, scale });
 		for (int i = 0; i < lives_; ++i) {
-			icon.setPosition({ ws.x - margin - (lives_ - i) * (iconSize + gap) + gap, margin });
+			icon.setPosition({ ws.x - margin - (lives_ - i) * (iconSize + gap) + gap, margin * 0.4f });
 			window_.draw(icon);
 		}
 	}
 
-	// Win / lose banner, centred: a compact title plus a small "PRESS ENTER" hint.
+	// Win / lose banner, centred.
 	if (state_ != State::Playing && hasFont_) {
 		auto centre = [&](sf::Text& txt, float y) {
 			const sf::FloatRect b = txt.getLocalBounds();
@@ -380,12 +457,699 @@ void Pacman::drawHud() {
 		};
 
 		sf::Text title(font_, state_ == State::Won ? "YOU WIN" : "GAME OVER",
-			std::clamp(unsigned(ws.y / 28.f), 22u, 40u));
+			std::clamp(unsigned(ws.y / 22.f), 28u, 52u));
 		title.setFillColor(state_ == State::Won ? sf::Color::Green : sf::Color::Red);
 		centre(title, ws.y / 2.f - fontSize);
 
 		sf::Text hint(font_, "PRESS ENTER", fontSize);
 		hint.setFillColor(sf::Color::White);
 		centre(hint, ws.y / 2.f + fontSize * 1.6f);
+	}
+}
+
+// ===========================================================================
+// Menu event handling
+// ===========================================================================
+void Pacman::handleMenuJoystick() {
+	if (!sf::Joystick::isConnected(0)) return;
+	if (seedInputActive_) return;
+
+	float delay = menuJoyClock_.getElapsedTime().asSeconds();
+	if (delay < 0.15f) return;
+
+	float yAxis = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::Y);
+	float dpadY = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovY);
+	float xAxis = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::X);
+	float dpadX = sf::Joystick::getAxisPosition(0, sf::Joystick::Axis::PovX);
+
+	bool moved = false;
+
+	if (menuPage_ == MenuPage::Main) {
+		const int n = 5;
+		if (yAxis < -50.f || dpadY > 50.f) {
+			menuIndex_ = (menuIndex_ - 1 + n) % n; moved = true;
+		}
+		else if (yAxis > 50.f || dpadY < -50.f) {
+			menuIndex_ = (menuIndex_ + 1) % n; moved = true;
+		}
+	}
+	else if (menuPage_ == MenuPage::Seeds) {
+		const int n = 3;
+		if (!seedInputActive_) {
+			if (yAxis < -50.f || dpadY > 50.f) {
+				seedsIndex_ = (seedsIndex_ - 1 + n) % n; moved = true;
+			}
+			else if (yAxis > 50.f || dpadY < -50.f) {
+				seedsIndex_ = (seedsIndex_ + 1) % n; moved = true;
+			}
+		}
+	}
+	else if (menuPage_ == MenuPage::Settings) {
+		const int n = 3;
+		if (yAxis < -50.f || dpadY > 50.f) {
+			settingsIndex_ = (settingsIndex_ - 1 + n) % n; moved = true;
+		}
+		else if (yAxis > 50.f || dpadY < -50.f) {
+			settingsIndex_ = (settingsIndex_ + 1) % n; moved = true;
+		}
+		else if (xAxis < -50.f || dpadX < -50.f) {
+			if (settingsIndex_ == 0) { masterVol_ = std::max(0.f, masterVol_ - 3.f); bgMusic_.setVolume(masterVol_); moved = true; }
+			else if (settingsIndex_ == 1) { effectVol_ = std::max(0.f, effectVol_ - 3.f); updateSoundVolumes(); moved = true; }
+		}
+		else if (xAxis > 50.f || dpadX > 50.f) {
+			if (settingsIndex_ == 0) { masterVol_ = std::min(100.f, masterVol_ + 3.f); bgMusic_.setVolume(masterVol_); moved = true; }
+			else if (settingsIndex_ == 1) { effectVol_ = std::min(100.f, effectVol_ + 3.f); updateSoundVolumes(); moved = true; }
+		}
+	}
+
+	if (moved) menuJoyClock_.restart();
+}
+
+void Pacman::processMenuEvents(bool& quit) {
+	while (const std::optional event = window_.pollEvent()) {
+		if (event->is<sf::Event::Closed>()) {
+			window_.close();
+			return;
+		}
+
+		if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+			using K = sf::Keyboard::Key;
+
+			if (key->code == K::Escape) {
+				if (seedInputActive_) {
+					seedInputActive_ = false;
+					seedInputStr_.clear();
+				}
+				else if (menuPage_ == MenuPage::Main) {
+					quit = true;
+				}
+				else {
+					menuPage_ = MenuPage::Main;
+					menuIndex_ = 0;
+				}
+				return;
+			}
+
+			if (menuPage_ == MenuPage::Main) {
+				const int n = 5;
+				if (key->code == K::Up || key->code == K::W) {
+					menuIndex_ = (menuIndex_ - 1 + n) % n;
+				}
+				else if (key->code == K::Down || key->code == K::S) {
+					menuIndex_ = (menuIndex_ + 1) % n;
+				}
+				else if (key->code == K::Enter || key->code == K::Space) {
+					switch (menuIndex_) {
+					case 0: startNewGame(); return;
+					case 1: if (hasContinue_) { startContinue(); } return;
+					case 2: menuPage_ = MenuPage::Seeds; seedsIndex_ = 0; seedInputStr_.clear(); seedInputActive_ = false; return;
+					case 3: menuPage_ = MenuPage::Settings; settingsIndex_ = 0; return;
+					case 4: quit = true; return;
+					}
+				}
+			}
+			else if (menuPage_ == MenuPage::Seeds) {
+				if (seedInputActive_) {
+					if (key->code == K::Enter) {
+						if (!seedInputStr_.empty()) {
+							char* end = nullptr;
+							unsigned long val = std::strtoul(seedInputStr_.c_str(), &end, 10);
+							if (end != seedInputStr_.c_str()) {
+								applySeed(static_cast<uint32_t>(val));
+							}
+						}
+						seedInputActive_ = false;
+					}
+					return;
+				}
+				const int n = 3;
+				if (key->code == K::Up || key->code == K::W) {
+					seedsIndex_ = (seedsIndex_ - 1 + n) % n;
+				}
+				else if (key->code == K::Down || key->code == K::S) {
+					seedsIndex_ = (seedsIndex_ + 1) % n;
+				}
+				else if (key->code == K::Enter || key->code == K::Space) {
+					if (seedsIndex_ == 0) {
+						seedInputStr_ = std::to_string(seed_);
+						seedInputActive_ = true;
+					}
+					else if (seedsIndex_ == 1) {
+						seedInputActive_ = true;
+						seedInputStr_.clear();
+					}
+					else if (seedsIndex_ == 2) {
+						menuPage_ = MenuPage::Main;
+						menuIndex_ = 0;
+					}
+				}
+			}
+			else if (menuPage_ == MenuPage::Settings) {
+				const int n = 3;
+				if (key->code == K::Up || key->code == K::W) {
+					settingsIndex_ = (settingsIndex_ - 1 + n) % n;
+				}
+				else if (key->code == K::Down || key->code == K::S) {
+					settingsIndex_ = (settingsIndex_ + 1) % n;
+				}
+				else if (key->code == K::Enter || key->code == K::Space) {
+					if (settingsIndex_ == 2) {
+						menuPage_ = MenuPage::Main;
+						menuIndex_ = 0;
+					}
+				}
+				else if (key->code == K::Left || key->code == K::A) {
+					if (settingsIndex_ == 0) {
+						masterVol_ = std::max(0.f, masterVol_ - 5.f);
+						bgMusic_.setVolume(masterVol_);
+					}
+					else if (settingsIndex_ == 1) {
+						effectVol_ = std::max(0.f, effectVol_ - 5.f);
+						updateSoundVolumes();
+					}
+				}
+				else if (key->code == K::Right || key->code == K::D) {
+					if (settingsIndex_ == 0) {
+						masterVol_ = std::min(100.f, masterVol_ + 5.f);
+						bgMusic_.setVolume(masterVol_);
+					}
+					else if (settingsIndex_ == 1) {
+						effectVol_ = std::min(100.f, effectVol_ + 5.f);
+						updateSoundVolumes();
+					}
+				}
+			}
+		}
+
+		if (seedInputActive_ && menuPage_ == MenuPage::Seeds) {
+			if (const auto* text = event->getIf<sf::Event::TextEntered>()) {
+				if (text->unicode >= 32 && text->unicode < 127) {
+					if (seedInputStr_.size() < 20) {
+						seedInputStr_ += static_cast<char>(text->unicode);
+					}
+				}
+				else if (text->unicode == 8 && !seedInputStr_.empty()) {
+					seedInputStr_.pop_back();
+				}
+			}
+		}
+
+		if (const auto* jb = event->getIf<sf::Event::JoystickButtonPressed>()) {
+			if (seedInputActive_) {
+				if (jb->button == 1) { seedInputActive_ = false; }
+				return;
+			}
+			if (menuPage_ == MenuPage::Main) {
+				if (jb->button == 0) {
+					switch (menuIndex_) {
+					case 0: startNewGame(); return;
+					case 1: if (hasContinue_) { startContinue(); } return;
+					case 2: menuPage_ = MenuPage::Seeds; seedsIndex_ = 0; seedInputStr_.clear(); seedInputActive_ = false; return;
+					case 3: menuPage_ = MenuPage::Settings; settingsIndex_ = 0; return;
+					case 4: quit = true; return;
+					}
+				}
+				if (jb->button == 1) { quit = true; return; }
+			}
+			else if (menuPage_ == MenuPage::Seeds) {
+				if (jb->button == 0) {
+					if (seedsIndex_ == 0) { seedInputStr_ = std::to_string(seed_); seedInputActive_ = true; }
+					else if (seedsIndex_ == 1) { seedInputActive_ = true; seedInputStr_.clear(); }
+					else if (seedsIndex_ == 2) { menuPage_ = MenuPage::Main; menuIndex_ = 0; }
+				}
+				if (jb->button == 1) { menuPage_ = MenuPage::Main; menuIndex_ = 0; }
+			}
+			else if (menuPage_ == MenuPage::Settings) {
+				if (jb->button == 0 && settingsIndex_ == 2) { menuPage_ = MenuPage::Main; menuIndex_ = 0; }
+				if (jb->button == 1) { menuPage_ = MenuPage::Main; menuIndex_ = 0; }
+			}
+		}
+	}
+
+	handleMenuJoystick();
+}
+
+// ===========================================================================
+// Menu rendering
+// ===========================================================================
+void Pacman::renderMenu() {
+	window_.setView(window_.getDefaultView());
+	window_.clear(sf::Color::Black);
+
+	drawMenuBackground();
+
+	switch (menuPage_) {
+	case MenuPage::Main:  renderMainMenu(); break;
+	case MenuPage::Seeds: renderSeedsMenu(); break;
+	case MenuPage::Settings: renderSettingsMenu(); break;
+	}
+
+	window_.display();
+}
+
+void Pacman::renderMainMenu() {
+	auto ws = window_.getSize();
+	float cx = ws.x / 2.f;
+
+	if (hasFont_) {
+		sf::Text title(font_, "PAC-MAN", std::clamp(unsigned(ws.y / 14.f), 40u, 72u));
+		title.setStyle(sf::Text::Bold);
+		title.setFillColor(sf::Color(255, 255, 0));
+		auto tb = title.getLocalBounds();
+		title.setOrigin(tb.position + sf::Vector2f(tb.size.x / 2.f, 0.f));
+		title.setPosition({ cx, ws.y * 0.10f });
+		window_.draw(title);
+	}
+
+	const std::vector<std::string> items = { "NEW GAME", "CONTINUE", "SEEDS", "SETTINGS", "EXIT" };
+	const float itemW = 300.f;
+	const float itemH = 50.f;
+	const float gap = 16.f;
+	const int n = static_cast<int>(items.size());
+	float blockH = n * itemH + (n - 1) * gap;
+	float startY = (ws.y - blockH) / 2.f + 20.f;
+
+	for (int i = 0; i < n; ++i) {
+		bool sel = (i == menuIndex_);
+		bool disabled = (i == 1 && !hasContinue_);
+
+		sf::RectangleShape bg({ itemW, itemH });
+		bg.setPosition({ cx - itemW / 2.f, startY + i * (itemH + gap) });
+		if (sel) {
+			bg.setFillColor(sf::Color(60, 60, 70));
+			bg.setOutlineColor(sf::Color(255, 255, 255));
+			bg.setOutlineThickness(2.f);
+		}
+		else {
+			bg.setFillColor(sf::Color(30, 30, 35));
+			bg.setOutlineColor(sf::Color(80, 80, 80));
+			bg.setOutlineThickness(1.f);
+		}
+		window_.draw(bg);
+
+		if (hasFont_) {
+			sf::Text txt(font_, items[i], 26);
+			auto tb = txt.getLocalBounds();
+			txt.setOrigin(tb.position + sf::Vector2f(tb.size.x / 2.f, 0.f));
+			txt.setPosition({ cx, startY + i * (itemH + gap) + (itemH - tb.size.y) / 2.f - tb.position.y });
+			if (sel) txt.setFillColor(sf::Color(255, 255, 0));
+			else if (disabled) txt.setFillColor(sf::Color(60, 60, 60));
+			else txt.setFillColor(sf::Color(200, 200, 200));
+			window_.draw(txt);
+		}
+
+		if (sel) {
+			sf::Text arrow(font_, ">", 26);
+			if (hasFont_) {
+				auto ab = arrow.getLocalBounds();
+				arrow.setOrigin(ab.position + sf::Vector2f(ab.size.x / 2.f, 0.f));
+				arrow.setPosition({ cx - itemW / 2.f - 20.f, startY + i * (itemH + gap) + (itemH - ab.size.y) / 2.f - ab.position.y });
+				arrow.setFillColor(sf::Color(255, 255, 0));
+				window_.draw(arrow);
+			}
+		}
+	}
+}
+
+void Pacman::renderSeedsMenu() {
+	auto ws = window_.getSize();
+	float cx = ws.x / 2.f;
+
+	if (hasFont_) {
+		sf::Text title(font_, "SEEDS", std::clamp(unsigned(ws.y / 16.f), 36u, 56u));
+		title.setStyle(sf::Text::Bold);
+		title.setFillColor(sf::Color(255, 220, 100));
+		auto tb = title.getLocalBounds();
+		title.setOrigin(tb.position + sf::Vector2f(tb.size.x / 2.f, 0.f));
+		title.setPosition({ cx, ws.y * 0.08f });
+		window_.draw(title);
+	}
+
+	const std::vector<std::string> items = { "SEED", "ENTER SEED", "BACK" };
+	const float itemW = 460.f;
+	const float itemH = 54.f;
+	const float gap = 20.f;
+	const int n = static_cast<int>(items.size());
+	float startY = ws.y * 0.20f;
+
+	for (int i = 0; i < n; ++i) {
+		float y = startY + i * (itemH + gap);
+		bool sel = (i == seedsIndex_);
+
+		sf::RectangleShape bg({ itemW, itemH });
+		bg.setPosition({ cx - itemW / 2.f, y });
+		if (sel) {
+			bg.setFillColor(sf::Color(60, 60, 70));
+			bg.setOutlineColor(sf::Color(255, 255, 255));
+			bg.setOutlineThickness(2.f);
+		}
+		else {
+			bg.setFillColor(sf::Color(30, 30, 35));
+			bg.setOutlineColor(sf::Color(80, 80, 80));
+			bg.setOutlineThickness(1.f);
+		}
+		window_.draw(bg);
+
+		if (hasFont_) {
+			std::string label;
+			if (i == 0) {
+				label = "Current Seed:  " + std::to_string(seed_);
+			}
+			else if (i == 1) {
+				label = seedInputActive_ ? "Enter Seed:  " + seedInputStr_ + "_" : "ENTER NEW SEED";
+			}
+			else {
+				label = "BACK";
+			}
+
+			unsigned charSize = (i == 0) ? 20u : 24u;
+			sf::Text txt(font_, label, charSize);
+			if (i == 0) txt.setFillColor(sf::Color(180, 180, 200));
+			else txt.setFillColor(sel ? sf::Color(255, 255, 0) : sf::Color(200, 200, 200));
+			auto tb = txt.getLocalBounds();
+			txt.setOrigin(tb.position + sf::Vector2f(tb.size.x / 2.f, 0.f));
+			txt.setPosition({ cx, y + (itemH - tb.size.y) / 2.f - tb.position.y });
+			window_.draw(txt);
+		}
+
+		if (sel && hasFont_) {
+			sf::Text arrow(font_, ">", 24);
+			auto ab = arrow.getLocalBounds();
+			arrow.setOrigin(ab.position + sf::Vector2f(ab.size.x / 2.f, 0.f));
+			arrow.setPosition({ cx - itemW / 2.f - 22.f, y + (itemH - ab.size.y) / 2.f - ab.position.y });
+			arrow.setFillColor(sf::Color(255, 255, 0));
+			window_.draw(arrow);
+		}
+	}
+}
+
+void Pacman::renderSettingsMenu() {
+	auto ws = window_.getSize();
+	float cx = ws.x / 2.f;
+
+	if (hasFont_) {
+		sf::Text title(font_, "SETTINGS", std::clamp(unsigned(ws.y / 16.f), 36u, 56u));
+		title.setStyle(sf::Text::Bold);
+		title.setFillColor(sf::Color(100, 200, 255));
+		auto tb = title.getLocalBounds();
+		title.setOrigin(tb.position + sf::Vector2f(tb.size.x / 2.f, 0.f));
+		title.setPosition({ cx, ws.y * 0.10f });
+		window_.draw(title);
+	}
+
+	struct VolItem { const char* label; float* value; };
+	VolItem vols[] = {
+		{"Master Volume", &masterVol_},
+		{"Effect Volume", &effectVol_}
+	};
+
+	const float barW = 280.f;
+	const float barH = 20.f;
+	const float itemH = 60.f;
+	const float gap = 20.f;
+	float startY = ws.y * 0.28f;
+
+	for (int i = 0; i < 2; ++i) {
+		float y = startY + i * (itemH + gap);
+		bool sel = (i == settingsIndex_);
+
+		if (hasFont_) {
+			sf::Text label(font_, vols[i].label, 22);
+			label.setFillColor(sel ? sf::Color(255, 255, 0) : sf::Color(200, 200, 200));
+			auto lb = label.getLocalBounds();
+			label.setOrigin(lb.position + sf::Vector2f(lb.size.x / 2.f, 0.f));
+			label.setPosition({ cx, y });
+			window_.draw(label);
+
+			sf::RectangleShape bar({ barW, barH });
+			bar.setPosition({ cx - barW / 2.f, y + 28.f });
+			bar.setFillColor(sf::Color(40, 40, 40));
+			bar.setOutlineColor(sel ? sf::Color(255, 255, 255) : sf::Color(80, 80, 80));
+			bar.setOutlineThickness(1.f);
+			window_.draw(bar);
+
+			float fill = *vols[i].value / 100.f;
+			sf::RectangleShape fillRect({ barW * fill, barH });
+			fillRect.setPosition({ cx - barW / 2.f, y + 28.f });
+			fillRect.setFillColor(sel ? sf::Color(255, 255, 100) : sf::Color(150, 150, 150));
+			window_.draw(fillRect);
+
+			sf::Text pct(font_, std::to_string(static_cast<int>(*vols[i].value)) + "%", 18);
+			pct.setFillColor(sf::Color(180, 180, 200));
+			auto pb = pct.getLocalBounds();
+			pct.setOrigin(pb.position + sf::Vector2f(0.f, pb.size.y / 2.f));
+			pct.setPosition({ cx + barW / 2.f + 15.f, y + 28.f + barH / 2.f });
+			window_.draw(pct);
+		}
+	}
+
+	float backY = startY + 2 * (itemH + gap) + 20.f;
+	sf::RectangleShape backBg({ 200.f, 50.f });
+	backBg.setPosition({ cx - 100.f, backY });
+	bool backSel = (settingsIndex_ == 2);
+	if (backSel) {
+		backBg.setFillColor(sf::Color(60, 60, 70));
+		backBg.setOutlineColor(sf::Color(255, 255, 255));
+		backBg.setOutlineThickness(2.f);
+	}
+	else {
+		backBg.setFillColor(sf::Color(30, 30, 35));
+		backBg.setOutlineColor(sf::Color(80, 80, 80));
+		backBg.setOutlineThickness(1.f);
+	}
+	window_.draw(backBg);
+
+	if (hasFont_) {
+		sf::Text backTxt(font_, "BACK", 26);
+		auto bb = backTxt.getLocalBounds();
+		backTxt.setOrigin(bb.position + sf::Vector2f(bb.size.x / 2.f, 0.f));
+		backTxt.setPosition({ cx, backY + (50.f - bb.size.y) / 2.f - bb.position.y });
+		backTxt.setFillColor(backSel ? sf::Color(255, 255, 0) : sf::Color(200, 200, 200));
+		window_.draw(backTxt);
+	}
+}
+
+// ===========================================================================
+// Menu actions
+// ===========================================================================
+void Pacman::startNewGame() {
+	if (!customSeedSet_) {
+		seed_ = rng_();
+	}
+	customSeedSet_ = false;
+	map_.loadGenerated(seed_);
+	score_ = 0;
+	lives_ = 3;
+	level_ = 1;
+	state_ = State::Playing;
+	reset();
+	inMenu_ = false;
+	saveContinueData();
+	bgMusic_.setVolume(masterVol_);
+	bgMusic_.play();
+}
+
+void Pacman::startContinue() {
+	if (!hasContinue_) return;
+	map_.loadGenerated(continueSeed_);
+	score_ = continueScore_;
+	lives_ = continueLives_;
+	level_ = continueLevel_;
+	seed_ = continueSeed_;
+	state_ = State::Playing;
+	reset();
+	inMenu_ = false;
+	bgMusic_.setVolume(masterVol_);
+	bgMusic_.play();
+}
+
+void Pacman::applySeed(uint32_t seed) {
+	seed_ = seed;
+	customSeedSet_ = true;
+}
+
+void Pacman::saveContinueData() {
+	std::ostringstream ss;
+	ss << "seed=" << seed_ << "\n";
+	ss << "score=" << score_ << "\n";
+	ss << "lives=" << lives_ << "\n";
+	ss << "level=" << level_ << "\n";
+	std::ofstream file("config/pacman_continue.sav");
+	if (file) file << ss.str();
+}
+
+void Pacman::loadContinueData() {
+	hasContinue_ = false;
+	std::ifstream file("config/pacman_continue.sav");
+	if (!file) return;
+	std::string line;
+	while (std::getline(file, line)) {
+		if (line.find("seed=") == 0) {
+			continueSeed_ = static_cast<uint32_t>(std::strtoul(line.c_str() + 5, nullptr, 10));
+		}
+		else if (line.find("score=") == 0) {
+			continueScore_ = std::atoi(line.c_str() + 6);
+		}
+		else if (line.find("lives=") == 0) {
+			continueLives_ = std::atoi(line.c_str() + 6);
+		}
+		else if (line.find("level=") == 0) {
+			continueLevel_ = std::atoi(line.c_str() + 6);
+		}
+	}
+	hasContinue_ = true;
+}
+
+void Pacman::saveSoundSettings() {
+	std::ostringstream ss;
+	ss << "master_volume=" << masterVol_ << "\n";
+	ss << "effect_volume=" << effectVol_ << "\n";
+	std::ofstream file("config/pacman_audio.cfg");
+	if (file) file << ss.str();
+}
+
+void Pacman::loadSoundSettings() {
+	std::ifstream file("config/pacman_audio.cfg");
+	if (!file) return;
+	std::string line;
+	while (std::getline(file, line)) {
+		if (line.find("master_volume=") == 0) {
+			masterVol_ = std::stof(line.substr(14));
+		}
+		else if (line.find("effect_volume=") == 0) {
+			effectVol_ = std::stof(line.substr(14));
+		}
+	}
+	masterVol_ = std::clamp(masterVol_, 0.f, 100.f);
+	effectVol_ = std::clamp(effectVol_, 0.f, 100.f);
+}
+
+void Pacman::updateSoundVolumes() {
+	if (foodSnd_) foodSnd_->setVolume(effectVol_);
+	if (powerSnd_) powerSnd_->setVolume(effectVol_);
+	if (ghostSnd_) ghostSnd_->setVolume(effectVol_);
+	if (hurtSnd_) hurtSnd_->setVolume(effectVol_);
+	if (gameOverSnd_) gameOverSnd_->setVolume(effectVol_);
+}
+
+void Pacman::spawnFruit() {
+	std::vector<sf::Vector2f> candidates;
+	for (int r = 0; r < Map::ROWS; ++r) {
+		for (int c = 0; c < Map::COLS; ++c) {
+			if (map_.tileChar(c, r) == ' ')
+				candidates.push_back({ float(c), float(r) });
+		}
+	}
+	if (candidates.empty()) return;
+	fruitPos_ = candidates[rng_() % candidates.size()];
+	fruitIndex_ = static_cast<int>(rng_() % 6);
+	fruitActive_ = true;
+}
+
+// ===========================================================================
+// Menu background animation
+// ===========================================================================
+void Pacman::loadMenuTextures() {
+	if (!menuGhostTex_.loadFromFile("assets/pacman/ghost/blinky/left_1.png"))
+		std::cerr << "Warning: failed to load menu ghost texture\n";
+
+	auto ws = window_.getSize();
+	float w = ws.x > 0 ? static_cast<float>(ws.x) : 800.f;
+	float h = ws.y > 0 ? static_cast<float>(ws.y) : 600.f;
+	menuAnimDir_ = static_cast<int>(rng_() % 4);
+	menuDirTimer_ = 2.f + static_cast<float>(rng_() % 4);
+	float margin = 120.f;
+	switch (menuAnimDir_) {
+	case 0: menuPacPos_ = { -margin, float(rng_() % static_cast<int>(h)) }; break;
+	case 1: menuPacPos_ = { w + margin, float(rng_() % static_cast<int>(h)) }; break;
+	case 2: menuPacPos_ = { float(rng_() % static_cast<int>(w)), -margin }; break;
+	case 3: menuPacPos_ = { float(rng_() % static_cast<int>(w)), h + margin }; break;
+	}
+	menuGhostPos_ = menuPacPos_;
+}
+
+void Pacman::updateMenuAnimation(float dt) {
+	float speed = 360.f;
+	float offset = 90.f;
+
+	sf::Vector2f dirVecs[4] = { {1,0}, {-1,0}, {0,1}, {0,-1} };
+
+	menuDirTimer_ -= dt;
+	if (menuDirTimer_ <= 0.f) {
+		int newDir;
+		do {
+			newDir = static_cast<int>(rng_() % 4);
+		} while (newDir == menuAnimDir_);
+		menuAnimDir_ = newDir;
+		menuDirTimer_ = 2.f + static_cast<float>(rng_() % 4);
+		menuGhostPos_ = menuPacPos_ + dirVecs[menuAnimDir_] * offset;
+	}
+
+	sf::Vector2f d = dirVecs[menuAnimDir_] * speed * dt;
+	menuPacPos_ += d;
+	menuGhostPos_ = menuPacPos_ + dirVecs[menuAnimDir_] * offset;
+
+	auto ws = window_.getSize();
+	float margin = 100.f;
+	float wrapW = float(ws.x) + margin * 2.f;
+	float wrapH = float(ws.y) + margin * 2.f;
+
+	if (menuPacPos_.x > ws.x + margin) {
+		menuPacPos_.x -= wrapW;
+		menuGhostPos_.x -= wrapW;
+	} else if (menuPacPos_.x < -margin) {
+		menuPacPos_.x += wrapW;
+		menuGhostPos_.x += wrapW;
+	}
+	if (menuPacPos_.y > ws.y + margin) {
+		menuPacPos_.y -= wrapH;
+		menuGhostPos_.y -= wrapH;
+	} else if (menuPacPos_.y < -margin) {
+		menuPacPos_.y += wrapH;
+		menuGhostPos_.y += wrapH;
+	}
+
+	menuAnimTimer_ += dt;
+	if (menuAnimTimer_ >= 0.12f) {
+		menuAnimTimer_ -= 0.12f;
+		menuAnimFrame_ = 1 - menuAnimFrame_;
+	}
+}
+
+void Pacman::drawMenuBackground() {
+	auto gridWs = window_.getSize();
+	sf::Color gridColor(255, 255, 255, 20);
+	sf::VertexArray grid(sf::PrimitiveType::Lines);
+	for (int gx = 0; gx <= static_cast<int>(gridWs.x); gx += 200) {
+		grid.append(sf::Vertex({ float(gx), 0.f }, gridColor));
+		grid.append(sf::Vertex({ float(gx), float(gridWs.y) }, gridColor));
+	}
+	for (int gy = 0; gy <= static_cast<int>(gridWs.y); gy += 200) {
+		grid.append(sf::Vertex({ 0.f, float(gy) }, gridColor));
+		grid.append(sf::Vertex({ float(gridWs.x), float(gy) }, gridColor));
+	}
+	window_.draw(grid);
+
+	float scale = 2.5f;
+	const int dirMap[4] = { 3, 2, 1, 0 };
+	int texDir = dirMap[menuAnimDir_];
+
+	if (menuGhostTex_.getSize().x > 0) {
+		sf::Sprite ghost(menuGhostTex_);
+		sf::Vector2f gs = { float(menuGhostTex_.getSize().x), float(menuGhostTex_.getSize().y) };
+		ghost.setOrigin(gs / 2.f);
+		ghost.setScale({ scale, scale });
+		ghost.setPosition(menuGhostPos_);
+		window_.draw(ghost);
+	}
+
+	if (playerTex_[texDir][0].getSize().x > 0) {
+		const sf::Texture& tex = playerTex_[texDir][menuAnimFrame_];
+		sf::Sprite pac(tex);
+		sf::Vector2f ps = { float(tex.getSize().x), float(tex.getSize().y) };
+		pac.setOrigin(ps / 2.f);
+		pac.setScale({ scale, scale });
+		pac.setPosition(menuPacPos_);
+		window_.draw(pac);
 	}
 }
