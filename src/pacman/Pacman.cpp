@@ -1034,6 +1034,19 @@ void Pacman::updateMenuAnimation(float dt) {
 }
 
 void Pacman::drawMenuBackground() {
+	auto gridWs = window_.getSize();
+	sf::Color gridColor(255, 255, 255, 20);
+	sf::VertexArray grid(sf::PrimitiveType::Lines);
+	for (int gx = 0; gx <= static_cast<int>(gridWs.x); gx += 200) {
+		grid.append(sf::Vertex({ float(gx), 0.f }, gridColor));
+		grid.append(sf::Vertex({ float(gx), float(gridWs.y) }, gridColor));
+	}
+	for (int gy = 0; gy <= static_cast<int>(gridWs.y); gy += 200) {
+		grid.append(sf::Vertex({ 0.f, float(gy) }, gridColor));
+		grid.append(sf::Vertex({ float(gridWs.x), float(gy) }, gridColor));
+	}
+	window_.draw(grid);
+
 	float scale = 2.5f;
 	const int dirMap[4] = { 3, 2, 1, 0 };
 	int texDir = dirMap[menuAnimDir_];
