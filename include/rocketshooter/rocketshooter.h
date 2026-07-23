@@ -3,6 +3,7 @@
 #include <SFML/Audio.hpp>
 #include <vector>
 #include <optional>
+#include <string>
 
 // ==========================================
 // --- RocketBullet Class ---
@@ -99,6 +100,11 @@ private:
     bool bulletCollidesWithCoin(const RocketBullet& b, const RocketCoin& coin) const;
     void checkCollisions();
     void checkCoinPickups();
+
+    // --- High score persistence ---
+    void loadHighScore();
+    void saveHighScore();
+    static const inline std::string HIGH_SCORE_FILE = "ROCKETSHOOTER_highscore_data.sav";
 
     const float CELL_SIZE = 32.0f;             // Uniform dimensions metrics config
     const float SPAWN_INTERVAL = 1.5f;         // Spawner clock target reference limit
