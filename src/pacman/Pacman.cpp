@@ -986,15 +986,15 @@ void Pacman::loadMenuTextures() {
 		std::cerr << "Warning: failed to load menu ghost texture\n";
 
 	auto ws = window_.getSize();
-	menuAnimDir_ = static_cast<int>(rng_() % 4);
 	float w = ws.x > 0 ? static_cast<float>(ws.x) : 800.f;
 	float h = ws.y > 0 ? static_cast<float>(ws.y) : 600.f;
-	float pad = 50.f;
+	menuAnimDir_ = static_cast<int>(rng_() % 4);
+	float margin = 120.f;
 	switch (menuAnimDir_) {
-	case 0: menuPacPos_ = { pad, float(rng_() % static_cast<int>(h)) }; break;
-	case 1: menuPacPos_ = { w - pad, float(rng_() % static_cast<int>(h)) }; break;
-	case 2: menuPacPos_ = { float(rng_() % static_cast<int>(w)), pad }; break;
-	case 3: menuPacPos_ = { float(rng_() % static_cast<int>(w)), h - pad }; break;
+	case 0: menuPacPos_ = { -margin, float(rng_() % static_cast<int>(h)) }; break;
+	case 1: menuPacPos_ = { w + margin, float(rng_() % static_cast<int>(h)) }; break;
+	case 2: menuPacPos_ = { float(rng_() % static_cast<int>(w)), -margin }; break;
+	case 3: menuPacPos_ = { float(rng_() % static_cast<int>(w)), h + margin }; break;
 	}
 	menuGhostPos_ = menuPacPos_;
 }
@@ -1009,27 +1009,23 @@ void Pacman::updateMenuAnimation(float dt) {
 	menuGhostPos_ = menuPacPos_ + dirVecs[menuAnimDir_] * offset;
 
 	auto ws = window_.getSize();
-	sf::Vector2f ws_f = { float(ws.x), float(ws.y) };
-	float m = 100.f;
+	float margin = 100.f;
+	float wrapW = float(ws.x) + margin * 2.f;
+	float wrapH = float(ws.y) + margin * 2.f;
 
-	bool offscreen = false;
-	if (menuPacPos_.x > ws_f.x + m || menuPacPos_.x < -m ||
-		menuPacPos_.y > ws_f.y + m || menuPacPos_.y < -m)
-		offscreen = true;
-	if (menuGhostPos_.x > ws_f.x + m || menuGhostPos_.x < -m ||
-		menuGhostPos_.y > ws_f.y + m || menuGhostPos_.y < -m)
-		offscreen = true;
-
-	if (offscreen) {
-		menuAnimDir_ = rng_() % 4;
-		float margin = 120.f;
-		switch (menuAnimDir_) {
-		case 0: menuPacPos_ = { -margin, float(rng_() % ws.y) }; break;
-		case 1: menuPacPos_ = { float(ws.x) + margin, float(rng_() % ws.y) }; break;
-		case 2: menuPacPos_ = { float(rng_() % ws.x), -margin }; break;
-		case 3: menuPacPos_ = { float(rng_() % ws.x), float(ws.y) + margin }; break;
-		}
-		menuGhostPos_ = menuPacPos_ + dirVecs[menuAnimDir_] * (-offset);
+	if (menuPacPos_.x > ws.x + margin) {
+		menuPacPos_.x -= wrapW;
+		menuGhostPos_.x -= wrapW;
+	} else if (menuPacPos_.x < -margin) {
+		menuPacPos_.x += wrapW;
+		menuGhostPos_.x += wrapW;
+	}
+	if (menuPacPos_.y > ws.y + margin) {
+		menuPacPos_.y -= wrapH;
+		menuGhostPos_.y -= wrapH;
+	} else if (menuPacPos_.y < -margin) {
+		menuPacPos_.y += wrapH;
+		menuGhostPos_.y += wrapH;
 	}
 
 	menuAnimTimer_ += dt;
@@ -1041,22 +1037,18 @@ void Pacman::updateMenuAnimation(float dt) {
 
 void Pacman::drawMenuBackground() {
 	float scale = 2.5f;
-	// Direction 0=right->RIGHT(3), 1=left->LEFT(2), 2=down->DOWN(1), 3=up->UP(0)
 	const int dirMap[4] = { 3, 2, 1, 0 };
 	int texDir = dirMap[menuAnimDir_];
 
-	// Ghost
 	if (menuGhostTex_.getSize().x > 0) {
 		sf::Sprite ghost(menuGhostTex_);
 		sf::Vector2f gs = { float(menuGhostTex_.getSize().x), float(menuGhostTex_.getSize().y) };
 		ghost.setOrigin(gs / 2.f);
 		ghost.setScale({ scale, scale });
 		ghost.setPosition(menuGhostPos_);
-		if (menuAnimDir_ == 1) ghost.setScale({ -scale, scale });
 		window_.draw(ghost);
 	}
 
-	// Pac-Man
 	if (playerTex_[texDir][0].getSize().x > 0) {
 		const sf::Texture& tex = playerTex_[texDir][menuAnimFrame_];
 		sf::Sprite pac(tex);
@@ -1064,7 +1056,6 @@ void Pacman::drawMenuBackground() {
 		pac.setOrigin(ps / 2.f);
 		pac.setScale({ scale, scale });
 		pac.setPosition(menuPacPos_);
-		if (menuAnimDir_ == 1) pac.setScale({ -scale, scale });
 		window_.draw(pac);
 	}
 }
