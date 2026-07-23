@@ -9,10 +9,10 @@ Player::Player() {
 }
 
 sf::FloatRect Player::getBounds() const {
-	float artWidth = 16.f;
-	float artHeight = 18.f;
-	float offsetX = 3.f;
-	float offsetY = 1.f;
+	float artWidth = 14.f;
+	float artHeight = 16.f;
+	float offsetX = 6.f;
+	float offsetY = 2.f;
 
 	float startX = x + (offsetX * scaleX);
 	float startY = (y - (h / 2.f)) + (offsetY * scaleY);
@@ -171,10 +171,10 @@ bool Obstacles::CheckHit(Player& player) {
 	float scaleX = w / static_cast<float>(frameWidth);
 	float scaleY = h / static_cast<float>(frameHeight);
 
-	float artWidth = 38.f;
-	float artHeight = 43.f;
-	float offsetX = 13.f;
-	float offsetY = 18.f;
+	float artWidth = 26.f;
+	float artHeight = 35.f;
+	float offsetX = 22.f;
+	float offsetY = 22.f;
 
 	for (int i = 0; i < n; i++) {
 		if (!array[i].active) continue;
