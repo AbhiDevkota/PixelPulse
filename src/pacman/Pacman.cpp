@@ -201,9 +201,10 @@ void Pacman::processGameEvents(bool&) {
 				reset();
 				break;
 			case K::Enter:
-				if (state_ != State::Playing) {
+				if (state_ == State::Lost) {
 					generateNewMap();
 					score_ = 0; lives_ = 3;
+					level_ = 1;
 					state_ = State::Playing;
 					reset();
 				}
@@ -220,9 +221,10 @@ void Pacman::processGameEvents(bool&) {
 				menuIndex_ = 0;
 				return;
 			}
-			if (state_ != State::Playing) {
+			if (state_ == State::Lost) {
 				generateNewMap();
 				score_ = 0; lives_ = 3;
+				level_ = 1;
 				state_ = State::Playing;
 				reset();
 			}
@@ -286,7 +288,12 @@ void Pacman::update(float dt) {
 	}
 	collide();
 
-	if (map_.pelletsRemaining() == 0) state_ = State::Won;
+	if (map_.pelletsRemaining() == 0) {
+		level_++;
+		seed_ = rng_();
+		map_.loadGenerated(seed_);
+		reset();
+	}
 }
 
 void Pacman::movePac(float dist) {
@@ -387,6 +394,16 @@ void Pacman::drawHud() {
 		t.setFillColor(sf::Color(255, 255, 100));
 		t.setPosition({ margin, margin * 0.4f });
 		window_.draw(t);
+	}
+
+	// Level, top-centre.
+	if (hasFont_) {
+		sf::Text lvl(font_, "LEVEL " + std::to_string(level_), fontSize);
+		lvl.setFillColor(sf::Color(100, 200, 255));
+		auto lb = lvl.getLocalBounds();
+		lvl.setOrigin(lb.position + sf::Vector2f(lb.size.x / 2.f, 0.f));
+		lvl.setPosition({ ws.x / 2.f, margin * 0.4f });
+		window_.draw(lvl);
 	}
 
 	// Lives, top-right: a row of small neutral Pac-Man icons.
@@ -895,6 +912,7 @@ void Pacman::startNewGame() {
 	map_.loadGenerated(seed_);
 	score_ = 0;
 	lives_ = 3;
+	level_ = 1;
 	state_ = State::Playing;
 	reset();
 	inMenu_ = false;
@@ -908,6 +926,7 @@ void Pacman::startContinue() {
 	map_.loadGenerated(continueSeed_);
 	score_ = continueScore_;
 	lives_ = continueLives_;
+	level_ = continueLevel_;
 	seed_ = continueSeed_;
 	state_ = State::Playing;
 	reset();
@@ -921,11 +940,12 @@ void Pacman::applySeed(uint32_t seed) {
 	customSeedSet_ = true;
 }
 
-void Pacman::saveContinueData() {			//save data
+void Pacman::saveContinueData() {
 	std::ostringstream ss;
 	ss << "seed=" << seed_ << "\n";
 	ss << "score=" << score_ << "\n";
 	ss << "lives=" << lives_ << "\n";
+	ss << "level=" << level_ << "\n";
 	std::ofstream file("config/pacman_continue.sav");
 	if (file) file << ss.str();
 }
@@ -944,6 +964,9 @@ void Pacman::loadContinueData() {
 		}
 		else if (line.find("lives=") == 0) {
 			continueLives_ = std::atoi(line.c_str() + 6);
+		}
+		else if (line.find("level=") == 0) {
+			continueLevel_ = std::atoi(line.c_str() + 6);
 		}
 	}
 	hasContinue_ = true;

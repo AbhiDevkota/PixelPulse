@@ -79,6 +79,7 @@ private:
 
 	int score_ = 0;
 	int lives_ = 3;
+	int level_ = 1;
 	State state_ = State::Playing;
 	std::mt19937 rng_;
 	uint32_t seed_ = 0;
@@ -93,6 +94,7 @@ private:
 	uint32_t continueSeed_ = 0;
 	int continueScore_ = 0;
 	int continueLives_ = 3;
+	int continueLevel_ = 1;
 	bool seedInputActive_ = false;
 	bool customSeedSet_ = false;
 	std::string seedInputStr_;
