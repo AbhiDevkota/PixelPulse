@@ -20,6 +20,7 @@ RocketBullet::RocketBullet(sf::Vector2i startGridPos, sf::Vector2f startVisualPo
     bulletSprite.emplace(texture);
     sf::Vector2u textureSize = texture.getSize();
     bulletSprite->setScale({ (0.2f * 32.0f) / textureSize.x, (0.6f * 32.0f) / textureSize.y });
+    bulletSprite->setPosition(data.visualPos);
 }
 
 void RocketBullet::moveUp() {
@@ -27,11 +28,9 @@ void RocketBullet::moveUp() {
 }
 
 void RocketBullet::updateVisual(float slideSpeed, float dt, float cellSize) {
-    float centerXOffset = (cellSize - shape.getSize().x) / 2.0f;
-    sf::Vector2f target = { static_cast<float>(data.gridPos.x * cellSize) + centerXOffset, static_cast<float>(data.gridPos.y * cellSize) };
-
-    data.visualPos.x += (target.x - data.visualPos.x) * slideSpeed * dt;
-    data.visualPos.y += (target.y - data.visualPos.y) * slideSpeed * dt;
+    // Only smooth vertical (Y) movement; lock horizontal (X) position completely
+    float targetY = static_cast<float>(data.gridPos.y * cellSize);
+    data.visualPos.y += (targetY - data.visualPos.y) * slideSpeed * dt;
 
     if (bulletSprite.has_value()) {
         bulletSprite->setPosition(data.visualPos);
@@ -124,10 +123,18 @@ void RocketShooterPlayer::init(int cols, int rows, float cellSize, const sf::Tex
 
 void RocketShooterPlayer::handleInput(sf::Keyboard::Key key) {
     switch (key) {
-    case sf::Keyboard::Key::A: gridPos.x--; break;
-    case sf::Keyboard::Key::D: gridPos.x++; break;
-    case sf::Keyboard::Key::W: gridPos.y--; break;
-    case sf::Keyboard::Key::S: gridPos.y++; break;
+    case sf::Keyboard::Key::A:
+    case sf::Keyboard::Key::Left:
+        gridPos.x--; break;
+    case sf::Keyboard::Key::D:
+    case sf::Keyboard::Key::Right:
+        gridPos.x++; break;
+    case sf::Keyboard::Key::W:
+    case sf::Keyboard::Key::Up:
+        gridPos.y--; break;
+    case sf::Keyboard::Key::S:
+    case sf::Keyboard::Key::Down:
+        gridPos.y++; break;
     default: break;
     }
 }
@@ -186,12 +193,12 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win)
     RocketCoin::shape.setFillColor(sf::Color(255, 215, 0));
 
     if (!spaceTexture.loadFromFile("assets/rocket/starsrocket.png")) {
-        std::cerr << "Failed to load background texture!\n";
+        std::cerr << "Failed to load background texture assets/rocket/starsrocket.png!\n";
     }
     else {
         spaceTexture.setRepeated(true);
         spaceSprite.emplace(spaceTexture);
-        spaceSprite->setTextureRect(sf::IntRect({ 0, 0 }, { (int)window.getSize().x, (int)window.getSize().y }));
+        spaceSprite->setTextureRect(sf::IntRect({ 0, 0 }, static_cast<sf::Vector2i>(window.getSize())));
     }
 
     if (!music.openFromFile("audios/rocket/spacemusic.ogg")) {
@@ -203,20 +210,12 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win)
         music.play();
     }
 
-    const char* fontCandidates[] = {
-        "D:\\projects\\PixelPulse\\fonts\\regular.ttf",
-        "assets/fonts/regular.ttf"
-    };
-
-    for (const char* path : fontCandidates) {
-        if (font.openFromFile(path)) {
-            fontLoaded = true;
-            break;
-        }
-    }
-
-    if (fontLoaded) {
+    if (font.openFromFile("fonts/regular.ttf")) {
+        fontLoaded = true;
         setupGameOverText();
+    }
+    else {
+        std::cerr << "Failed to load font from fonts/regular.ttf!\n";
     }
 
     gameOverFallbackBar.setSize({ 400.f, 60.f });
@@ -293,7 +292,7 @@ void RocketShooterGame::restartGame() {
 
 bool RocketShooterGame::playerCollidesWithObstacle(const RocketObstacle& obs) const {
     int playerMinX = player.gridPos.x;
-    int playerMaxX = player.gridPos.x + 2; // Footprint spanning 3 cells
+    int playerMaxX = player.gridPos.x + 2;
     int playerMinY = player.gridPos.y;
     int playerMaxY = player.gridPos.y + 2;
 
@@ -432,7 +431,10 @@ void RocketShooterGame::handleEvents() {
                 sf::Vector2f centeredVisualPos = player.visualPos;
                 centeredVisualPos.x += (playerWidth / 2.0f) - (bulletWidth / 2.0f);
 
-                bullets.push_back(RocketBullet(player.gridPos, centeredVisualPos, bulletTexture));
+                sf::Vector2i bulletGridPos = player.gridPos;
+                bulletGridPos.x += 1;
+
+                bullets.push_back(RocketBullet(bulletGridPos, centeredVisualPos, bulletTexture));
             }
         }
     }
@@ -450,7 +452,7 @@ void RocketShooterGame::spawnObstacles() {
         }
         else {
             asteroidCounter++;
-            bool spawnBig = (asteroidCounter % 9 == 4 || asteroidCounter % 9 == 8); // 2 spawns out of every 9
+            bool spawnBig = (asteroidCounter % 9 == 4 || asteroidCounter % 9 == 8);
             const sf::Texture& texToUse = spawnBig ? bigObstacleTexture : obstacleTexture;
             obstacles.push_back(RocketObstacle(cols, CELL_SIZE, texToUse, spawnBig));
         }
@@ -525,12 +527,12 @@ void RocketShooterGame::render() {
     }
 
     if (fontLoaded) {
-        sf::Text hudText(font, "", 34u);
+        sf::Text hudText(font, "", 24u);
         hudText.setFillColor(sf::Color::White);
         hudText.setPosition({ 15.f, 15.f });
         hudText.setString("Score: " + std::to_string(score) + "    High Score: " + std::to_string(highScore) + "    Coins: " + std::to_string(coins) + "    Lives: " + std::to_string(lives) + (isPaused ? "    [PAUSED]" : ""));
         window.draw(hudText);
-    };
+    }
 
     if (gameOver) {
         sf::RectangleShape overlay(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
