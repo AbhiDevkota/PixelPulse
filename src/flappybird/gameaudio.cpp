@@ -7,7 +7,7 @@ GameAudio::GameAudio()
 
 bool GameAudio::load() {
     // Background music
-    if (!music.openFromFile("audios/Flappy/flappy.wav")) {
+    if (!music.openFromFile("audios/flappy/flappy.wav")) {
         return false;
     }
 
@@ -16,7 +16,7 @@ bool GameAudio::load() {
     music.play();
 
     // Jump sound — just load the buffer, don't play it yet
-    if (!jumpSoundBuffer.loadFromFile("audios/Flappy/jumpsound.wav")) {
+    if (!jumpSoundBuffer.loadFromFile("audios/flappy/jumpsound.wav")) {
         return false;
     }
 
@@ -24,7 +24,7 @@ bool GameAudio::load() {
     jumpSound.setLooping(false); // a flap sound should play once, not loop
 
     // High score sound
-    if (!highScoreBuffer.loadFromFile("audios/Flappy/highscoresound.wav")) {
+    if (!highScoreBuffer.loadFromFile("audios/flappy/highscoresound.wav")) {
         return false;
     }
 
