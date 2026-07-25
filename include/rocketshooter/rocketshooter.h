@@ -24,6 +24,9 @@ constexpr float MIN_OBSTACLE_TICK_INTERVAL = 0.035f; // floor so it never become
 // file are picked up while the game is running (not just on launch/restart).
 constexpr float HIGH_SCORE_SYNC_INTERVAL = 1.0f;
 
+// How long the "NEW HIGH SCORE!" banner stays on screen after appearing.
+constexpr float NEW_HIGH_SCORE_DISPLAY_DURATION = 2.5f;
+
 struct GridData {
     sf::Vector2i gridPos;
     sf::Vector2f visualPos;
@@ -139,6 +142,8 @@ private:
     std::optional<sf::Sound> coinSound;
     sf::SoundBuffer explosionSoundBuffer;
     std::optional<sf::Sound> explosionSound;
+    sf::SoundBuffer rocketCrashSoundBuffer;
+    std::optional<sf::Sound> rocketCrashSound;
     sf::Music music;
 
     // UI & Fonts
@@ -146,6 +151,7 @@ private:
     bool fontLoaded = false;
     std::optional<sf::Text> gameOverText;
     std::optional<sf::Text> restartText;
+    std::optional<sf::Text> newHighScoreText;
     sf::RectangleShape gameOverFallbackBar;
     sf::RectangleShape restartFallbackBar;
 
@@ -166,6 +172,10 @@ private:
     bool isPaused = false;
     bool exitToMenu = false;
 
+    // New-high-score banner state
+    bool showNewHighScoreBanner = false;
+    float newHighScoreBannerTimer = 0.0f;
+
     // Difficulty scaling state
     float obstacleTickInterval = GAME_TICK_INTERVAL;
     int scoreMilestone = 0;
@@ -174,6 +184,7 @@ private:
     std::unique_ptr<corezone::GameDataManager> gameData;
 
     void setupGameOverText();
+    void setupNewHighScoreText();
     void loadHighScore();
     void saveHighScore();
     void syncHighScoreFromDisk();
