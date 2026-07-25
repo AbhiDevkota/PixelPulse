@@ -37,7 +37,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
 
     // Load font from fonts folder
     sf::Font font;
-    font.openFromFile("fonts/regular.ttf");
+    if (!font.openFromFile("fonts/regular.ttf")) return;
 
     // Score text at top-left
     sf::Text scoreText(font);
