@@ -15,7 +15,9 @@ Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
 
 void Snake::reset(sf::Vector2i startPos, sf::Vector2i startDir) {
     body.clear();
+    direction = startDir;
     nextDirection = startDir;
+    growPending = false;
     for (int i = 0; i < 3; ++i)
         body.push_back({ startPos.x - startDir.x * i, startPos.y - startDir.y * i });
 }
@@ -30,11 +32,15 @@ void Snake::move() {
     direction = nextDirection;
     sf::Vector2i newHead = body.front() + direction;
     body.push_front(newHead);
-    body.pop_back();
+
+    if (growPending)
+        growPending = false; // skip popping the tail this tick, so the snake grows by one cell
+    else
+        body.pop_back();
 }
 
 void Snake::grow() {
-    body.push_back(body.back());
+     growPending = true;
 }
 
 bool Snake::checkSelfCollision() const {
@@ -190,7 +196,12 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 
         if (gameOver) {
             scoreText.setCharacterSize(32);
-            scoreText.setString("Game Over! Score: " + std::to_string(score) + "\nPress R to Restart");
+            scoreText.setString(
+                "\tGame Over!  \n\nScore: " + std::to_string(score) +
+                "\nHigh Score: " + std::to_string(highScoreObj.get()) +
+                "\n\nPress R to Restart"
+            
+            );
             sf::FloatRect textBounds = scoreText.getLocalBounds();
             scoreText.setPosition({
                 (float)(window.getSize().x / 2) - textBounds.size.x / 2,
@@ -220,7 +231,10 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
                 window.draw(head);
             }
             else if (i == body.size() - 1) {
+                // tail
                 sf::Vector2i segDir = body[i - 1] - pos;
+                if (segDir.x == 0 && segDir.y == 0)
+                    segDir = snake.getDirection(); // avoid glitch when a duplicated segment overlaps the tail after eating
                 auto& tail = assets.getTailSprite();
                 tail.setRotation(sf::degrees(directionToRotation(segDir)));
                 tail.setPosition({ centerX, centerY });
