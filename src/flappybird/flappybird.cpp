@@ -158,8 +158,9 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
         // draw background, pipes, bird every frame
         window.clear();
         background.draw(window);
-        pipes.draw(window);
+        
         bird.draw(window);
+        pipes.draw(window);
 
         // show HUD only while playing
         if (!gameOver) {
