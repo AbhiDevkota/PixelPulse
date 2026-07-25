@@ -4,7 +4,7 @@ Bird::Bird(sf::RenderWindow& window, float cellW, float cellH)
     : sprite(spriteSheet)
 {
     // try to load the spritesheet image, stop here if it fails
-    loaded = spriteSheet.loadFromFile("assets/Flappy/jetman_spritesheet.png");
+    loaded = spriteSheet.loadFromFile("assets/Flappy/jetman.png");
     if (!loaded) return;
 
     sprite.setTexture(spriteSheet, true);
@@ -83,11 +83,31 @@ void Bird::draw(sf::RenderWindow& window) {
 sf::FloatRect Bird::getBounds() const {
     sf::FloatRect full = sprite.getGlobalBounds();
 
-    float newW = full.size.x * HITBOX_SCALE;
-    float newH = full.size.y * HITBOX_SCALE;
+    float scaleW = HITBOX_SCALE;
+    float scaleH = HITBOX_SCALE;
+    float offsetXRatio = (1.f - scaleW) / 2.f;   // default: centered
+    float offsetYRatio = (1.f - scaleH) / 2.f;
 
-    float offsetX = (full.size.x - newW) / 2.f;
-    float offsetY = (full.size.y - newH) / 2.f;
+    if (currentPose == 0) {
+        // "up" pose: head near top, flame trails to bottom-left
+        offsetXRatio = 0.016f;  scaleW = 0.882f;
+        offsetYRatio = 0.02f;   scaleH = 0.45f;
+    }
+    else if (currentPose == 1) {
+        // "neutral" pose: flame trails off LEFT edge, character on the RIGHT
+        offsetXRatio = 0.48f;   scaleW = 0.42f;
+        offsetYRatio = 0.087f;  scaleH = 0.826f;
+    }
+    else if (currentPose == 2) {
+        // "down" pose
+        offsetXRatio = 0.080f;  scaleW = 0.849f;
+        offsetYRatio = 0.0f;    scaleH = 0.957f;
+    }
+
+    float newW = full.size.x * scaleW;
+    float newH = full.size.y * scaleH;
+    float offsetX = full.size.x * offsetXRatio;
+    float offsetY = full.size.y * offsetYRatio;
 
     return sf::FloatRect(
         { full.position.x + offsetX, full.position.y + offsetY },

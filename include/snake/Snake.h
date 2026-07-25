@@ -10,6 +10,7 @@ public:
     Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows);
 
     // Movement
+    sf::Vector2i nextDirection;
     void setDirection(sf::Vector2i dir);
     void move();
     void grow();

@@ -23,10 +23,23 @@ bool GameAudio::load() {
     jumpSound.setVolume(50.f);
     jumpSound.setLooping(false); // a flap sound should play once, not loop
 
+    // High score sound
+    if (!highScoreBuffer.loadFromFile("audios/Flappy/highscoresound.mp3")) {
+        return false;
+    }
+
+    highScoreSound.setVolume(300.f);
+    highScoreSound.setLooping(false);
+
     return true;
 }
 
 void GameAudio::playJump() {
     jumpSound.stop();       // stop any tail end still playing
     jumpSound.play();       // play from the start
+}
+
+void GameAudio::playHighScore() {
+    highScoreSound.stop();
+    highScoreSound.play();
 }
