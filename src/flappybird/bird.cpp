@@ -104,19 +104,19 @@ sf::FloatRect Bird::getBounds() const {
     float offsetYRatio = (1.f - scaleH) / 2.f;
 
     if (currentPose == 0) {
-        // "up" pose: head near top, flame trails to bottom-left
-        offsetXRatio = 0.016f;  scaleW = 0.882f;
-        offsetYRatio = 0.02f;   scaleH = 0.45f;
+        // "up" pose: flame trails bottom-left, front is top-right (unchanged)
+        offsetXRatio = 0.320f;  scaleW = 0.500f;
+        offsetYRatio = 0.025f;  scaleH = 0.731f;
     }
     else if (currentPose == 1) {
-        // "neutral" pose: flame trails off LEFT edge, character on the RIGHT
-        offsetXRatio = 0.20f;   scaleW = 0.70f;
-        offsetYRatio = 0.08f;  scaleH = 0.82f;
+        // "neutral" pose: flame trails off the left, front is right (unchanged)
+        offsetXRatio = 0.230f;  scaleW = 0.590f;
+        offsetYRatio = 0.02f;   scaleH = 0.85f;
     }
     else if (currentPose == 2) {
-        // "down" pose
-        offsetXRatio = 0.080f;  scaleW = 0.849f;
-        offsetYRatio = 0.0f;    scaleH = 0.957f;
+        // "down" pose: flame/torch top-left, front is bottom-right (unchanged)
+        offsetXRatio = 0.170f;  scaleW = 0.675f;
+        offsetYRatio = 0.317f;  scaleH = 0.581f;
     }
 
     float newW = full.size.x * scaleW;
