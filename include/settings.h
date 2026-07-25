@@ -4,7 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <functional>
-#include "Files.h"
+#include "files.h"
 
 namespace corezone {
 

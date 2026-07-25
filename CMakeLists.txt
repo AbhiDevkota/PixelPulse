@@ -29,26 +29,26 @@ file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
 )
 
-add_executable(CoreZone
+add_executable(PixelPulse
     ${SRC_FILES}
     ${HEADER_FILES}
-    CoreZone.rc
+    PixelPulse.rc
 )
 
 if (MSVC)
-    target_compile_options(CoreZone PRIVATE /W4)   # removed /WX so warnings don't kill build
+    target_compile_options(PixelPulse PRIVATE /W4)   # removed /WX so warnings don't kill build
 else()
-    target_compile_options(CoreZone PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(PixelPulse PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-target_include_directories(CoreZone PUBLIC
+target_include_directories(PixelPulse PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 
-target_compile_features(CoreZone PRIVATE cxx_std_20)
+target_compile_features(PixelPulse PRIVATE cxx_std_20)
 
-target_link_libraries(CoreZone PRIVATE SFML::Graphics SFML::Window SFML::System SFML::Audio SFML::Network)
+target_link_libraries(PixelPulse PRIVATE SFML::Graphics SFML::Window SFML::System SFML::Audio SFML::Network)
 
 # -----------------------
 # ASSET COPYING - FIXED & MORE RELIABLE
@@ -75,23 +75,23 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets")
 endif()
 
 # Also copy after every build (backup)
-add_custom_command(TARGET CoreZone POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/fonts"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/audios"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/Icons"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:CoreZone>/assets"
+add_custom_command(TARGET PixelPulse POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:PixelPulse>/fonts"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:PixelPulse>/audios"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:PixelPulse>/Icons"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:PixelPulse>/assets"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/fonts"
-        "$<TARGET_FILE_DIR:CoreZone>/fonts"
+        "$<TARGET_FILE_DIR:PixelPulse>/fonts"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/audios"
-        "$<TARGET_FILE_DIR:CoreZone>/audios"
+        "$<TARGET_FILE_DIR:PixelPulse>/audios"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/Icons"
-        "$<TARGET_FILE_DIR:CoreZone>/Icons"
+        "$<TARGET_FILE_DIR:PixelPulse>/Icons"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/assets"
-        "$<TARGET_FILE_DIR:CoreZone>/assets"
+        "$<TARGET_FILE_DIR:PixelPulse>/assets"
     COMMENT "Copying fonts, audios, icons & assets to executable directory"
     VERBATIM
 )

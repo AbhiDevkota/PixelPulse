@@ -7,30 +7,28 @@
 #include <optional>
 #include <string>
 #include <memory>
-#include "Files.h"
+#include "files.h"
+#include "common/highscore.h"
 
 // ==========================================
 // --- Game Configuration & Constants ---
 // ==========================================
-constexpr float CELL_SIZE = 32.0f;                    // Width/height of grid cells in pixels
-constexpr float SPAWN_INTERVAL = 1.0f;               // Seconds between entity spawning checks
-constexpr float GAME_TICK_INTERVAL = 0.12f;          // Base tick rate for movement logic
-constexpr float SLIDE_SPEED = 18.0f;                 // Interpolation speed for rendering smooth movement
-constexpr int OBSTACLES_PER_COIN = 4;                // Spawn a coin every N obstacle spawn cycles
+constexpr float CELL_SIZE = 32.0f;
+constexpr float SPAWN_INTERVAL = 1.0f;
+constexpr float GAME_TICK_INTERVAL = 0.12f;
+constexpr float SLIDE_SPEED = 18.0f;
+constexpr int OBSTACLES_PER_COIN = 4;
 
-// Difficulty scaling: shrink obstacle tick interval as score increases
-constexpr int SCORE_MILESTONE_STEP = 25;             // Points required to trigger speed increase
-constexpr float OBSTACLE_SPEED_MULTIPLIER = 0.90f;   // 10% interval reduction per milestone
-constexpr float MIN_OBSTACLE_TICK_INTERVAL = 0.035f; // Speed ceiling to preserve playability
+constexpr int SCORE_MILESTONE_STEP = 25;
+constexpr float OBSTACLE_SPEED_MULTIPLIER = 0.90f;
+constexpr float MIN_OBSTACLE_TICK_INTERVAL = 0.035f;
 
-// Data persistence sync & HUD settings
-constexpr float HIGH_SCORE_SYNC_INTERVAL = 1.0f;     // Interval (sec) to sync file edits to high score
-constexpr float NEW_HIGH_SCORE_DISPLAY_DURATION = 2.5f; // Duration banner stays visible
+constexpr float HIGH_SCORE_SYNC_INTERVAL = 1.0f;
+constexpr float NEW_HIGH_SCORE_DISPLAY_DURATION = 2.5f;
 
-// Structure binding logical grid coordinates to smooth visual rendering coordinates
 struct GridData {
-    sf::Vector2i gridPos;    // Discrete cell location on the grid
-    sf::Vector2f visualPos;  // Continuous pixel location on screen for smooth sliding
+    sf::Vector2i gridPos;
+    sf::Vector2f visualPos;
 };
 
 // ==========================================
@@ -118,10 +116,14 @@ public:
 // --- RocketShooterGame Engine ---
 // ==========================================
 class RocketShooterGame {
+public:
+    RocketShooterGame(sf::RenderWindow& win, corezone::FileManager& fileManager);
+    void run();
+
 private:
     sf::RenderWindow& window;
-    int cols = 0; // Calculated column grid count based on window size
-    int rows = 0; // Calculated row grid count based on window size
+    int cols = 0;
+    int rows = 0;
 
     RocketShooterPlayer player;
     std::vector<RocketBullet> bullets;
@@ -167,7 +169,6 @@ private:
 
     // Gameplay Tracking Counters
     int score = 0;
-    int highScore = 0;
     int coins = 0;
     int lives = 3;
     int obstaclesSpawnedCount = 0;
@@ -184,15 +185,13 @@ private:
     float obstacleTickInterval = GAME_TICK_INTERVAL;
     int scoreMilestone = 0;
 
-    // Persistent storage manager using corezone file architecture
-    std::unique_ptr<corezone::GameDataManager> gameData;
+    // File management via corezone architecture
+    corezone::GameDataManager gameData;
+    std::unique_ptr<HighScore> highScore;
 
     // Internal initialization and state routines
     void setupGameOverText();
     void setupNewHighScoreText();
-    void loadHighScore();
-    void saveHighScore();
-    void syncHighScoreFromDisk();
     void restartGame();
     void handlePlayerHit();
     void updateDifficulty();
@@ -210,13 +209,7 @@ private:
     void updateGridLogic();
     void interpolateVisuals(float dt);
     void render();
-
-public:
-    RocketShooterGame(sf::RenderWindow& win, corezone::FileManager& filemanager);
-    void run();
 };
+void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& fileManager);
 
-// Entry point interface function
-void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& filemanager);
-
-#endif // ROCKETSHOOTER_H
+#endif
