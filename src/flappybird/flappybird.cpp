@@ -171,7 +171,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
         // draw game over overlay on top when game over
         if (gameOver) {
             gameOverText.setString(
-                "Game Over!  Score: " + std::to_string(score) +
+                "\tGame Over!\n \nScore: " + std::to_string(score) +
                 "\nHigh Score: " + std::to_string(highScore) +
                 "\n\nPress R to Restart"
             );
