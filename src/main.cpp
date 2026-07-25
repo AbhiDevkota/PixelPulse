@@ -87,7 +87,7 @@ int main() {
             }
             if (game == "PAC MAN") {
                 home.pauseMusic();
-                runPacMan(window);
+                runPacMan(window, fileManager);
                 home.resumeMusic();
                 continue;
             }
@@ -107,7 +107,7 @@ int main() {
             home.resetGame();
             if (game == "PAC MAN")
             {
-                runPacMan(window);
+                runPacMan(window, fileManager);
                 home.resumeMusic();
                 continue;
             }
