@@ -193,7 +193,12 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 
         if (gameOver) {
             scoreText.setCharacterSize(32);
-            scoreText.setString("Game Over! Score: " + std::to_string(score) + "\nPress R to Restart");
+            scoreText.setString(
+                "\tGame Over!  \n\nScore: " + std::to_string(score) +
+                "\nHigh Score: " + std::to_string(highScore) +
+                "\n\nPress R to Restart"
+            
+            );
             sf::FloatRect textBounds = scoreText.getLocalBounds();
             scoreText.setPosition({
                 (float)(window.getSize().x / 2) - textBounds.size.x / 2,
