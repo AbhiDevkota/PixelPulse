@@ -62,6 +62,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
     bool pWasPressed = false;
 
     sf::Clock clock;
+	clock.restart();
 
     while (window.isOpen()) {                           // ← outer game loop
 
@@ -95,7 +96,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
                 newRecordSet = false;
             }
 
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !gameOver && !paused) {
+            if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) ||sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up)) && !gameOver && !paused) {
                 bird.flap();
                 audio.playJump();
             }
@@ -170,7 +171,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
         // draw game over overlay on top when game over
         if (gameOver) {
             gameOverText.setString(
-                "Game Over!  Score: " + std::to_string(score) +
+                "\tGame Over!\n \nScore: " + std::to_string(score) +
                 "\nHigh Score: " + std::to_string(highScore) +
                 "\n\nPress R to Restart"
             );
