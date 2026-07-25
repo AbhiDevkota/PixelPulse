@@ -105,7 +105,7 @@ sf::FloatRect Bird::getBounds() const {
 
     if (currentPose == 0) {
         // "up" pose: flame trails bottom-left, front is top-right (unchanged)
-        offsetXRatio = 0.420f;  scaleW = 0.400f;
+        offsetXRatio = 0.480f;  scaleW = 0.340f;
         offsetYRatio = 0.025f;  scaleH = 0.731f;
     }
     else if (currentPose == 1) {
