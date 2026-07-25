@@ -40,7 +40,7 @@ git clone https://github.com/AbhiDevkota/PixelPulse.git
 cd PixelPulse
 ```
 2. Open `CMakeLists.txt` in Visual Studio and let CMake configure it 
-3. Select **CoreZone.exe** as startup item
+3. Select **PixelPulse.exe** as startup item
 4. Hit the green play button
 
 ## Working Methods
