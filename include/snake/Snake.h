@@ -39,6 +39,7 @@ private:
 
     int cols;
     int rows;
+    bool growPending = false;
 };
 
 #endif

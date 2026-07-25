@@ -99,11 +99,11 @@ bool SnakeAssets::loadAll(const SnakeLayout& layout, sf::Vector2u windowSize) {
         std::cerr << "Failed to load: audios/snake/background_snake.wav\n";
     }
 
-    if (eatSoundBuffer.loadFromFile("audios/snake/food_crunch.mp3")) {
+    if (eatSoundBuffer.loadFromFile("audios/snake/food_crunch.wav")) {
         eatSound.setVolume(100.f);
     }
     else {
-        std::cerr << "Failed to load: audios/snake/food_crunch.mp3\n";
+        std::cerr << "Failed to load: audios/snake/food_crunch.wav\n";
     }
 
     return ok;
