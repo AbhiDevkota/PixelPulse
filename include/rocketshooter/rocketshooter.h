@@ -1,24 +1,42 @@
-#pragma once
+#ifndef ROCKETSHOOTER_H
+#define ROCKETSHOOTER_H
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <vector>
 #include <optional>
 #include <string>
+#include <memory>
+#include "Files.h"
+
+constexpr float CELL_SIZE = 32.0f;
+constexpr float SPAWN_INTERVAL = 1.0f;
+constexpr float GAME_TICK_INTERVAL = 0.12f;
+constexpr float SLIDE_SPEED = 18.0f;
+constexpr int OBSTACLES_PER_COIN = 4;
+
+// Obstacle difficulty scaling: every SCORE_MILESTONE_STEP points, obstacles fall faster.
+constexpr int SCORE_MILESTONE_STEP = 25;
+constexpr float OBSTACLE_SPEED_MULTIPLIER = 0.90f; // each milestone shrinks the tick interval by 10%
+constexpr float MIN_OBSTACLE_TICK_INTERVAL = 0.035f; // floor so it never becomes unplayable
+
+// How often to re-read the high score from disk, so manual edits to the .sav
+// file are picked up while the game is running (not just on launch/restart).
+constexpr float HIGH_SCORE_SYNC_INTERVAL = 1.0f;
+
+struct GridData {
+    sf::Vector2i gridPos;
+    sf::Vector2f visualPos;
+};
 
 // ==========================================
-// --- RocketBullet Class ---
+// --- RocketBullet ---
 // ==========================================
 class RocketBullet {
 public:
-    struct Data {
-        sf::Vector2i gridPos;
-        sf::Vector2f visualPos;
-    };
-
-    Data data;
-    static sf::RectangleShape shape;          // Fallback vector shape
-    std::optional<sf::Sprite> bulletSprite;   // Visual texture container
+    GridData data;
+    std::optional<sf::Sprite> bulletSprite;
+    static sf::RectangleShape shape;
 
     RocketBullet(sf::Vector2i startGridPos, sf::Vector2f startVisualPos, const sf::Texture& texture);
     void moveUp();
@@ -26,41 +44,30 @@ public:
 };
 
 // ==========================================
-// --- RocketObstacle Class ---
+// --- RocketObstacle ---
 // ==========================================
 class RocketObstacle {
 public:
-    struct Data {
-        sf::Vector2i gridPos;
-        sf::Vector2f visualPos;
-    };
+    GridData data;
+    int sizeInCells;
+    int scoreValue;
+    bool isBig;
+    std::optional<sf::Sprite> obstacleSprite;
+    static sf::RectangleShape shape;
 
-    Data data;
-    static sf::RectangleShape shape;            // Fallback vector shape
-    std::optional<sf::Sprite> obstacleSprite;   // Visual asteroid texture
-
-    bool isBig{ false };
-    int scoreValue{ 1 };
-    int sizeInCells{ 2 };
-
-    RocketObstacle(int totalCols, float cellSize, const sf::Texture& texture, bool big = false);
+    RocketObstacle(int totalCols, float cellSize, const sf::Texture& texture, bool big);
     void moveDown();
     void updateVisual(float slideSpeed, float dt, float cellSize);
 };
 
 // ==========================================
-// --- RocketCoin Class ---
+// --- RocketCoin ---
 // ==========================================
 class RocketCoin {
 public:
-    struct Data {
-        sf::Vector2i gridPos;
-        sf::Vector2f visualPos;
-    };
-
-    Data data;
-    static sf::RectangleShape shape;         // Fallback vector shape
-    std::optional<sf::Sprite> coinSprite;    // Visual coin texture container
+    GridData data;
+    std::optional<sf::Sprite> coinSprite;
+    static sf::RectangleShape shape;
 
     RocketCoin(sf::Vector2i startGridPos, float cellSize, const sf::Texture& texture);
     void moveDown();
@@ -68,106 +75,129 @@ public:
 };
 
 // ==========================================
-// --- RocketShooterPlayer Class ---
+// --- RocketShooterPlayer ---
 // ==========================================
 class RocketShooterPlayer {
 public:
-    struct Data {
-        sf::Vector2i gridPos;
-        sf::Vector2f visualPos;
-    };
+    GridData data;
+    sf::Vector2i& gridPos;
+    sf::Vector2f& visualPos;
 
-    Data data;
-    sf::Vector2i& gridPos;                     // Reference alias for grid position
-    sf::Vector2f& visualPos;                   // Reference alias for visual position
-    static sf::RectangleShape shape;           // Hit-box representation
+    sf::RectangleShape shape;
     std::optional<sf::Sprite> playerSprite;
 
+    // Textures
+    sf::Texture normalTex;
+    sf::Texture moveTex;
+    sf::Texture explodeTex1;
+    sf::Texture explodeTex2;
+
+    // Animation & State Flags
+    bool isExploding = false;
+    bool explosionFinished = false;
+    float explosionTimer = 0.0f;
+    int explosionFrame = 0;
+    bool isMovingForward = false;
+
     RocketShooterPlayer();
-    void init(int cols, int rows, float cellSize, const sf::Texture& texture);
+    void init(int cols, int rows, float cellSize, const sf::Texture& normTex, const sf::Texture& mTex, const sf::Texture& exp1, const sf::Texture& exp2);
     void handleInput(sf::Keyboard::Key key);
     void clampPosition(int cols, int rows);
+    void triggerExplosion();
     void updateVisual(float slideSpeed, float dt, float cellSize);
+    void applyTexture(const sf::Texture& tex, bool isExplosion = false);
 };
 
 // ==========================================
-// --- Game Engine Class ---
+// --- RocketShooterGame Engine ---
 // ==========================================
 class RocketShooterGame {
-public:
-    RocketShooterGame(sf::RenderWindow& win);
-    void run();
-
 private:
-    void handleEvents();
-    void spawnObstacles();
-    void updateGridLogic();
-    void interpolateVisuals(float dt);
-    void render();
-    void setupGameOverText();
-    void restartGame();
-
-    bool playerCollidesWithObstacle(const RocketObstacle& obs) const;
-    bool bulletCollidesWithObstacle(const RocketBullet& b, const RocketObstacle& obs) const;
-    bool bulletCollidesWithCoin(const RocketBullet& b, const RocketCoin& coin) const;
-    void checkCollisions();
-    void checkCoinPickups();
-
-    // --- High score persistence ---
-    void loadHighScore();
-    void saveHighScore();
-    static const inline std::string HIGH_SCORE_FILE = "highscore_rocket.dat";
-
-    const float CELL_SIZE = 32.0f;             // Uniform dimensions metrics config
-    const float SPAWN_INTERVAL = 1.0f;         // Spawner clock target reference limit
-    const float GAME_TICK_INTERVAL = 0.15f;    // Logical cycle speed frequency parameter
-    const float SLIDE_SPEED = 18.0f;           // Smooth frame sliding interpolation multiplier
-    const int OBSTACLES_PER_COIN = 5;          // Spawn counter benchmark cutoff limit
-
     sf::RenderWindow& window;
-    sf::Clock deltaClock;
-    sf::Clock obstacleSpawnClock;
-    sf::Clock gameTickClock;
-
-    sf::Texture playerTexture;
-    sf::Texture bulletTexture;
-    sf::Texture obstacleTexture;
-    sf::Texture bigObstacleTexture;             // Texture for 3-cell big asteroids
-    sf::Texture coinTexture;
-    sf::Texture spaceTexture;
+    int cols = 0;
+    int rows = 0;
 
     RocketShooterPlayer player;
     std::vector<RocketBullet> bullets;
     std::vector<RocketObstacle> obstacles;
     std::vector<RocketCoin> fallingCoins;
 
-    int obstaclesSpawnedCount = 0;             // Track accumulated coin generation cycles
-    int asteroidCounter = 0;                   // Counter for tracking 2 big spawns every 9 asteroids
-
+    // Textures
+    sf::Texture playerTexture;
+    sf::Texture playerMoveTexture;
+    sf::Texture explode1Texture;
+    sf::Texture explode2Texture;
+    sf::Texture bulletTexture;
+    sf::Texture obstacleTexture;
+    sf::Texture bigObstacleTexture;
+    sf::Texture coinTexture;
+    sf::Texture spaceTexture;
     std::optional<sf::Sprite> spaceSprite;
-    sf::Music music;
 
+    // Audio
     sf::SoundBuffer coinSoundBuffer;
     std::optional<sf::Sound> coinSound;
+    sf::SoundBuffer explosionSoundBuffer;
+    std::optional<sf::Sound> explosionSound;
+    sf::Music music;
 
+    // UI & Fonts
     sf::Font font;
     bool fontLoaded = false;
-
     std::optional<sf::Text> gameOverText;
     std::optional<sf::Text> restartText;
     sf::RectangleShape gameOverFallbackBar;
     sf::RectangleShape restartFallbackBar;
 
-    int cols = 0;
-    int rows = 0;
+    // Game Logic Clocks & States
+    sf::Clock obstacleSpawnClock;
+    sf::Clock gameTickClock;
+    sf::Clock obstacleTickClock;
+    sf::Clock deltaClock;
+    sf::Clock highScoreSyncClock;
 
     int score = 0;
     int highScore = 0;
     int coins = 0;
     int lives = 3;
+    int obstaclesSpawnedCount = 0;
+    int asteroidCounter = 0;
     bool gameOver = false;
     bool isPaused = false;
-    bool exitToMenu = false;                   // State controller flag for menu redirection
+    bool exitToMenu = false;
+
+    // Difficulty scaling state
+    float obstacleTickInterval = GAME_TICK_INTERVAL;
+    int scoreMilestone = 0;
+
+    // High score / save data, backed by corezone's shared file management system
+    std::unique_ptr<corezone::GameDataManager> gameData;
+
+    void setupGameOverText();
+    void loadHighScore();
+    void saveHighScore();
+    void syncHighScoreFromDisk();
+    void restartGame();
+    void handlePlayerHit();
+    void updateDifficulty();
+
+    bool playerCollidesWithObstacle(const RocketObstacle& obs) const;
+    bool playerCollidesWithCoin(const RocketCoin& coin) const;
+    bool bulletCollidesWithObstacle(const RocketBullet& b, const RocketObstacle& obs) const;
+
+    void checkCollisions();
+    void checkCoinPickups();
+    void handleEvents();
+    void spawnObstacles();
+    void updateGridLogic();
+    void interpolateVisuals(float dt);
+    void render();
+
+public:
+    RocketShooterGame(sf::RenderWindow& win, corezone::FileManager& filemanager);
+    void run();
 };
 
-void runRocketShooter(sf::RenderWindow& window);
+void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& filemanager);
+
+#endif // ROCKETSHOOTER_H
