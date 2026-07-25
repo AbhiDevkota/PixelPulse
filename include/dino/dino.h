@@ -11,9 +11,9 @@
 
 class Player {
 private:
-	sf::Texture dinoTexture{ "assets/dinosaurs/move.png" };
+	sf::Texture dinoTexture{ "assets/dino/move.png" };
 	sf::Sprite dinoSprite{ dinoTexture };
-	sf::SoundBuffer jumpSoundBuffer{ "assets/dinosaurs/jump.mp3" };
+	sf::SoundBuffer jumpSoundBuffer{ "audios/dino/jump.wav" };
 	sf::Sound jumpSound{ jumpSoundBuffer };
 
 	// Animation variables
@@ -57,7 +57,7 @@ class Food {
 	int current = 0;
 	float timer = 2.0f;
 	float SPEED = 700.f;
-	sf::Texture foodTexture{ "assets/dinosaurs/food.png" };
+	sf::Texture foodTexture{ "assets/dino/food.png" };
 	sf::Sprite foodSprite{ foodTexture };
 	Item array[5];
 
@@ -91,7 +91,7 @@ private:
 	float min_duration = 1.2f;
 	float timer = duration;
 
-	sf::Texture cactusTexture{ "assets/dinosaurs/cactus.png" };
+	sf::Texture cactusTexture{ "assets/dino/cactus.png" };
 	sf::Sprite cactusSprite{ cactusTexture };
 
 	const int frameWidth = 64;
@@ -109,7 +109,7 @@ public:
 class Ground {
 private:
 	float y;
-	sf::Texture groundTexture{ "assets/dinosaurs/ground.png" };
+	sf::Texture groundTexture{ "assets/dino/ground.png" };
 	sf::Sprite groundSprite{ groundTexture };
 	float textureOffset = 0.f;
 	int currentRow = 0;
@@ -126,7 +126,7 @@ public:
 
 class Background {
 private:
-	sf::Texture bgTexture{ "assets/dinosaurs/background.png" };
+	sf::Texture bgTexture{ "assets/dino/background.png" };
 	sf::Sprite bgSprite{ bgTexture };
 	
 public:
@@ -135,7 +135,7 @@ public:
 
 class Underground {
 private:
-	sf::Texture ugTexture{ "assets/dinosaurs/underground.png" };
+	sf::Texture ugTexture{ "assets/dino/underground.png" };
 	sf::Sprite ugSprite{ ugTexture };
 	float textureOffset = 0.f;
 
