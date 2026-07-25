@@ -5,7 +5,7 @@
 #include <iostream>
 
 void RunDino(sf::RenderWindow& window, corezone::FileManager& filemanager);
-void runRocketShooter(sf::RenderWindow& window);
+void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& fileManager);
 void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager);
 void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager); //Conflict resolved by Abhi Devkota
 
@@ -69,7 +69,7 @@ int main() {
             home.resetGame();
             if (game == "ROCKET SHOOTER") {
                 home.pauseMusic();
-                runRocketShooter(window);
+                runRocketShooter(window, fileManager);
                 home.resumeMusic();
                 continue;
             }// Skip rendering the home screen when a game is launched

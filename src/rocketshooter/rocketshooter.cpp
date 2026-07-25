@@ -3,7 +3,6 @@
 #include <ctime>
 #include <algorithm>
 #include <iostream>
-#include <fstream>
 
 // Instantiating static shape fields allocated across memory scopes
 sf::RectangleShape RocketBullet::shape;
@@ -148,8 +147,8 @@ void RocketShooterPlayer::updateVisual(float slideSpeed, float dt, float cellSiz
 // ==========================================
 // --- Game Engine Implementation ---
 // ==========================================
-RocketShooterGame::RocketShooterGame(sf::RenderWindow& win)
-    : window(win)
+RocketShooterGame::RocketShooterGame(sf::RenderWindow& win, corezone::FileManager& fileManager)
+    : window(win), gameData(fileManager, "ROCKETSHOOTER")
 {
     std::srand(static_cast<unsigned>(std::time(nullptr))); // Seed RNG
     cols = static_cast<int>(window.getSize().x / CELL_SIZE);
@@ -221,7 +220,7 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win)
     restartFallbackBar.setOrigin({ 200.f, 20.f }); // Center origin
     restartFallbackBar.setPosition({ window.getSize().x / 2.f, window.getSize().y / 2.f + 30.f });
 
-    loadHighScore(); // Restore persisted high score from disk, if any
+    highScore = std::make_unique<HighScore>(gameData);
 }
 
 void RocketShooterGame::setupGameOverText() {
@@ -237,31 +236,6 @@ void RocketShooterGame::setupGameOverText() {
     sf::FloatRect rBounds = restartText->getLocalBounds();
     restartText->setOrigin({ rBounds.size.x / 2.f, rBounds.size.y / 2.f });
     restartText->setPosition({ window.getSize().x / 2.f, window.getSize().y / 2.f + 30.f });
-}
-
-void RocketShooterGame::loadHighScore() {
-    std::ifstream in(HIGH_SCORE_FILE, std::ios::in | std::ios::binary);
-    if (!in.is_open()) {
-        highScore = 0; // No save file yet - start fresh
-        return;
-    }
-
-    int savedScore = 0;
-    if (in >> savedScore && savedScore >= 0) {
-        highScore = savedScore;
-    }
-    else {
-        highScore = 0; // Corrupt or unreadable file - fall back safely
-    }
-}
-
-void RocketShooterGame::saveHighScore() {
-    std::ofstream out(HIGH_SCORE_FILE, std::ios::out | std::ios::trunc | std::ios::binary);
-    if (!out.is_open()) {
-        std::cerr << "Failed to write " << HIGH_SCORE_FILE << "!\n";
-        return;
-    }
-    out << highScore;
 }
 
 void RocketShooterGame::restartGame() {
@@ -343,10 +317,7 @@ void RocketShooterGame::checkCollisions() {
         if (obstacleHit[i]) {
             obstacles.erase(obstacles.begin() + i);
             score++;
-            if (score > highScore) {
-                highScore = score;
-                saveHighScore(); // Persist new high score immediately
-            }
+            highScore->set(score);
         }
     }
 
@@ -526,7 +497,7 @@ void RocketShooterGame::render() {
         sf::Text hudText(font, "", 34u);
         hudText.setFillColor(sf::Color::White);
         hudText.setPosition({ 15.f, 15.f });
-        hudText.setString("Score: " + std::to_string(score) + "    High Score: " + std::to_string(highScore) + "    Coins: " + std::to_string(coins) + "    Lives: " + std::to_string(lives) + (isPaused ? "    [PAUSED]" : ""));
+        hudText.setString("Score: " + std::to_string(score) + "    High Score: " + std::to_string(highScore->get()) + "    Coins: " + std::to_string(coins) + "    Lives: " + std::to_string(lives) + (isPaused ? "    [PAUSED]" : ""));
         window.draw(hudText);
     };
 
@@ -538,7 +509,7 @@ void RocketShooterGame::render() {
         if (fontLoaded && gameOverText) { // Enforces local regular.ttf execution over text rendering
             window.draw(*gameOverText);
 
-            sf::Text finalScoreText(font, "Final Score: " + std::to_string(score) + "  (High Score: " + std::to_string(highScore) + " | Coins: " + std::to_string(coins) + ")", 24u);
+            sf::Text finalScoreText(font, "Final Score: " + std::to_string(score) + "  (High Score: " + std::to_string(highScore->get()) + " | Coins: " + std::to_string(coins) + ")", 24u);
             finalScoreText.setFillColor(sf::Color::White);
             sf::FloatRect sBounds = finalScoreText.getLocalBounds();
             finalScoreText.setOrigin({ sBounds.size.x / 2.f, sBounds.size.y / 2.f });
@@ -568,7 +539,7 @@ void RocketShooterGame::run() {
     }
 }
 
-void runRocketShooter(sf::RenderWindow& window) {
-    RocketShooterGame game(window);
+void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& fileManager) {
+    RocketShooterGame game(window, fileManager);
     game.run();
 }

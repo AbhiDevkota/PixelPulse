@@ -4,6 +4,9 @@
 #include <vector>
 #include <optional>
 #include <string>
+#include <memory>
+#include "Files.h"
+#include "common/HighScore.h"
 
 // ==========================================
 // --- RocketBullet Class ---
@@ -84,7 +87,7 @@ public:
 // ==========================================
 class RocketShooterGame {
 public:
-    RocketShooterGame(sf::RenderWindow& win);
+    RocketShooterGame(sf::RenderWindow& win, corezone::FileManager& fileManager);
     void run();
 private:
     void handleEvents();
@@ -101,11 +104,6 @@ private:
     void checkCollisions();
     void checkCoinPickups();
 
-    // --- High score persistence ---
-    void loadHighScore();
-    void saveHighScore();
-    static const inline std::string HIGH_SCORE_FILE = "ROCKETSHOOTER_highscore_data.sav";
-
     const float CELL_SIZE = 32.0f;             // Uniform dimensions metrics config
     const float SPAWN_INTERVAL = 1.5f;         // Spawner clock target reference limit
     const float GAME_TICK_INTERVAL = 0.2f;     // Logical cycle speed frequency parameter
@@ -116,6 +114,9 @@ private:
     sf::Clock deltaClock;
     sf::Clock obstacleSpawnClock;
     sf::Clock gameTickClock;
+
+    corezone::GameDataManager gameData;
+    std::unique_ptr<HighScore> highScore;
 
     sf::Texture playerTexture;
     sf::Texture bulletTexture;
@@ -148,11 +149,10 @@ private:
     int rows = 0;
 
     int score = 0;
-    int highScore = 0;
     int coins = 0;
     int lives = 3;
     bool gameOver = false;
     bool isPaused = false;
     bool exitToMenu = false;                   // State controller flag for menu redirection
 };
-void runRocketShooter(sf::RenderWindow& window);
+void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& fileManager);
