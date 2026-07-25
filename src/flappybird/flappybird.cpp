@@ -62,7 +62,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
     bool pWasPressed = false;
 
     sf::Clock clock;
-
+    clock.restart();
     while (window.isOpen()) {                           // ← outer game loop
 
         float dt = clock.restart().asSeconds();
