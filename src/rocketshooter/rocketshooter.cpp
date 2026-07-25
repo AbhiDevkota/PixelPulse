@@ -60,11 +60,38 @@ RocketObstacle::RocketObstacle(int totalCols, float cellSize, const sf::Texture&
 }
 
 void RocketObstacle::moveDown() {
-    // Increment vertical grid index to push obstacle toward bottom of screen
+    // Freeze grid movement while the break animation is playing
+    if (isExploding) return;
     data.gridPos.y++;
 }
 
+void RocketObstacle::triggerExplosion(const sf::Texture& breakTexture, float cellSize) {
+    if (isExploding) return; // Guard against double-trigger from overlapping bullet hits
+
+    isExploding = true;
+    explosionFinished = false;
+    explosionTimer = 0.0f;
+
+    // Swap the live sprite to the appropriate break texture (break1 for normal, break2 for big)
+    if (obstacleSprite.has_value()) {
+        obstacleSprite->setTexture(breakTexture, true);
+        sf::Vector2u textureSize = breakTexture.getSize();
+        float targetSize = static_cast<float>(sizeInCells) * cellSize;
+        obstacleSprite->setScale({ targetSize / textureSize.x, targetSize / textureSize.y });
+        obstacleSprite->setPosition(data.visualPos);
+    }
+}
+
 void RocketObstacle::updateVisual(float slideSpeed, float dt, float cellSize) {
+    if (isExploding) {
+        // Hold the break sprite in place at point of impact and count down the animation
+        explosionTimer += dt;
+        if (explosionTimer >= EXPLOSION_DURATION) {
+            explosionFinished = true;
+        }
+        return;
+    }
+
     // Smoothly interpolate both axes towards assigned grid coordinate
     sf::Vector2f target = { static_cast<float>(data.gridPos.x * cellSize), static_cast<float>(data.gridPos.y * cellSize) };
     data.visualPos.x += (target.x - data.visualPos.x) * slideSpeed * dt;
@@ -259,23 +286,17 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win, corezone::FileManage
     if (!bulletTexture.loadFromFile("assets/rocket/bullet2.png")) std::cerr << "Failed bullet2 asset\n";
     if (!obstacleTexture.loadFromFile("assets/rocket/asteroid.png")) std::cerr << "Failed asteroid asset\n";
     if (!bigObstacleTexture.loadFromFile("assets/rocket/bigasteroid.png")) std::cerr << "Failed big asteroid asset\n";
+    if (!obstacleBreakTexture.loadFromFile("assets/rocket/break1.png")) std::cerr << "Failed break1 asset\n";
+    if (!bigObstacleBreakTexture.loadFromFile("assets/rocket/break2.png")) std::cerr << "Failed break2 asset\n";
     if (!coinTexture.loadFromFile("assets/rocket/coinpic.png")) std::cerr << "Failed coin asset\n";
 
     // Load audio effects
-    if (!coinSoundBuffer.loadFromFile("audios/rocket/coineffect.ogg")) {
+    if (!coinSoundBuffer.loadFromFile("audios/rocket/coineffect.wav")) {
         std::cerr << "Failed to load coin sound!\n";
     }
     else {
         coinSound.emplace(coinSoundBuffer);
         coinSound->setVolume(50.f);
-    }
-
-    if (!explosionSoundBuffer.loadFromFile("audios/rocket/explosionsound.ogg")) {
-        std::cerr << "Failed to load explosion sound!\n";
-    }
-    else {
-        explosionSound.emplace(explosionSoundBuffer);
-        explosionSound->setVolume(60.f);
     }
 
     player.init(cols, rows, CELL_SIZE, playerTexture, playerMoveTexture, explode1Texture, explode2Texture);
@@ -301,7 +322,7 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win, corezone::FileManage
     }
 
     // Setup background soundtrack
-    if (!music.openFromFile("audios/rocket/spacemusic.ogg")) {
+    if (!music.openFromFile("audios/rocket/spacemusic.wav")) {
         std::cerr << "Failed to load music!\n";
     }
     else {
@@ -459,10 +480,10 @@ void RocketShooterGame::checkCollisions() {
     std::vector<bool> obstacleHit(obstacles.size(), false);
     std::vector<bool> bulletHit(bullets.size(), false);
 
-    // Evaluate Bullet vs Obstacle hits
+    // Evaluate Bullet vs Obstacle hits (skip obstacles already mid-explosion)
     for (size_t bi = 0; bi < bullets.size(); bi++) {
         for (size_t oi = 0; oi < obstacles.size(); oi++) {
-            if (!obstacleHit[oi] && bulletCollidesWithObstacle(bullets[bi], obstacles[oi])) {
+            if (!obstacleHit[oi] && !obstacles[oi].isExploding && bulletCollidesWithObstacle(bullets[bi], obstacles[oi])) {
                 obstacleHit[oi] = true;
                 bulletHit[bi] = true;
             }
@@ -474,11 +495,12 @@ void RocketShooterGame::checkCollisions() {
         if (bulletHit[i]) bullets.erase(bullets.begin() + i);
     }
 
-    // Destroy hit obstacles and update player score
-    for (int i = static_cast<int>(obstacles.size()) - 1; i >= 0; i--) {
+    // Award score and trigger the break animation on hit obstacles.
+    // Removal from the vector is deferred until the explosion animation finishes
+    // (see updateGridLogic), so the break sprite has time to actually render.
+    for (size_t i = 0; i < obstacles.size(); i++) {
         if (obstacleHit[i]) {
             score += obstacles[i].scoreValue;
-            obstacles.erase(obstacles.begin() + i);
 
             // High score check & save execution
             if (score > highScore) {
@@ -488,16 +510,17 @@ void RocketShooterGame::checkCollisions() {
                 newHighScoreBannerTimer = 0.0f;
             }
             updateDifficulty();
+
+            // break1.png for normal asteroids, break2.png for big asteroids
+            const sf::Texture& breakTex = obstacles[i].isBig ? bigObstacleBreakTexture : obstacleBreakTexture;
+            obstacles[i].triggerExplosion(breakTex, CELL_SIZE);
         }
     }
 
-    // Evaluate Player vs Obstacle crash
+    // Evaluate Player vs Obstacle crash (an exploding wreck can no longer crash the player)
     for (const auto& obs : obstacles) {
-        if (playerCollidesWithObstacle(obs)) {
+        if (!obs.isExploding && playerCollidesWithObstacle(obs)) {
             player.triggerExplosion();
-            if (explosionSound.has_value()) {
-                explosionSound->play();
-            }
             break;
         }
     }
@@ -626,8 +649,11 @@ void RocketShooterGame::updateGridLogic() {
         if (!player.isExploding) {
             for (auto& obs : obstacles) obs.moveDown();
 
+            // Remove obstacles that either drifted offscreen or finished their break animation
             obstacles.erase(
-                std::remove_if(obstacles.begin(), obstacles.end(), [&](const RocketObstacle& o) { return o.data.gridPos.y >= rows; }),
+                std::remove_if(obstacles.begin(), obstacles.end(), [&](const RocketObstacle& o) {
+                    return o.data.gridPos.y >= rows || o.explosionFinished;
+                    }),
                 obstacles.end()
             );
 
@@ -654,6 +680,15 @@ void RocketShooterGame::interpolateVisuals(float dt) {
     for (auto& obs : obstacles)  obs.updateVisual(SLIDE_SPEED, dt, CELL_SIZE);
     for (auto& bullet : bullets) bullet.updateVisual(SLIDE_SPEED, dt, CELL_SIZE);
     for (auto& coin : fallingCoins) coin.updateVisual(SLIDE_SPEED, dt, CELL_SIZE);
+
+    // Remove obstacles whose break animation completed this frame, in case updateGridLogic's
+    // tick-gated erase hasn't fired yet this frame (keeps removal snappy at the visual layer too).
+    obstacles.erase(
+        std::remove_if(obstacles.begin(), obstacles.end(), [&](const RocketObstacle& o) {
+            return o.explosionFinished;
+            }),
+        obstacles.end()
+    );
 }
 
 void RocketShooterGame::render() {
@@ -666,7 +701,7 @@ void RocketShooterGame::render() {
     if (player.playerSprite.has_value()) window.draw(*player.playerSprite);
     else window.draw(player.shape);
 
-    // Draw obstacles
+    // Draw obstacles (exploding obstacles render their break1/break2 sprite via obstacleSprite)
     for (const auto& obs : obstacles) {
         if (obs.obstacleSprite.has_value()) window.draw(*obs.obstacleSprite);
         else window.draw(RocketObstacle::shape);

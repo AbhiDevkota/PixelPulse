@@ -59,9 +59,16 @@ public:
     std::optional<sf::Sprite> obstacleSprite;
     static sf::RectangleShape shape;
 
+    // Explosion state (bullet-hit break animation)
+    bool isExploding = false;
+    bool explosionFinished = false;
+    float explosionTimer = 0.0f;
+    static constexpr float EXPLOSION_DURATION = 0.25f; // seconds to show break sprite before removal
+
     RocketObstacle(int totalCols, float cellSize, const sf::Texture& texture, bool big);
     void moveDown(); // Grid logic update: steps y position downward
     void updateVisual(float slideSpeed, float dt, float cellSize);
+    void triggerExplosion(const sf::Texture& breakTexture, float cellSize); // Swaps to break sprite on bullet hit
 };
 
 // ==========================================
@@ -136,6 +143,8 @@ private:
     sf::Texture bulletTexture;
     sf::Texture obstacleTexture;
     sf::Texture bigObstacleTexture;
+    sf::Texture obstacleBreakTexture;    // break1.png - shown when a normal asteroid is shot
+    sf::Texture bigObstacleBreakTexture; // break2.png - shown when a big asteroid is shot
     sf::Texture coinTexture;
     sf::Texture spaceTexture;
     std::optional<sf::Sprite> spaceSprite;
