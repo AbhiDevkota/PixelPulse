@@ -2,6 +2,10 @@
 
 A retro-style game hub with a collection of classic mini games built with C++20, SFML 3.0.2, and CMake.
 
+## Preview
+
+![Menu Preview](assets/preview/homescreen-preview.png)
+
 ## Games
 
 | Game | Description |
@@ -58,7 +62,5 @@ Alternatively, open `CMakeLists.txt` in Visual Studio, let CMake configure, sele
 - [File Management System](wiki/file_management.md) — how save/load, asset resolution, and volume persistence work
 - [Score & HighScore Refactoring](wiki/score_highscore_refactor.md) — OOP inheritance, polymorphism, and centralized file I/O across all games
 
-## Preview
 
-![Menu Preview](assets/preview/homescreen-preview.png)
 
