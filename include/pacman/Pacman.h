@@ -5,9 +5,12 @@
 #include <SFML/Graphics.hpp>
 #include <array>
 #include <cstdint>
+#include <fstream>
 #include <memory>
 #include <random>
+#include <sstream>
 #include <string>
+#include <vector>
 
 #include "pacman/Ghost.h"
 #include "pacman/Map.h"
@@ -24,6 +27,7 @@ public:
 
 private:
 	enum class State { Playing, Won, Lost };
+	enum class MenuPage { Main, Seeds, Settings };
 
 	void setupView();
 	bool loadTextures();
@@ -32,7 +36,6 @@ private:
 	void reset();     // fresh round: restore pellets + reposition everything
 	void respawn();   // after a death: reposition entities, keep pellets
 
-	void handleEvents(bool& quit);
 	void pollDirection();   // live key-state polling for movement (see Pacman.cpp)
 	void update(float dt);
 	void movePac(float dist);
@@ -40,6 +43,26 @@ private:
 	void render();
 	void drawPac();
 	void drawHud();
+
+	void processMenuEvents(bool& quit);
+	void processGameEvents(bool& quit);
+	void renderMenu();
+	void renderMainMenu();
+	void renderSeedsMenu();
+	void renderSettingsMenu();
+	void startNewGame();
+	void startContinue();
+	void applySeed(uint32_t seed);
+	void saveContinueData();
+	void loadContinueData();
+	void loadSoundSettings();
+	void saveSoundSettings();
+	void handleMenuJoystick();
+	void updateSoundVolumes();
+	void loadMenuTextures();
+	void updateMenuAnimation(float dt);
+	void drawMenuBackground();
+	void spawnFruit();
 
 	sf::RenderWindow& window_;
 	sf::View view_;
@@ -57,14 +80,49 @@ private:
 
 	int score_ = 0;
 	int lives_ = 3;
+	int level_ = 1;
 	State state_ = State::Playing;
 	std::mt19937 rng_;
 	uint32_t seed_ = 0;
+
+	// Menu
+	bool inMenu_ = true;
+	MenuPage menuPage_ = MenuPage::Main;
+	int menuIndex_ = 0;
+	int seedsIndex_ = 0;
+	int settingsIndex_ = 0;
+	bool hasContinue_ = false;
+	uint32_t continueSeed_ = 0;
+	int continueScore_ = 0;
+	int continueLives_ = 3;
+	int continueLevel_ = 1;
+	bool seedInputActive_ = false;
+	bool customSeedSet_ = false;
+	std::string seedInputStr_;
+	float masterVol_ = 90.f;
+	float effectVol_ = 65.f;
+	sf::Clock menuJoyClock_;
+
+	// Menu background animation
+	int menuAnimFrame_ = 0;
+	float menuAnimTimer_ = 0.f;
+	float menuDirTimer_ = 2.f;
+	sf::Vector2f menuPacPos_{ -100.f, 200.f };
+	sf::Vector2f menuGhostPos_{ -20.f, 200.f };
+	int menuAnimDir_ = 0;
+	sf::Texture menuGhostTex_;
 
 	bool hasFont_ = false;
 	sf::Font font_;
 	std::array<std::array<sf::Texture, 2>, 4> playerTex_;   // [dir][frame]
 	sf::Texture playerNeutral_;
+
+	// Fruit
+	sf::Vector2f fruitPos_{ -1.f, -1.f };
+	std::array<sf::Texture, 6> fruitTex_;
+	int fruitIndex_ = 0;
+	bool fruitActive_ = false;
+	int pelletsEaten_ = 0;
 
 	sf::Music bgMusic_;
 	sf::SoundBuffer foodBuf_, powerBuf_, ghostBuf_, hurtBuf_, gameOverBuf_;
