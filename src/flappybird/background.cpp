@@ -1,4 +1,4 @@
-#include "flappy/background.h"
+#include "flappy/Background.h"
 #include <cstdlib>
 #include <string>
 #include <vector>

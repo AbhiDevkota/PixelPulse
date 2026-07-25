@@ -1,4 +1,4 @@
-#include "flappy/pipepair.h"
+#include "flappy/PipePair.h"
 #include <cstdlib>
 #include <string>
 #include <vector>

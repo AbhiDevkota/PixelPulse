@@ -1,4 +1,4 @@
-#include "flappy/bird.h"
+#include "flappy/Bird.h"
 
 Bird::Bird(sf::RenderWindow& window, float cellW, float cellH)
     : sprite(spriteSheet)
