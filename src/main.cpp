@@ -1,15 +1,13 @@
-#include "HomeScreen.h"
-#include "Files.h"
-#include "pacman/Pacman.h"
+#include "homescreen.h"
+#include "files.h"
+#include "pacman/pacman.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
 void RunDino(sf::RenderWindow& window, corezone::FileManager& filemanager);
-void runRocketShooter(sf::RenderWindow& window);
-void RunDino(sf::RenderWindow& window);
-void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& filemanager);
+void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& fileManager);
 void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager);
-void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager); //Conflict resolved by Abhi Devkota
+void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager);
 
 int main() {
     corezone::FileManager fileManager;
@@ -89,7 +87,7 @@ int main() {
             }
             if (game == "PAC MAN") {
                 home.pauseMusic();
-                runPacMan(window);
+                runPacMan(window, fileManager);
                 home.resumeMusic();
                 continue;
             }
@@ -109,7 +107,7 @@ int main() {
             home.resetGame();
             if (game == "PAC MAN")
             {
-                runPacMan(window);
+                runPacMan(window, fileManager);
                 home.resumeMusic();
                 continue;
             }

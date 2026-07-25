@@ -5,9 +5,9 @@
 #include <SFML/Audio.hpp>        //for sound/music
 #include <vector>
 #include <string>
-#include "Menu.h"
-#include "Settings.h"
-#include "Files.h"
+#include "menu.h"
+#include "settings.h"
+#include "files.h"
 
 namespace corezone {
 

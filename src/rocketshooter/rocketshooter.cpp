@@ -268,15 +268,12 @@ void RocketShooterPlayer::updateVisual(float slideSpeed, float dt, float cellSiz
 // ==========================================
 // --- Game Engine Implementation ---
 // ==========================================
-RocketShooterGame::RocketShooterGame(sf::RenderWindow& win, corezone::FileManager& filemanager)
-    : window(win)
+RocketShooterGame::RocketShooterGame(sf::RenderWindow& win, corezone::FileManager& fileManager)
+    : window(win), gameData(fileManager, "ROCKETSHOOTER")
 {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
     cols = static_cast<int>(window.getSize().x / CELL_SIZE);
     rows = static_cast<int>(window.getSize().y / CELL_SIZE);
-
-    // Namespaced GameDataManager isolation for high score saves
-    gameData = std::make_unique<corezone::GameDataManager>(filemanager, "ROCKETSHOOTER");
 
     // Load textures
     if (!playerTexture.loadFromFile("assets/rocket/RedRocket.png")) std::cerr << "Failed player asset\n";
@@ -345,7 +342,7 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win, corezone::FileManage
     restartFallbackBar.setOrigin({ 200.f, 20.f });
     restartFallbackBar.setPosition({ window.getSize().x / 2.f, window.getSize().y / 2.f + 30.f });
 
-    loadHighScore();
+    highScore = std::make_unique<HighScore>(gameData);
 }
 
 void RocketShooterGame::setupGameOverText() {
@@ -370,33 +367,6 @@ void RocketShooterGame::setupNewHighScoreText() {
     sf::FloatRect bounds = newHighScoreText->getLocalBounds();
     newHighScoreText->setOrigin({ bounds.size.x / 2.f, bounds.size.y / 2.f });
     newHighScoreText->setPosition({ window.getSize().x / 2.f, 90.f });
-}
-
-void RocketShooterGame::loadHighScore() {
-    highScore = 0;
-    if (gameData) {
-        gameData->getHighScore(highScore);
-    }
-}
-
-void RocketShooterGame::saveHighScore() {
-    if (gameData) {
-        if (!gameData->saveHighScore(highScore)) {
-            std::cerr << "Failed to save high score for ROCKETSHOOTER\n";
-        }
-    }
-}
-
-void RocketShooterGame::syncHighScoreFromDisk() {
-    if (!gameData) return;
-
-    int diskScore = 0;
-    if (!gameData->getHighScore(diskScore)) return;
-
-    // Pick up changes from file if altered while session runs
-    if (diskScore != highScore) {
-        highScore = diskScore;
-    }
 }
 
 void RocketShooterGame::restartGame() {
@@ -503,12 +473,11 @@ void RocketShooterGame::checkCollisions() {
             score += obstacles[i].scoreValue;
 
             // High score check & save execution
-            if (score > highScore) {
-                highScore = score;
-                saveHighScore();
+            if (highScore->isNewHighScore(score)) {
                 showNewHighScoreBanner = true;
                 newHighScoreBannerTimer = 0.0f;
             }
+            highScore->set(score);
             updateDifficulty();
 
             // break1.png for normal asteroids, break2.png for big asteroids
@@ -724,7 +693,7 @@ void RocketShooterGame::render() {
         sf::Text hudText(font, "", 24u);
         hudText.setFillColor(sf::Color::White);
         hudText.setPosition({ 15.f, 15.f });
-        hudText.setString("Score: " + std::to_string(score) + "    High Score: " + std::to_string(highScore) + "    Coins: " + std::to_string(coins) + "    Lives: " + std::to_string(lives) + (isPaused ? "    [PAUSED]" : ""));
+        hudText.setString("Score: " + std::to_string(score) + "    High Score: " + std::to_string(highScore->get()) + "    Coins: " + std::to_string(coins) + "    Lives: " + std::to_string(lives) + (isPaused ? "    [PAUSED]" : ""));
         window.draw(hudText);
     }
 
@@ -741,7 +710,7 @@ void RocketShooterGame::render() {
         if (fontLoaded && gameOverText) {
             window.draw(*gameOverText);
 
-            sf::Text finalScoreText(font, "Final Score: " + std::to_string(score) + "  (High Score: " + std::to_string(highScore) + " | Coins: " + std::to_string(coins) + ")", 24u);
+            sf::Text finalScoreText(font, "Final Score: " + std::to_string(score) + "  (High Score: " + std::to_string(highScore->get()) + " | Coins: " + std::to_string(coins) + ")", 24u);
             finalScoreText.setFillColor(sf::Color::White);
             sf::FloatRect sBounds = finalScoreText.getLocalBounds();
             finalScoreText.setOrigin({ sBounds.size.x / 2.f, sBounds.size.y / 2.f });
@@ -762,11 +731,6 @@ void RocketShooterGame::run() {
         float dt = deltaClock.restart().asSeconds();
         handleEvents();
 
-        if (highScoreSyncClock.getElapsedTime().asSeconds() >= HIGH_SCORE_SYNC_INTERVAL) {
-            syncHighScoreFromDisk();
-            highScoreSyncClock.restart();
-        }
-
         if (!gameOver && !isPaused) {
             spawnObstacles();
             updateGridLogic();
@@ -776,7 +740,7 @@ void RocketShooterGame::run() {
     }
 }
 
-void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& filemanager) {
-    RocketShooterGame game(window, filemanager);
+void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& fileManager) {
+    RocketShooterGame game(window, fileManager);
     game.run();
 }

@@ -1,4 +1,4 @@
-#include "pacman/MapGenerate.h"
+#include "pacman/mapgenerate.h"
 
 #include <algorithm>
 #include <array>

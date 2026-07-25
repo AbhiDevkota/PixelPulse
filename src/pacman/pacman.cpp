@@ -1,9 +1,8 @@
-#include "pacman/Pacman.h"
+#include "pacman/pacman.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -21,15 +20,15 @@ namespace {
 	}
 }
 
-void runPacMan(sf::RenderWindow& window) {
-	Pacman game(window);
+void runPacMan(sf::RenderWindow& window, corezone::FileManager& fileManager) {
+	Pacman game(window, fileManager);
 	if (game.initialize()) {
 		game.run();
 	}
 }
 
-Pacman::Pacman(sf::RenderWindow& window)
-	: window_(window), rng_(std::random_device{}()) {
+Pacman::Pacman(sf::RenderWindow& window, corezone::FileManager& fileManager)
+	: fileManager_(&fileManager), gameData_(fileManager, "PACMAN"), highScore_(gameData_), window_(window), rng_(std::random_device{}()) {
 }
 
 bool Pacman::initialize() {
@@ -373,6 +372,7 @@ void Pacman::collide() {
 			else {
 				if (--lives_ <= 0) {
 					state_ = State::Lost;
+					highScore_.set(score_);
 					if (gameOverSnd_) gameOverSnd_->play();
 				}
 				else {
@@ -422,6 +422,14 @@ void Pacman::drawHud() {
 		t.setFillColor(sf::Color(255, 255, 100));
 		t.setPosition({ margin, margin * 0.4f });
 		window_.draw(t);
+	}
+
+	// High score, below score.
+	if (hasFont_) {
+		sf::Text hs(font_, "BEST  " + std::to_string(highScore_.get()), unsigned(fontSize * 0.8f));
+		hs.setFillColor(sf::Color(180, 180, 180));
+		hs.setPosition({ margin, margin * 0.4f + fontSize * 1.1f });
+		window_.draw(hs);
 	}
 
 	// Level, top-centre.
@@ -974,16 +982,16 @@ void Pacman::saveContinueData() {
 	ss << "score=" << score_ << "\n";
 	ss << "lives=" << lives_ << "\n";
 	ss << "level=" << level_ << "\n";
-	std::ofstream file("config/pacman_continue.sav");
-	if (file) file << ss.str();
+	gameData_.saveGameState(ss.str());
 }
 
 void Pacman::loadContinueData() {
 	hasContinue_ = false;
-	std::ifstream file("config/pacman_continue.sav");
-	if (!file) return;
+	std::string gameState;
+	if (!gameData_.loadGameState(gameState)) return;
+	std::stringstream ss(gameState);
 	std::string line;
-	while (std::getline(file, line)) {
+	while (std::getline(ss, line)) {
 		if (line.find("seed=") == 0) {
 			continueSeed_ = static_cast<uint32_t>(std::strtoul(line.c_str() + 5, nullptr, 10));
 		}
@@ -1001,25 +1009,15 @@ void Pacman::loadContinueData() {
 }
 
 void Pacman::saveSoundSettings() {
-	std::ostringstream ss;
-	ss << "master_volume=" << masterVol_ << "\n";
-	ss << "effect_volume=" << effectVol_ << "\n";
-	std::ofstream file("config/pacman_audio.cfg");
-	if (file) file << ss.str();
+	fileManager_->setVolumeData("pacman_master", masterVol_);
+	fileManager_->setVolumeData("pacman_effect", effectVol_);
+	fileManager_->saveAllVolumeData();
 }
 
 void Pacman::loadSoundSettings() {
-	std::ifstream file("config/pacman_audio.cfg");
-	if (!file) return;
-	std::string line;
-	while (std::getline(file, line)) {
-		if (line.find("master_volume=") == 0) {
-			masterVol_ = std::stof(line.substr(14));
-		}
-		else if (line.find("effect_volume=") == 0) {
-			effectVol_ = std::stof(line.substr(14));
-		}
-	}
+	fileManager_->loadAllVolumeData();
+	masterVol_ = fileManager_->getVolumeData("pacman_master", 90.f);
+	effectVol_ = fileManager_->getVolumeData("pacman_effect", 65.f);
 	masterVol_ = std::clamp(masterVol_, 0.f, 100.f);
 	effectVol_ = std::clamp(effectVol_, 0.f, 100.f);
 }

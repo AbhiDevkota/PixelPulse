@@ -1,4 +1,4 @@
-#include "HomeScreen.h"
+#include "homescreen.h"
 #include <iostream>
 #include <cmath>
 #include <cstdint>
