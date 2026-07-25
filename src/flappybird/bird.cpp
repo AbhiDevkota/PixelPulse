@@ -4,9 +4,9 @@ Bird::Bird(sf::RenderWindow& window, float cellW, float cellH)
     : sprite(textureNeutral)
 {
     // load all three separate pose images
-    bool okUp = textureUp.loadFromFile("assets/Flappy/jetman_1.png");
-    bool okNeutral = textureNeutral.loadFromFile("assets/Flappy/jetman_2.png");
-    bool okDown = textureDown.loadFromFile("assets/Flappy/jetman_3.png");
+    bool okUp = textureUp.loadFromFile("assets/flappy/jetman_1.png");
+    bool okNeutral = textureNeutral.loadFromFile("assets/flappy/jetman_2.png");
+    bool okDown = textureDown.loadFromFile("assets/flappy/jetman_3.png");
 
     loaded = okUp && okNeutral && okDown;
     if (!loaded) return;
