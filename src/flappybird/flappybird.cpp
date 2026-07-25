@@ -95,7 +95,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
                 newRecordSet = false;
             }
 
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !gameOver && !paused) {
+            if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) ||sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up)) && !gameOver && !paused) {
                 bird.flap();
                 audio.playJump();
             }
