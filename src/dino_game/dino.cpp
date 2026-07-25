@@ -1,5 +1,6 @@
 #include "dino/dino.h"
 #include "Files.h"
+#include "common/HighScore.h"
 #include <cstdlib>
 
 Player::Player() {
@@ -298,9 +299,7 @@ void RunDino(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 	settings.antiAliasingLevel = 0;
 	sf::Font font("fonts/regular.ttf");
 
-	int highscore = 0;
-
-	gameData.getHighScore(highscore);
+	HighScore highScoreObj(gameData);
 
 	float surface_y = static_cast<float>(window.getSize().y) * 0.7f;
 
@@ -381,12 +380,11 @@ void RunDino(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 				underground.Update(dt, 600.f);
 
 				score += dt * 10.f;
-				if (score > highscore) {
-					highscore = score;
-					gameData.saveHighScore(highscore);
-				}
+			if (highScoreObj.isNewHighScore(static_cast<int>(score))) {
+				highScoreObj.set(static_cast<int>(score));
+			}
 				scoreText.setCharacterSize(30);
-				scoreText.setString("Score: " + std::to_string(static_cast<int>(score)) + "  High Score: " + std::to_string(highscore));
+				scoreText.setString("Score: " + std::to_string(static_cast<int>(score)) + "  High Score: " + std::to_string(highScoreObj.get()));
 
 				int currentMilestone = static_cast<int>(score) / 200;
 				if (currentMilestone > lastMilestone) {

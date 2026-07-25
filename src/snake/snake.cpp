@@ -5,6 +5,7 @@
 #include "snake/Snake.h"
 #include "snake/SnakeAssets.h"
 #include "Files.h"
+#include "common/HighScore.h"
 
 Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
     : cols(cols), rows(rows) {
@@ -82,8 +83,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
     corezone::GameDataManager gameData(filemanager, "SNAKE");
 
     int lives = 3;
-    int highScore = 0;
-    gameData.getHighScore(highScore);
+    HighScore highScoreObj(gameData);
 
     bool isPaused = false;
     bool gameOver = false;
@@ -176,10 +176,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
                 assets.getEatSound().play();
                 snake.grow();
                 score++;
-                if (score > highScore) {
-                    highScore = score;
-                    gameData.saveHighScore(highScore);
-                }
+                highScoreObj.set(score);
             }
         }
 
@@ -205,7 +202,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
         }
 
         scoreText.setCharacterSize(24);
-        scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScore) + "  Lives:  " + std::to_string(lives));
+        scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScoreObj.get()) + "  Lives:  " + std::to_string(lives));
         scoreText.setPosition({ (float)OFFSETX, (float)(OFFSETY - 2 * CELL_SIZE) });
         window.draw(scoreText);
         window.draw(assets.getFoodSprite());
