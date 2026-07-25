@@ -1,6 +1,6 @@
-#include "HomeScreen.h"
-#include "Files.h"
-#include "pacman/Pacman.h"
+#include "homescreen.h"
+#include "files.h"
+#include "pacman/pacman.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
 

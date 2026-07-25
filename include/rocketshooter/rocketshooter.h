@@ -5,8 +5,8 @@
 #include <optional>
 #include <string>
 #include <memory>
-#include "Files.h"
-#include "common/HighScore.h"
+#include "files.h"
+#include "common/highscore.h"
 
 // ==========================================
 // --- RocketBullet Class ---

@@ -1,6 +1,6 @@
 #include "dino/dino.h"
-#include "Files.h"
-#include "common/HighScore.h"
+#include "files.h"
+#include "common/highscore.h"
 #include <cstdlib>
 
 Player::Player() {

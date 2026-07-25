@@ -2,10 +2,10 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
-#include "snake/Snake.h"
-#include "snake/SnakeAssets.h"
-#include "Files.h"
-#include "common/HighScore.h"
+#include "snake/snake.h"
+#include "snake/snakeassets.h"
+#include "files.h"
+#include "common/highscore.h"
 
 Snake::Snake(sf::Vector2i startPos, sf::Vector2i startDir, int cols, int rows)
     : cols(cols), rows(rows) {

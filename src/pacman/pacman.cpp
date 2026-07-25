@@ -1,4 +1,4 @@
-#include "pacman/Pacman.h"
+#include "pacman/pacman.h"
 
 #include <algorithm>
 #include <cmath>

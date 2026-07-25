@@ -1,4 +1,4 @@
-#include "Files.h"
+#include "files.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>

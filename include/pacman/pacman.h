@@ -11,10 +11,10 @@
 #include <string>
 #include <vector>
 
-#include "pacman/Ghost.h"
-#include "pacman/Map.h"
-#include "Files.h"
-#include "common/HighScore.h"
+#include "pacman/ghost.h"
+#include "pacman/map.h"
+#include "files.h"
+#include "common/highscore.h"
 
 // Pac-Man game, ported from ref.cpp's Game class. Runs on the shared window
 // handed in by the main menu, drawing into a letterboxed sf::View so the fixed

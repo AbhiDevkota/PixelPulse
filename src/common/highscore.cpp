@@ -1,4 +1,4 @@
-#include "common/HighScore.h"
+#include "common/highscore.h"
 
 HighScore::HighScore(corezone::GameDataManager& gameData)
     : Score(), gameData_(gameData) {

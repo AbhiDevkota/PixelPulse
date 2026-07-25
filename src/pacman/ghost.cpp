@@ -1,5 +1,5 @@
-#include "pacman/Ghost.h"
-#include "pacman/Map.h"
+#include "pacman/ghost.h"
+#include "pacman/map.h"
 
 #include <cmath>
 #include <iostream>

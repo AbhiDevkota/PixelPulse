@@ -1,4 +1,4 @@
-#include "snake/SnakeAssets.h"
+#include "snake/snakeassets.h"
 #include <cstdlib>
 #include <iostream>
 

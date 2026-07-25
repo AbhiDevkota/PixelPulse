@@ -1,5 +1,5 @@
-#include "Menu.h"
-#include "Settings.h"   // needed to call settings_->show/hide/draw/etc.
+#include "menu.h"
+#include "settings.h"   // needed to call settings_->show/hide/draw/etc.
 #include <algorithm>    // std::clamp
 #include <iostream>
 

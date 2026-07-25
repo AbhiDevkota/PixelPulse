@@ -1,7 +1,7 @@
 #ifndef HIGHSCORE_H
 #define HIGHSCORE_H
 
-#include "Files.h"
+#include "files.h"
 
 class Score {
 protected:

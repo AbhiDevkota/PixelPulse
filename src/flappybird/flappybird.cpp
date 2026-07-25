@@ -3,8 +3,8 @@
 #include "flappy/bird.h"
 #include "flappy/pipepair.h"
 #include "flappy/gameaudio.h"
-#include "Files.h"
-#include "common/HighScore.h"
+#include "files.h"
+#include "common/highscore.h"
 #include <cstdlib>
 #include <ctime>
 
@@ -51,7 +51,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
     highScoreText.setCharacterSize(28);
     highScoreText.setFillColor(sf::Color::White);
     highScoreText.setPosition({ 20.f, 60.f });
-    highScoreText.setString("High Score: " + std::to_string(highScore));
+    highScoreText.setString("High Score: " + std::to_string(highScoreObj.get()));
 
     sf::Text gameOverText(font);
     gameOverText.setCharacterSize(42);
