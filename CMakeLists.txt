@@ -36,6 +36,10 @@ add_executable(PixelPulse
 )
 
 if (MSVC)
+    set_target_properties(PixelPulse PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
+endif()
+
+if (MSVC)
     target_compile_options(PixelPulse PRIVATE /W4)   # removed /WX so warnings don't kill build
 else()
     target_compile_options(PixelPulse PRIVATE -Wall -Wextra -Wpedantic)
