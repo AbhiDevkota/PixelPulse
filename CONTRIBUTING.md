@@ -62,4 +62,4 @@ Please include:
 - Check existing [issues](https://github.com/AbhiDevkota/PixelPulse/issues)
 - Look for `good first issue` labels to get started
 
-Happy coding! 🎮
+Happy coding/Gaming!
