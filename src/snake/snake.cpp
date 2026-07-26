@@ -104,6 +104,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
     const int OFFSETY = (winSize.y - PLAY_HEIGHT) / 2;
 
     int score = 0;
+    int level = 0;
 
     SnakeLayout layout;
     layout.cellSize = CELL_SIZE;
@@ -144,6 +145,8 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
                     snake.reset({ 5, 5 }, { 1, 0 });
                     lives = 3;
                     score = 0;
+                    level = 0;
+                    moveInterval = 0.2f;
                     gameOver = false;
                     snake.respawnFood();
                 }
@@ -183,6 +186,8 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
                 snake.grow();
                 score++;
                 highScoreObj.set(score);
+                level = std::min(score / 5, 4);
+                moveInterval = 0.2f * (1.0f - level * 0.15f);
             }
         }
 
@@ -212,8 +217,8 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
             continue;
         }
 
-        scoreText.setCharacterSize(24);
-        scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScoreObj.get()) + "  Lives:  " + std::to_string(lives));
+    scoreText.setCharacterSize(24);
+    scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScoreObj.get()) + "  Lives:  " + std::to_string(lives));
         scoreText.setPosition({ (float)OFFSETX, (float)(OFFSETY - 2 * CELL_SIZE) });
         window.draw(scoreText);
         window.draw(assets.getFoodSprite());
