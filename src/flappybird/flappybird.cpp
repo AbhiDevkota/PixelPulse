@@ -110,7 +110,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
             if (bird.sprite.getPosition().y <= 0.f ||
                 bird.sprite.getPosition().y + bird.sprite.getGlobalBounds().size.y >= (float)window.getSize().y)
                 gameOver = true;
-            pipes.update(dt, window, cellW, cellH);
+            pipes.update(dt, window, cellW, cellH, score);
             background.update(dt, window);
 
             // add 1 if bird just passed a pipe, 0 otherwise
@@ -145,7 +145,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
                 highScoreText.setCharacterSize(28);
                 highScoreText.setFillColor(sf::Color::White);
                 highScoreText.setOutlineThickness(0.f);
-    highScoreText.setString("High Score: " + std::to_string(highScoreObj.get()));
+                highScoreText.setString("High Score: " + std::to_string(highScoreObj.get()));
                 highScoreText.setPosition({ 20.f, 60.f });
             }
 

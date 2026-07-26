@@ -26,7 +26,7 @@ public:
 
     PipePair(sf::RenderWindow& window, float cellW, float cellH);
 
-    void update(float dt, sf::RenderWindow& window, float cellW, float cellH);
+    void update(float dt, sf::RenderWindow& window, float cellW, float cellH, int score);
     void reset(sf::RenderWindow& window, float cellW, float cellH);
     int getScorePoint(float birdX);
     void draw(sf::RenderWindow& window);
