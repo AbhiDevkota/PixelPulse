@@ -5,22 +5,23 @@
 #include <SFML/Graphics.hpp>
 #include <array>
 #include <cstdint>
-#include <fstream>
 #include <memory>
 #include <random>
 #include <sstream>
 #include <string>
 #include <vector>
 
-#include "pacman/Ghost.h"
-#include "pacman/Map.h"
+#include "pacman/ghost.h"
+#include "pacman/map.h"
+#include "files.h"
+#include "common/highscore.h"
 
 // Pac-Man game, ported from ref.cpp's Game class. Runs on the shared window
 // handed in by the main menu, drawing into a letterboxed sf::View so the fixed
 // logical play area fills ~60% of the screen. Escape returns to the menu.
 class Pacman {
 public:
-	explicit Pacman(sf::RenderWindow& window);
+	explicit Pacman(sf::RenderWindow& window, corezone::FileManager& fileManager);
 
 	bool initialize();
 	void run();
@@ -63,6 +64,10 @@ private:
 	void updateMenuAnimation(float dt);
 	void drawMenuBackground();
 	void spawnFruit();
+
+	corezone::FileManager* fileManager_;
+	corezone::GameDataManager gameData_;
+	HighScore highScore_;
 
 	sf::RenderWindow& window_;
 	sf::View view_;
@@ -129,6 +134,6 @@ private:
 	std::unique_ptr<sf::Sound> foodSnd_, powerSnd_, ghostSnd_, hurtSnd_, gameOverSnd_;
 };
 
-void runPacMan(sf::RenderWindow& window);
+void runPacMan(sf::RenderWindow& window, corezone::FileManager& fileManager);
 
 #endif

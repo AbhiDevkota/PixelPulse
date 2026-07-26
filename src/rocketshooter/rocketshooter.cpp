@@ -3,9 +3,8 @@
 #include <ctime>
 #include <algorithm>
 #include <iostream>
-#include <fstream>
 
-// Instantiating static shape fields allocated across memory scopes
+// Static member definitions for fallback shape rendering
 sf::RectangleShape RocketBullet::shape;
 sf::RectangleShape RocketObstacle::shape;
 sf::RectangleShape RocketCoin::shape;
@@ -16,21 +15,22 @@ sf::RectangleShape RocketCoin::shape;
 RocketBullet::RocketBullet(sf::Vector2i startGridPos, sf::Vector2f startVisualPos, const sf::Texture& texture)
     : data{ startGridPos, startVisualPos }
 {
-    bulletSprite.emplace(texture); // Initialize optional sprite
+    // Instantiate sprite with target texture and scale it to fit grid cell constraints
+    bulletSprite.emplace(texture);
     sf::Vector2u textureSize = texture.getSize();
-    bulletSprite->setScale({ (0.2f * 32.0f) / textureSize.x, (0.6f * 32.0f) / textureSize.y });
+    bulletSprite->setScale({ (0.2f * CELL_SIZE) / textureSize.x, (0.6f * CELL_SIZE) / textureSize.y });
+    bulletSprite->setPosition(data.visualPos);
 }
 
 void RocketBullet::moveUp() {
-    data.gridPos.y--; // Move up one grid cell
+    // Decrement vertical grid index to move bullet toward top of screen
+    data.gridPos.y--;
 }
 
 void RocketBullet::updateVisual(float slideSpeed, float dt, float cellSize) {
-    float centerXOffset = (cellSize - shape.getSize().x) / 2.0f; // Center bullet horizontally
-    sf::Vector2f target = { static_cast<float>(data.gridPos.x * cellSize) + centerXOffset, static_cast<float>(data.gridPos.y * cellSize) };
-
-    data.visualPos.x += (target.x - data.visualPos.x) * slideSpeed * dt; // Linear interpolation for X
-    data.visualPos.y += (target.y - data.visualPos.y) * slideSpeed * dt; // Linear interpolation for Y
+    // Exponential interpolation (lerp) towards target grid pixel position
+    float targetY = static_cast<float>(data.gridPos.y * cellSize);
+    data.visualPos.y += (targetY - data.visualPos.y) * slideSpeed * dt;
 
     if (bulletSprite.has_value()) {
         bulletSprite->setPosition(data.visualPos);
@@ -40,22 +40,59 @@ void RocketBullet::updateVisual(float slideSpeed, float dt, float cellSize) {
 // ==========================================
 // --- RocketObstacle Implementation ---
 // ==========================================
-RocketObstacle::RocketObstacle(int totalCols, float cellSize, const sf::Texture& texture) {
-    data.gridPos = { std::rand() % totalCols, 0 }; // Random starting column
-    data.visualPos = { static_cast<float>(data.gridPos.x * cellSize), -cellSize };
+RocketObstacle::RocketObstacle(int totalCols, float cellSize, const sf::Texture& texture, bool big)
+    : isBig(big)
+{
+    // Set cell span size and score value based on obstacle type
+    sizeInCells = isBig ? 3 : 2;
+    scoreValue = isBig ? 3 : 1;
+
+    // Pick a random horizontal column that keeps the entire obstacle inside grid boundaries
+    data.gridPos = { std::rand() % (totalCols - (sizeInCells - 1)), 0 };
+    // Start above the top boundary for a continuous drop visual
+    data.visualPos = { static_cast<float>(data.gridPos.x * cellSize), -cellSize * sizeInCells };
 
     obstacleSprite.emplace(texture);
     sf::Vector2u textureSize = texture.getSize();
-    float targetSize = 2.0f * cellSize;
+    float targetSize = static_cast<float>(sizeInCells) * cellSize;
     obstacleSprite->setScale({ targetSize / textureSize.x, targetSize / textureSize.y });
     obstacleSprite->setPosition(data.visualPos);
 }
 
 void RocketObstacle::moveDown() {
-    data.gridPos.y++; // Move down one grid cell
+    // Freeze grid movement while the break animation is playing
+    if (isExploding) return;
+    data.gridPos.y++;
+}
+
+void RocketObstacle::triggerExplosion(const sf::Texture& breakTexture, float cellSize) {
+    if (isExploding) return; // Guard against double-trigger from overlapping bullet hits
+
+    isExploding = true;
+    explosionFinished = false;
+    explosionTimer = 0.0f;
+
+    // Swap the live sprite to the appropriate break texture (break1 for normal, break2 for big)
+    if (obstacleSprite.has_value()) {
+        obstacleSprite->setTexture(breakTexture, true);
+        sf::Vector2u textureSize = breakTexture.getSize();
+        float targetSize = static_cast<float>(sizeInCells) * cellSize;
+        obstacleSprite->setScale({ targetSize / textureSize.x, targetSize / textureSize.y });
+        obstacleSprite->setPosition(data.visualPos);
+    }
 }
 
 void RocketObstacle::updateVisual(float slideSpeed, float dt, float cellSize) {
+    if (isExploding) {
+        // Hold the break sprite in place at point of impact and count down the animation
+        explosionTimer += dt;
+        if (explosionTimer >= EXPLOSION_DURATION) {
+            explosionFinished = true;
+        }
+        return;
+    }
+
+    // Smoothly interpolate both axes towards assigned grid coordinate
     sf::Vector2f target = { static_cast<float>(data.gridPos.x * cellSize), static_cast<float>(data.gridPos.y * cellSize) };
     data.visualPos.x += (target.x - data.visualPos.x) * slideSpeed * dt;
     data.visualPos.y += (target.y - data.visualPos.y) * slideSpeed * dt;
@@ -80,7 +117,7 @@ RocketCoin::RocketCoin(sf::Vector2i startGridPos, float cellSize, const sf::Text
 }
 
 void RocketCoin::moveDown() {
-    data.gridPos.y++; // Move down one grid cell
+    data.gridPos.y++;
 }
 
 void RocketCoin::updateVisual(float slideSpeed, float dt, float cellSize) {
@@ -96,46 +133,129 @@ void RocketCoin::updateVisual(float slideSpeed, float dt, float cellSize) {
 // ==========================================
 // --- RocketShooterPlayer Implementation ---
 // ==========================================
-RocketShooterPlayer::RocketShooterPlayer() : gridPos(0, 0), visualPos(0.f, 0.f) {}
+RocketShooterPlayer::RocketShooterPlayer() : gridPos(data.gridPos), visualPos(data.visualPos) {
+    data.gridPos = { 0, 0 };
+    data.visualPos = { 0.f, 0.f };
+}
 
-void RocketShooterPlayer::init(int cols, int rows, float cellSize, const sf::Texture& texture) {
-    shape.setSize({ static_cast<float>(2 * cellSize), static_cast<float>(2 * cellSize) });
+void RocketShooterPlayer::init(int cols, int rows, float cellSize, const sf::Texture& normTex, const sf::Texture& mTex, const sf::Texture& exp1, const sf::Texture& exp2) {
+    // Cache references to state textures
+    normalTex = normTex;
+    moveTex = mTex;
+    explodeTex1 = exp1;
+    explodeTex2 = exp2;
+
+    // Reset status flags
+    isExploding = false;
+    explosionFinished = false;
+    explosionTimer = 0.0f;
+    explosionFrame = 0;
+    isMovingForward = false;
+
+    float targetSize = 3.25f * cellSize;
+    shape.setSize({ targetSize, targetSize });
     shape.setFillColor(sf::Color::Red);
 
-    gridPos = { (cols / 2) - 1, rows - 2 }; // Center player horizontally near bottom
+    // Position player horizontally centered near screen bottom
+    gridPos = { (cols / 2) - 1, rows - 3 };
     visualPos = { static_cast<float>(gridPos.x * cellSize), static_cast<float>(gridPos.y * cellSize) };
     shape.setPosition(visualPos);
 
-    playerSprite.emplace(texture);
-    sf::Vector2u textureSize = texture.getSize();
-    float targetSize = 2.0f * cellSize;
-    playerSprite->setScale({ targetSize / textureSize.x, targetSize / textureSize.y });
+    playerSprite.emplace(normalTex);
+    applyTexture(normalTex);
+}
+
+void RocketShooterPlayer::applyTexture(const sf::Texture& tex, bool isExplosion) {
+    if (!playerSprite.has_value()) return;
+
+    playerSprite->setTexture(tex, true);
+    float targetSize = 3.25f * CELL_SIZE;
+
+    if (isExplosion) {
+        // Explosion frames require -90 deg rotation offset adjustment to align visuals
+        playerSprite->setRotation(sf::degrees(-90.f));
+        playerSprite->setOrigin({ 104.0f, 0.0f });
+        float scaleFactor = targetSize / 104.0f;
+        playerSprite->setScale({ scaleFactor, scaleFactor });
+    }
+    else {
+        // Standard non-rotated layout setup
+        playerSprite->setRotation(sf::degrees(0.f));
+        playerSprite->setOrigin({ 0.f, 0.f });
+        sf::Vector2u texSize = tex.getSize();
+        playerSprite->setScale({ targetSize / texSize.x, targetSize / texSize.y });
+    }
     playerSprite->setPosition(visualPos);
 }
 
+void RocketShooterPlayer::triggerExplosion() {
+    if (isExploding) return;
+    isExploding = true;
+    explosionFinished = false;
+    explosionTimer = 0.0f;
+    explosionFrame = 1;
+
+    // Swap to initial stage explosion texture
+    applyTexture(explodeTex1, true);
+}
+
 void RocketShooterPlayer::handleInput(sf::Keyboard::Key key) {
+    if (isExploding) return; // Freeze input parsing during death frame sequence
+
     switch (key) {
-    case sf::Keyboard::Key::A: gridPos.x--; break; // Left
-    case sf::Keyboard::Key::D: gridPos.x++; break; // Right
-    case sf::Keyboard::Key::W: gridPos.y--; break; // Up
-    case sf::Keyboard::Key::S: gridPos.y++; break; // Down
+    case sf::Keyboard::Key::A:
+    case sf::Keyboard::Key::Left:
+        gridPos.x--; break;
+    case sf::Keyboard::Key::D:
+    case sf::Keyboard::Key::Right:
+        gridPos.x++; break;
+    case sf::Keyboard::Key::W:
+    case sf::Keyboard::Key::Up:
+        gridPos.y--;
+        isMovingForward = true;
+        applyTexture(moveTex); // Apply forward thrust sprite variant
+        break;
+    case sf::Keyboard::Key::S:
+    case sf::Keyboard::Key::Down:
+        gridPos.y++; break;
     default: break;
     }
 }
 
 void RocketShooterPlayer::clampPosition(int cols, int rows) {
-    // Player occupies a 2x2 grid footprint, so it must stay within
-    // [0, cols-2] horizontally and [0, rows-2] vertically to remain
-    // fully on screen. This now spans the entire play field instead
-    // of being restricted to the bottom rows.
-    if (gridPos.x < 0)        gridPos.x = 0;        // Left boundary
-    if (gridPos.x > cols - 2) gridPos.x = cols - 2;  // Right boundary (2 cells wide)
-    if (gridPos.y < 0)        gridPos.y = 0;         // Top boundary
-    if (gridPos.y > rows - 2) gridPos.y = rows - 2;  // Bottom boundary (2 cells tall)
+    // Keep 3-cell wide/tall player shape within valid screen boundaries
+    if (gridPos.x < 0)         gridPos.x = 0;
+    if (gridPos.x > cols - 3)  gridPos.x = cols - 3;
+    if (gridPos.y < 0)         gridPos.y = 0;
+    if (gridPos.y > rows - 3)  gridPos.y = rows - 3;
 }
 
 void RocketShooterPlayer::updateVisual(float slideSpeed, float dt, float cellSize) {
+    if (isExploding) {
+        explosionTimer += dt;
+
+        // Step 1: Advance to frame 2 after initial timer milestone
+        if (explosionTimer >= 0.15f && explosionFrame == 1) {
+            explosionFrame = 2;
+            applyTexture(explodeTex2, true);
+        }
+
+        // Step 2: Mark animation finished when full duration elapses
+        if (explosionTimer >= 0.35f) {
+            explosionFinished = true;
+        }
+        return;
+    }
+
     sf::Vector2f target = { static_cast<float>(gridPos.x * cellSize), static_cast<float>(gridPos.y * cellSize) };
+
+    // Revert forward-thrust sprite back to normal when movement lerp completes
+    if (isMovingForward && std::abs(target.y - visualPos.y) < 1.0f) {
+        isMovingForward = false;
+        applyTexture(normalTex);
+    }
+
+    // Smooth movement interpolation
     visualPos.x += (target.x - visualPos.x) * slideSpeed * dt;
     visualPos.y += (target.y - visualPos.y) * slideSpeed * dt;
     shape.setPosition(visualPos);
@@ -148,28 +268,37 @@ void RocketShooterPlayer::updateVisual(float slideSpeed, float dt, float cellSiz
 // ==========================================
 // --- Game Engine Implementation ---
 // ==========================================
-RocketShooterGame::RocketShooterGame(sf::RenderWindow& win)
-    : window(win)
+RocketShooterGame::RocketShooterGame(sf::RenderWindow& win, corezone::FileManager& fileManager)
+    : window(win), gameData(fileManager, "ROCKETSHOOTER")
 {
-    std::srand(static_cast<unsigned>(std::time(nullptr))); // Seed RNG
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
     cols = static_cast<int>(window.getSize().x / CELL_SIZE);
     rows = static_cast<int>(window.getSize().y / CELL_SIZE);
 
+    // Load textures
     if (!playerTexture.loadFromFile("assets/rocket/RedRocket.png")) std::cerr << "Failed player asset\n";
-    if (!bulletTexture.loadFromFile("assets/rocket/bullet.png")) std::cerr << "Failed bullet asset\n";
+    if (!playerMoveTexture.loadFromFile("assets/rocket/move.png")) std::cerr << "Failed move asset\n";
+    if (!explode1Texture.loadFromFile("assets/rocket/explode1.png")) std::cerr << "Failed explode1 asset\n";
+    if (!explode2Texture.loadFromFile("assets/rocket/explode2.png")) std::cerr << "Failed explode2 asset\n";
+    if (!bulletTexture.loadFromFile("assets/rocket/bullet2.png")) std::cerr << "Failed bullet2 asset\n";
     if (!obstacleTexture.loadFromFile("assets/rocket/asteroid.png")) std::cerr << "Failed asteroid asset\n";
+    if (!bigObstacleTexture.loadFromFile("assets/rocket/bigasteroid.png")) std::cerr << "Failed big asteroid asset\n";
+    if (!obstacleBreakTexture.loadFromFile("assets/rocket/break1.png")) std::cerr << "Failed break1 asset\n";
+    if (!bigObstacleBreakTexture.loadFromFile("assets/rocket/break2.png")) std::cerr << "Failed break2 asset\n";
     if (!coinTexture.loadFromFile("assets/rocket/coinpic.png")) std::cerr << "Failed coin asset\n";
 
-    if (!coinSoundBuffer.loadFromFile("audios/rocket/coineffect.ogg")) {
-        std::cerr << "Failed to load audios/rocket/coineffect.ogg!\n";
+    // Load audio effects
+    if (!coinSoundBuffer.loadFromFile("audios/rocket/coineffect.wav")) {
+        std::cerr << "Failed to load coin sound!\n";
     }
     else {
         coinSound.emplace(coinSoundBuffer);
         coinSound->setVolume(50.f);
     }
 
-    player.init(cols, rows, CELL_SIZE, playerTexture);
+    player.init(cols, rows, CELL_SIZE, playerTexture, playerMoveTexture, explode1Texture, explode2Texture);
 
+    // Configure fallback rendering sizes
     RocketObstacle::shape.setSize({ static_cast<float>(2.0 * CELL_SIZE), static_cast<float>(2.0 * CELL_SIZE) });
     RocketObstacle::shape.setFillColor(sf::Color::Blue);
 
@@ -177,19 +306,21 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win)
     RocketBullet::shape.setFillColor(sf::Color::Yellow);
 
     RocketCoin::shape.setSize({ static_cast<float>(CELL_SIZE), static_cast<float>(CELL_SIZE) });
-    RocketCoin::shape.setFillColor(sf::Color(255, 215, 0)); // Gold fallback
+    RocketCoin::shape.setFillColor(sf::Color(255, 215, 0));
 
+    // Setup repeating space backdrop sprite
     if (!spaceTexture.loadFromFile("assets/rocket/starsrocket.png")) {
-        std::cerr << "Failed to load background texture!\n";
+        std::cerr << "Failed to load space texture!\n";
     }
     else {
         spaceTexture.setRepeated(true);
         spaceSprite.emplace(spaceTexture);
-        spaceSprite->setTextureRect(sf::IntRect({ 0, 0 }, { (int)window.getSize().x, (int)window.getSize().y }));
+        spaceSprite->setTextureRect(sf::IntRect({ 0, 0 }, static_cast<sf::Vector2i>(window.getSize())));
     }
 
-    if (!music.openFromFile("audios/rocket/spacemusic.ogg")) {
-        std::cerr << "Failed to load background music!\n";
+    // Setup background soundtrack
+    if (!music.openFromFile("audios/rocket/spacemusic.wav")) {
+        std::cerr << "Failed to load music!\n";
     }
     else {
         music.setLooping(true);
@@ -197,31 +328,21 @@ RocketShooterGame::RocketShooterGame(sf::RenderWindow& win)
         music.play();
     }
 
-    const char* fontCandidates[] = { // Multi-platform font paths targeting regular.ttf variants exclusively
-        "D:\\projects\\PixelPulse\\fonts\\regular.ttf",
-        "assets/fonts/regular.ttf"
-    };
-
-    for (const char* path : fontCandidates) {
-        if (font.openFromFile(path)) {
-            fontLoaded = true;
-            break;
-        }
-    }
-
-    if (fontLoaded) {
+    if (font.openFromFile("fonts/regular.ttf")) {
+        fontLoaded = true;
         setupGameOverText();
+        setupNewHighScoreText();
     }
 
     gameOverFallbackBar.setSize({ 400.f, 60.f });
-    gameOverFallbackBar.setOrigin({ 200.f, 30.f }); // Center origin
+    gameOverFallbackBar.setOrigin({ 200.f, 30.f });
     gameOverFallbackBar.setPosition({ window.getSize().x / 2.f, window.getSize().y / 2.f - 50.f });
 
     restartFallbackBar.setSize({ 400.f, 40.f });
-    restartFallbackBar.setOrigin({ 200.f, 20.f }); // Center origin
+    restartFallbackBar.setOrigin({ 200.f, 20.f });
     restartFallbackBar.setPosition({ window.getSize().x / 2.f, window.getSize().y / 2.f + 30.f });
 
-    loadHighScore(); // Restore persisted high score from disk, if any
+    highScore = std::make_unique<HighScore>(gameData);
 }
 
 void RocketShooterGame::setupGameOverText() {
@@ -239,164 +360,167 @@ void RocketShooterGame::setupGameOverText() {
     restartText->setPosition({ window.getSize().x / 2.f, window.getSize().y / 2.f + 30.f });
 }
 
-void RocketShooterGame::loadHighScore() {
-    std::ifstream in(HIGH_SCORE_FILE, std::ios::in | std::ios::binary);
-    if (!in.is_open()) {
-        highScore = 0; // No save file yet - start fresh
-        return;
-    }
-
-    int savedScore = 0;
-    if (in >> savedScore && savedScore >= 0) {
-        highScore = savedScore;
-    }
-    else {
-        highScore = 0; // Corrupt or unreadable file - fall back safely
-    }
-}
-
-void RocketShooterGame::saveHighScore() {
-    std::ofstream out(HIGH_SCORE_FILE, std::ios::out | std::ios::trunc | std::ios::binary);
-    if (!out.is_open()) {
-        std::cerr << "Failed to write " << HIGH_SCORE_FILE << "!\n";
-        return;
-    }
-    out << highScore;
+void RocketShooterGame::setupNewHighScoreText() {
+    newHighScoreText.emplace(font, "NEW HIGH SCORE!", 40u);
+    newHighScoreText->setFillColor(sf::Color::Yellow);
+    newHighScoreText->setStyle(sf::Text::Bold);
+    sf::FloatRect bounds = newHighScoreText->getLocalBounds();
+    newHighScoreText->setOrigin({ bounds.size.x / 2.f, bounds.size.y / 2.f });
+    newHighScoreText->setPosition({ window.getSize().x / 2.f, 90.f });
 }
 
 void RocketShooterGame::restartGame() {
-    player.init(cols, rows, CELL_SIZE, playerTexture);
-    bullets.clear();      // Wipe entities
-    obstacles.clear();    // Wipe entities
-    fallingCoins.clear(); // Wipe entities
+    player.init(cols, rows, CELL_SIZE, playerTexture, playerMoveTexture, explode1Texture, explode2Texture);
+    bullets.clear();
+    obstacles.clear();
+    fallingCoins.clear();
     obstaclesSpawnedCount = 0;
+    asteroidCounter = 0;
     gameOver = false;
     isPaused = false;
     lives = 3;
     score = 0;
     coins = 0;
 
+    obstacleTickInterval = GAME_TICK_INTERVAL;
+    scoreMilestone = 0;
+
+    showNewHighScoreBanner = false;
+    newHighScoreBannerTimer = 0.0f;
+
     obstacleSpawnClock.restart();
     gameTickClock.restart();
+    obstacleTickClock.restart();
     deltaClock.restart();
+    highScoreSyncClock.restart();
 
-    if (music.getStatus() != sf::Music::Status::Playing)
-        music.play();
+    if (music.getStatus() != sf::Music::Status::Playing) music.play();
 }
 
 bool RocketShooterGame::playerCollidesWithObstacle(const RocketObstacle& obs) const {
-    // Both the player and the obstacle now occupy a 2x2 footprint of grid
-    // cells (asteroid sprite is 2 * CELL_SIZE). A single-cell equality
-    // check missed most real overlaps, so this does a proper axis-aligned
-    // bounding box (AABB) test between the two 2x2 footprints. Using <= / >=
-    // means even edges just touching count as a collision.
+    // Player grid box bounds (3x3 grid size)
     int playerMinX = player.gridPos.x;
-    int playerMaxX = player.gridPos.x + 1;
+    int playerMaxX = player.gridPos.x + 2;
     int playerMinY = player.gridPos.y;
-    int playerMaxY = player.gridPos.y + 1;
+    int playerMaxY = player.gridPos.y + 2;
 
+    // Obstacle grid box bounds
     int obsMinX = obs.data.gridPos.x;
-    int obsMaxX = obs.data.gridPos.x + 1;
+    int obsMaxX = obs.data.gridPos.x + (obs.sizeInCells - 1);
     int obsMinY = obs.data.gridPos.y;
-    int obsMaxY = obs.data.gridPos.y + 1;
+    int obsMaxY = obs.data.gridPos.y + (obs.sizeInCells - 1);
 
-    return playerMinX <= obsMaxX && playerMaxX >= obsMinX &&
-        playerMinY <= obsMaxY && playerMaxY >= obsMinY;
+    // Axis-Aligned Bounding Box (AABB) intersection formula
+    return playerMinX <= obsMaxX && playerMaxX >= obsMinX && playerMinY <= obsMaxY && playerMaxY >= obsMinY;
+}
+
+bool RocketShooterGame::playerCollidesWithCoin(const RocketCoin& coin) const {
+    int playerMinX = player.gridPos.x;
+    int playerMaxX = player.gridPos.x + 2;
+    int playerMinY = player.gridPos.y;
+    int playerMaxY = player.gridPos.y + 2;
+
+    return coin.data.gridPos.x >= playerMinX && coin.data.gridPos.x <= playerMaxX &&
+        coin.data.gridPos.y >= playerMinY && coin.data.gridPos.y <= playerMaxY;
 }
 
 bool RocketShooterGame::bulletCollidesWithObstacle(const RocketBullet& b, const RocketObstacle& obs) const {
-    // The obstacle occupies a 2x2 footprint of grid cells (asteroid sprite
-    // is 2 * CELL_SIZE), so a bullet should register a hit if its cell
-    // falls anywhere within that footprint, not just an exact match with
-    // the obstacle's single reference cell.
     int obsMinX = obs.data.gridPos.x;
-    int obsMaxX = obs.data.gridPos.x + 1;
+    int obsMaxX = obs.data.gridPos.x + (obs.sizeInCells - 1);
     int obsMinY = obs.data.gridPos.y;
-    int obsMaxY = obs.data.gridPos.y + 1;
+    int obsMaxY = obs.data.gridPos.y + (obs.sizeInCells - 1);
 
     return b.data.gridPos.x >= obsMinX && b.data.gridPos.x <= obsMaxX &&
         b.data.gridPos.y >= obsMinY && b.data.gridPos.y <= obsMaxY;
 }
 
-bool RocketShooterGame::bulletCollidesWithCoin(const RocketBullet& b, const RocketCoin& coin) const {
-    return b.data.gridPos.x == coin.data.gridPos.x && b.data.gridPos.y == coin.data.gridPos.y; // Perfect cell match
+void RocketShooterGame::updateDifficulty() {
+    // Determine milestone step boundaries
+    int newMilestone = (score / SCORE_MILESTONE_STEP) * SCORE_MILESTONE_STEP;
+    if (newMilestone > scoreMilestone) {
+        scoreMilestone = newMilestone;
+        // Shrink tick delay timer to increase obstacle drop speed
+        obstacleTickInterval = std::max(MIN_OBSTACLE_TICK_INTERVAL, obstacleTickInterval * OBSTACLE_SPEED_MULTIPLIER);
+    }
 }
 
 void RocketShooterGame::checkCollisions() {
+    if (player.isExploding) return;
+
     std::vector<bool> obstacleHit(obstacles.size(), false);
     std::vector<bool> bulletHit(bullets.size(), false);
 
-    for (size_t bi = 0; bi < bullets.size(); bi++) { // Matrix flag evaluation
+    // Evaluate Bullet vs Obstacle hits (skip obstacles already mid-explosion)
+    for (size_t bi = 0; bi < bullets.size(); bi++) {
         for (size_t oi = 0; oi < obstacles.size(); oi++) {
-            if (!obstacleHit[oi] && bulletCollidesWithObstacle(bullets[bi], obstacles[oi])) {
+            if (!obstacleHit[oi] && !obstacles[oi].isExploding && bulletCollidesWithObstacle(bullets[bi], obstacles[oi])) {
                 obstacleHit[oi] = true;
                 bulletHit[bi] = true;
             }
         }
     }
 
-    for (int i = static_cast<int>(bullets.size()) - 1; i >= 0; i--) { // Reverse cleanup loop
+    // Prune spent bullets
+    for (int i = static_cast<int>(bullets.size()) - 1; i >= 0; i--) {
         if (bulletHit[i]) bullets.erase(bullets.begin() + i);
     }
 
-    for (int i = static_cast<int>(obstacles.size()) - 1; i >= 0; i--) { // Reverse cleanup loop
+    // Award score and trigger the break animation on hit obstacles.
+    // Removal from the vector is deferred until the explosion animation finishes
+    // (see updateGridLogic), so the break sprite has time to actually render.
+    for (size_t i = 0; i < obstacles.size(); i++) {
         if (obstacleHit[i]) {
-            obstacles.erase(obstacles.begin() + i);
-            score++;
-            if (score > highScore) {
-                highScore = score;
-                saveHighScore(); // Persist new high score immediately
+            score += obstacles[i].scoreValue;
+
+            // High score check & save execution
+            if (highScore->isNewHighScore(score)) {
+                showNewHighScoreBanner = true;
+                newHighScoreBannerTimer = 0.0f;
             }
+            highScore->set(score);
+            updateDifficulty();
+
+            // break1.png for normal asteroids, break2.png for big asteroids
+            const sf::Texture& breakTex = obstacles[i].isBig ? bigObstacleBreakTexture : obstacleBreakTexture;
+            obstacles[i].triggerExplosion(breakTex, CELL_SIZE);
         }
     }
 
-    bool playerHit = false;
+    // Evaluate Player vs Obstacle crash (an exploding wreck can no longer crash the player)
     for (const auto& obs : obstacles) {
-        if (playerCollidesWithObstacle(obs)) {
-            playerHit = true;
+        if (!obs.isExploding && playerCollidesWithObstacle(obs)) {
+            player.triggerExplosion();
             break;
-        }
-    }
-
-    if (playerHit) {
-        lives--;
-        obstacles.clear();
-        bullets.clear();
-        if (lives <= 0) {
-            gameOver = true;
-            music.stop();
-        }
-        else {
-            player.init(cols, rows, CELL_SIZE, playerTexture); // Respawn player
         }
     }
 }
 
 void RocketShooterGame::checkCoinPickups() {
-    std::vector<bool> coinHit(fallingCoins.size(), false);
-    std::vector<bool> bulletHit(bullets.size(), false);
-
-    for (size_t bi = 0; bi < bullets.size(); bi++) {
-        for (size_t ci = 0; ci < fallingCoins.size(); ci++) {
-            if (!coinHit[ci] && bulletCollidesWithCoin(bullets[bi], fallingCoins[ci])) {
-                coinHit[ci] = true;
-                bulletHit[bi] = true;
-            }
-        }
-    }
-
-    for (int i = static_cast<int>(bullets.size()) - 1; i >= 0; i--) {
-        if (bulletHit[i]) bullets.erase(bullets.begin() + i);
-    }
+    if (player.isExploding) return;
 
     for (int i = static_cast<int>(fallingCoins.size()) - 1; i >= 0; i--) {
-        if (coinHit[i]) {
+        if (playerCollidesWithCoin(fallingCoins[i])) {
             fallingCoins.erase(fallingCoins.begin() + i);
             coins++;
             if (coinSound.has_value()) {
                 coinSound->play();
             }
         }
+    }
+}
+
+void RocketShooterGame::handlePlayerHit() {
+    lives--;
+    obstacles.clear();
+    bullets.clear();
+
+    if (lives <= 0) {
+        gameOver = true;
+        music.stop();
+    }
+    else {
+        // Respawn player
+        player.init(cols, rows, CELL_SIZE, playerTexture, playerMoveTexture, explode1Texture, explode2Texture);
     }
 }
 
@@ -422,123 +546,171 @@ void RocketShooterGame::handleEvents() {
                 continue;
             }
 
-            if (isPaused) continue;
+            if (isPaused || player.isExploding) continue;
 
             player.handleInput(keyPressed->code);
             player.clampPosition(cols, rows);
 
+            // Fire projectile on spacebar hit
             if (keyPressed->code == sf::Keyboard::Key::Space) {
-                float playerWidth = 2.0f * CELL_SIZE;
+                float playerWidth = 3.25f * CELL_SIZE;
                 float bulletWidth = 0.2f * CELL_SIZE;
 
                 sf::Vector2f centeredVisualPos = player.visualPos;
                 centeredVisualPos.x += (playerWidth / 2.0f) - (bulletWidth / 2.0f);
 
-                bullets.push_back(RocketBullet(player.gridPos, centeredVisualPos, bulletTexture));
+                sf::Vector2i bulletGridPos = player.gridPos;
+                bulletGridPos.x += 1;
+
+                bullets.push_back(RocketBullet(bulletGridPos, centeredVisualPos, bulletTexture));
             }
         }
     }
 }
 
 void RocketShooterGame::spawnObstacles() {
+    if (player.isExploding) return;
+
     if (obstacleSpawnClock.getElapsedTime().asSeconds() >= SPAWN_INTERVAL) {
         obstacleSpawnClock.restart();
         obstaclesSpawnedCount++;
 
+        // Spawn coin after designated count of obstacles, otherwise spawn asteroids
         if (obstaclesSpawnedCount >= OBSTACLES_PER_COIN) {
             obstaclesSpawnedCount = 0;
             int spawnCol = std::rand() % cols;
             fallingCoins.push_back(RocketCoin({ spawnCol, 0 }, CELL_SIZE, coinTexture));
         }
         else {
-            obstacles.push_back(RocketObstacle(cols, CELL_SIZE, obstacleTexture));
+            asteroidCounter++;
+            bool spawnBig = (asteroidCounter % 9 == 4 || asteroidCounter % 9 == 8);
+            const sf::Texture& texToUse = spawnBig ? bigObstacleTexture : obstacleTexture;
+            obstacles.push_back(RocketObstacle(cols, CELL_SIZE, texToUse, spawnBig));
         }
     }
 }
 
 void RocketShooterGame::updateGridLogic() {
+    // Tick bullets and coins at regular speed interval
     if (gameTickClock.getElapsedTime().asSeconds() >= GAME_TICK_INTERVAL) {
-        for (auto& obs : obstacles)   obs.moveDown();
-        for (auto& bullet : bullets)  bullet.moveUp();
-        for (auto& coin : fallingCoins) coin.moveDown();
+        if (!player.isExploding) {
+            for (auto& bullet : bullets)  bullet.moveUp();
+            for (auto& coin : fallingCoins) coin.moveDown();
 
-        obstacles.erase( // Erase out-of-bounds obstacles
-            std::remove_if(obstacles.begin(), obstacles.end(), [&](const RocketObstacle& o) { return o.data.gridPos.y >= rows; }),
-            obstacles.end()
-        );
+            // Erase offscreen entities
+            bullets.erase(
+                std::remove_if(bullets.begin(), bullets.end(), [&](const RocketBullet& b) { return b.data.gridPos.y < 0; }),
+                bullets.end()
+            );
 
-        bullets.erase( // Erase out-of-bounds bullets
-            std::remove_if(bullets.begin(), bullets.end(), [&](const RocketBullet& b) { return b.data.gridPos.y < 0; }),
-            bullets.end()
-        );
+            fallingCoins.erase(
+                std::remove_if(fallingCoins.begin(), fallingCoins.end(), [&](const RocketCoin& c) { return c.data.gridPos.y >= rows; }),
+                fallingCoins.end()
+            );
 
-        fallingCoins.erase( // Erase out-of-bounds coins
-            std::remove_if(fallingCoins.begin(), fallingCoins.end(), [&](const RocketCoin& c) { return c.data.gridPos.y >= rows; }),
-            fallingCoins.end()
-        );
-
-        checkCoinPickups();
-        checkCollisions();
+            checkCoinPickups();
+        }
         gameTickClock.restart();
+    }
+
+    // Tick obstacles at variable (dynamically scaling) tick rate
+    if (obstacleTickClock.getElapsedTime().asSeconds() >= obstacleTickInterval) {
+        if (!player.isExploding) {
+            for (auto& obs : obstacles) obs.moveDown();
+
+            // Remove obstacles that either drifted offscreen or finished their break animation
+            obstacles.erase(
+                std::remove_if(obstacles.begin(), obstacles.end(), [&](const RocketObstacle& o) {
+                    return o.data.gridPos.y >= rows || o.explosionFinished;
+                    }),
+                obstacles.end()
+            );
+
+            checkCollisions();
+        }
+        obstacleTickClock.restart();
     }
 }
 
 void RocketShooterGame::interpolateVisuals(float dt) {
+    if (showNewHighScoreBanner) {
+        newHighScoreBannerTimer += dt;
+        if (newHighScoreBannerTimer >= NEW_HIGH_SCORE_DISPLAY_DURATION) {
+            showNewHighScoreBanner = false;
+        }
+    }
+
     player.updateVisual(SLIDE_SPEED, dt, CELL_SIZE);
+
+    if (player.isExploding && player.explosionFinished) {
+        handlePlayerHit();
+    }
+
     for (auto& obs : obstacles)  obs.updateVisual(SLIDE_SPEED, dt, CELL_SIZE);
     for (auto& bullet : bullets) bullet.updateVisual(SLIDE_SPEED, dt, CELL_SIZE);
     for (auto& coin : fallingCoins) coin.updateVisual(SLIDE_SPEED, dt, CELL_SIZE);
+
+    // Remove obstacles whose break animation completed this frame, in case updateGridLogic's
+    // tick-gated erase hasn't fired yet this frame (keeps removal snappy at the visual layer too).
+    obstacles.erase(
+        std::remove_if(obstacles.begin(), obstacles.end(), [&](const RocketObstacle& o) {
+            return o.explosionFinished;
+            }),
+        obstacles.end()
+    );
 }
 
 void RocketShooterGame::render() {
     window.clear(sf::Color(10, 10, 10));
 
+    // Draw background
     if (spaceSprite.has_value()) window.draw(*spaceSprite);
 
+    // Draw player or fallback rectangle
     if (player.playerSprite.has_value()) window.draw(*player.playerSprite);
     else window.draw(player.shape);
 
+    // Draw obstacles (exploding obstacles render their break1/break2 sprite via obstacleSprite)
     for (const auto& obs : obstacles) {
         if (obs.obstacleSprite.has_value()) window.draw(*obs.obstacleSprite);
-        else {
-            RocketObstacle::shape.setPosition(obs.data.visualPos);
-            window.draw(RocketObstacle::shape);
-        }
+        else window.draw(RocketObstacle::shape);
     }
 
+    // Draw coins
     for (const auto& coin : fallingCoins) {
         if (coin.coinSprite.has_value()) window.draw(*coin.coinSprite);
-        else {
-            RocketCoin::shape.setPosition(coin.data.visualPos);
-            window.draw(RocketCoin::shape);
-        }
+        else window.draw(RocketCoin::shape);
     }
 
+    // Draw bullets
     for (const auto& bullet : bullets) {
         if (bullet.bulletSprite.has_value()) window.draw(*bullet.bulletSprite);
-        else {
-            RocketBullet::shape.setPosition(bullet.data.visualPos);
-            window.draw(RocketBullet::shape);
-        }
+        else window.draw(RocketBullet::shape);
     }
 
-    if (fontLoaded) { // Only rendering live parameters HUD layout if regular.ttf validated
-        sf::Text hudText(font, "", 34u);
+    // Render HUD overlay
+    if (fontLoaded) {
+        sf::Text hudText(font, "", 24u);
         hudText.setFillColor(sf::Color::White);
         hudText.setPosition({ 15.f, 15.f });
-        hudText.setString("Score: " + std::to_string(score) + "    High Score: " + std::to_string(highScore) + "    Coins: " + std::to_string(coins) + "    Lives: " + std::to_string(lives) + (isPaused ? "    [PAUSED]" : ""));
+        hudText.setString("Score: " + std::to_string(score) + "    High Score: " + std::to_string(highScore->get()) + "    Coins: " + std::to_string(coins) + "    Lives: " + std::to_string(lives) + (isPaused ? "    [PAUSED]" : ""));
         window.draw(hudText);
-    };
+    }
 
+    if (showNewHighScoreBanner && fontLoaded && newHighScoreText && !gameOver) {
+        window.draw(*newHighScoreText);
+    }
+
+    // Render game over overlay screen
     if (gameOver) {
         sf::RectangleShape overlay(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
-        overlay.setFillColor(sf::Color(0, 0, 0, 160)); // Translucent backdrop matrix
+        overlay.setFillColor(sf::Color(0, 0, 0, 160));
         window.draw(overlay);
 
-        if (fontLoaded && gameOverText) { // Enforces local regular.ttf execution over text rendering
+        if (fontLoaded && gameOverText) {
             window.draw(*gameOverText);
 
-            sf::Text finalScoreText(font, "Final Score: " + std::to_string(score) + "  (High Score: " + std::to_string(highScore) + " | Coins: " + std::to_string(coins) + ")", 24u);
+            sf::Text finalScoreText(font, "Final Score: " + std::to_string(score) + "  (High Score: " + std::to_string(highScore->get()) + " | Coins: " + std::to_string(coins) + ")", 24u);
             finalScoreText.setFillColor(sf::Color::White);
             sf::FloatRect sBounds = finalScoreText.getLocalBounds();
             finalScoreText.setOrigin({ sBounds.size.x / 2.f, sBounds.size.y / 2.f });
@@ -547,7 +719,7 @@ void RocketShooterGame::render() {
         }
         else window.draw(gameOverFallbackBar);
 
-        if (fontLoaded && restartText) window.draw(*restartText); // Enforces absolute path match condition
+        if (fontLoaded && restartText) window.draw(*restartText);
         else window.draw(restartFallbackBar);
     }
 
@@ -556,7 +728,7 @@ void RocketShooterGame::render() {
 
 void RocketShooterGame::run() {
     while (window.isOpen() && !exitToMenu) {
-        float dt = deltaClock.restart().asSeconds(); // Calculate frame delta execution speed
+        float dt = deltaClock.restart().asSeconds();
         handleEvents();
 
         if (!gameOver && !isPaused) {
@@ -568,7 +740,7 @@ void RocketShooterGame::run() {
     }
 }
 
-void runRocketShooter(sf::RenderWindow& window) {
-    RocketShooterGame game(window);
+void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& fileManager) {
+    RocketShooterGame game(window, fileManager);
     game.run();
 }

@@ -1,5 +1,5 @@
-#include "pacman/Map.h"
-#include "pacman/MapGenerate.h"
+#include "pacman/map.h"
+#include "pacman/mapgenerate.h"
 
 #include <iostream>
 

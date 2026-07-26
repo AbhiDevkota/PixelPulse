@@ -1,5 +1,5 @@
 #pragma once
 #include <SFML/Graphics.hpp>
-#include "Files.h"
+#include "files.h"
 
 void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager);

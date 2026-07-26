@@ -3,7 +3,8 @@
 #include "flappy/bird.h"
 #include "flappy/pipepair.h"
 #include "flappy/gameaudio.h"
-#include "Files.h"
+#include "files.h"
+#include "common/highscore.h"
 #include <cstdlib>
 #include <ctime>
 
@@ -30,8 +31,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
 
     // Score values
     int score = 0;
-    int highScore = 0;
-    gameData.getHighScore(highScore);   // load saved high score on start
+    HighScore highScoreObj(gameData);   // load saved high score on start
     float bannerTimer = 0.f;            // counts down while "New High Score!" is shown
     bool newRecordSet = false;         // true only for the point that first breaks the old record
 
@@ -51,7 +51,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
     highScoreText.setCharacterSize(28);
     highScoreText.setFillColor(sf::Color::White);
     highScoreText.setPosition({ 20.f, 60.f });
-    highScoreText.setString("High Score: " + std::to_string(highScore));
+    highScoreText.setString("High Score: " + std::to_string(highScoreObj.get()));
 
     sf::Text gameOverText(font);
     gameOverText.setCharacterSize(42);
@@ -117,14 +117,13 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
             score += pipes.getScorePoint(bird.getBounds().position.x);
 
             // update and save high score immediately when beaten
-            if (score > highScore) {
+            if (highScoreObj.isNewHighScore(score)) {
                 if (!newRecordSet) {
                     bannerTimer = 1.f;
                     newRecordSet = true;
                     audio.playHighScore();
                 }
-                highScore = score;
-                gameData.saveHighScore(highScore);
+                highScoreObj.set(score);
             }
             bannerTimer -= dt;
 
@@ -146,7 +145,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
                 highScoreText.setCharacterSize(28);
                 highScoreText.setFillColor(sf::Color::White);
                 highScoreText.setOutlineThickness(0.f);
-                highScoreText.setString("High Score: " + std::to_string(highScore));
+    highScoreText.setString("High Score: " + std::to_string(highScoreObj.get()));
                 highScoreText.setPosition({ 20.f, 60.f });
             }
 
@@ -173,7 +172,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
         if (gameOver) {
             gameOverText.setString(
                 "\tGame Over!\n \nScore: " + std::to_string(score) +
-                "\nHigh Score: " + std::to_string(highScore) +
+                "\nHigh Score: " + std::to_string(highScoreObj.get()) +
                 "\n\nPress R to Restart"
             );
 

@@ -1,3 +1,0 @@
-#include <windows.h>
-
-IDI_ICON1 ICON "Icons/icon_concept1.ico"
