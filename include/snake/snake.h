@@ -21,7 +21,7 @@ public:
     bool checkFoodCollision() const;
 
     // Food
-    void respawnFood();
+    bool respawnFood();
     sf::Vector2i getFoodPosition() const;
 
     //direction getter 
@@ -29,6 +29,7 @@ public:
 
     // Restart
     void reset(sf::Vector2i startPos, sf::Vector2i startDir);
+    void respawn(sf::Vector2i pos, sf::Vector2i dir);
     const std::deque<sf::Vector2i>& getBody() const;
     sf::Vector2i getHead() const;
 
