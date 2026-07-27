@@ -22,6 +22,16 @@ void Snake::reset(sf::Vector2i startPos, sf::Vector2i startDir) {
         body.push_back({ startPos.x - startDir.x * i, startPos.y - startDir.y * i });
 }
 
+void Snake::respawn(sf::Vector2i pos, sf::Vector2i dir) {
+    size_t len = body.size();
+    body.clear();
+    direction = dir;
+    nextDirection = dir;
+    growPending = false;
+    for (size_t i = 0; i < len; ++i)
+        body.push_back({ pos.x - dir.x * (int)i, pos.y - dir.y * (int)i });
+}
+
 void Snake::setDirection(sf::Vector2i dir) {
     if (dir.x == -direction.x && dir.y == -direction.y)
         return;
@@ -59,8 +69,30 @@ bool Snake::checkFoodCollision() const {
     return body.front() == foodPos;
 }
 
-void Snake::respawnFood() {
-    foodPos = { std::rand() % cols, std::rand() % rows };
+bool Snake::respawnFood() {
+    for (int attempts = 0; attempts < 100; ++attempts) {
+        sf::Vector2i candidate{ std::rand() % cols, std::rand() % rows };
+        bool occupied = false;
+        for (auto& seg : body)
+            if (seg == candidate) { occupied = true; break; }
+        if (!occupied) {
+            foodPos = candidate;
+            return true;
+        }
+    }
+    // fallback: linear scan — if nothing free, grid is full
+    for (int y = 0; y < rows; ++y)
+        for (int x = 0; x < cols; ++x) {
+            sf::Vector2i candidate{ x, y };
+            bool occupied = false;
+            for (auto& seg : body)
+                if (seg == candidate) { occupied = true; break; }
+            if (!occupied) {
+                foodPos = candidate;
+                return true;
+            }
+        }
+    return false;
 }
 
 sf::Vector2i Snake::getFoodPosition() const { return foodPos; }
@@ -93,6 +125,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
 
     bool isPaused = false;
     bool gameOver = false;
+    bool won = false;
     const int CELL_SIZE = 32;
     auto winSize = window.getSize();
     const int TARGET = static_cast<int>(std::min(winSize.x, winSize.y) * 0.78f);
@@ -104,6 +137,7 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
     const int OFFSETY = (winSize.y - PLAY_HEIGHT) / 2;
 
     int score = 0;
+    int level = 0;
 
     SnakeLayout layout;
     layout.cellSize = CELL_SIZE;
@@ -144,7 +178,10 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
                     snake.reset({ 5, 5 }, { 1, 0 });
                     lives = 3;
                     score = 0;
+                    level = 0;
+                    moveInterval = 0.2f;
                     gameOver = false;
+                    won = false;
                     snake.respawnFood();
                 }
                 if (key == sf::Keyboard::Key::Space || key == sf::Keyboard::Key::P)
@@ -171,18 +208,23 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
                     gameOver = true;
                 }
                 else {
-                    snake.reset({ 5, 5 }, { 1, 0 });
+                    snake.respawn({ COLS / 2, ROWS / 2 }, { 1, 0 });
                     clock.restart();
                 }
             }
 
             if (snake.checkFoodCollision()) {
-                snake.respawnFood();
+                if (!snake.respawnFood()) {
+                    won = true;
+                    gameOver = true;
+                }
                 assets.randomizeFoodTexture();
                 assets.getEatSound().play();
                 snake.grow();
                 score++;
                 highScoreObj.set(score);
+                level = std::min(score / 5, 4);
+                moveInterval = 0.2f * (1.0f - level * 0.15f);
             }
         }
 
@@ -197,7 +239,8 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
         if (gameOver) {
             scoreText.setCharacterSize(32);
             scoreText.setString(
-                "\tGame Over!  \n\nScore: " + std::to_string(score) +
+                (won ? "   You Win!   " : "\tGame Over!  ") +
+                std::string("\n\nScore: ") + std::to_string(score) +
                 "\nHigh Score: " + std::to_string(highScoreObj.get()) +
                 "\n\nPress R to Restart"
             
@@ -212,8 +255,8 @@ void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager) {
             continue;
         }
 
-        scoreText.setCharacterSize(24);
-        scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScoreObj.get()) + "  Lives:  " + std::to_string(lives));
+    scoreText.setCharacterSize(24);
+    scoreText.setString("Score: " + std::to_string(score) + "  High Score: " + std::to_string(highScoreObj.get()) + "  Lives:  " + std::to_string(lives));
         scoreText.setPosition({ (float)OFFSETX, (float)(OFFSETY - 2 * CELL_SIZE) });
         window.draw(scoreText);
         window.draw(assets.getFoodSprite());
