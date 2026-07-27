@@ -65,7 +65,7 @@ void PipePair::reset(sf::RenderWindow& window, float cellW, float cellH) {
 
     pipeX = cellW * 12.f;
     gapY = cellH * 8.f;
-    gapSize = cellH * 4.5f;
+    gapSize = cellH * 5.f;
     scored = false;  // <-- add this: game reset, allow scoring again
 
     applyPipeSize(window);
