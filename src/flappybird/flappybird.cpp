@@ -104,7 +104,7 @@ void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager)
 
         // freeze all game logic when game over
         if (!gameOver && !paused) {
-            bird.update(dt, window);
+            bird.update(dt, window, score);
 
             // end the game if the bird hits the top or bottom of the screen
             if (bird.sprite.getPosition().y <= 0.f ||

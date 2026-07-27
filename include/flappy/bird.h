@@ -25,7 +25,7 @@ public:
     Bird(sf::RenderWindow& window, float cellW, float cellH);
 
     void flap();
-    void update(float dt, sf::RenderWindow& window);
+    void update(float dt, sf::RenderWindow& window, int score);
     void reset(float cellW, float cellH);
     void draw(sf::RenderWindow& window);
 

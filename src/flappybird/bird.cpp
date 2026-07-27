@@ -58,9 +58,12 @@ void Bird::applyAngleTexture() {
     }
 }
 
-void Bird::update(float dt, sf::RenderWindow& window) {
-    // apply gravity, then move the bird
-    vy += gravity * dt;
+void Bird::update(float dt, sf::RenderWindow& window, int score) {
+    // apply gravity (scaled up as score increases), then move the bird
+    float extraGravity = std::min(400.f, score * 4.f);
+    float effectiveGravity = gravity + extraGravity;
+
+    vy += effectiveGravity * dt;
     sprite.move({ 0.f, vy * dt });
 
     // update which pose is showing based on the new speed
