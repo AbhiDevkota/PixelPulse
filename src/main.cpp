@@ -1,16 +1,21 @@
-#include "HomeScreen.h"
-#include "Files.h"
+#include "homescreen.h"
+#include "files.h"
+#include "pacman/pacman.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
+void RunDino(sf::RenderWindow& window, corezone::FileManager& filemanager);
+void runRocketShooter(sf::RenderWindow& window, corezone::FileManager& fileManager);
+void runFlappyBird(sf::RenderWindow& window, corezone::FileManager& filemanager);
+void runSnake(sf::RenderWindow& window, corezone::FileManager& filemanager);
 
 int main() {
-	corezone::FileManager fileManager;
-    if(!fileManager.initialize()){
+    corezone::FileManager fileManager;
+    if (!fileManager.initialize()) {
         std::cerr << "Failed to init file mgt stystem" << std::endl;
         return -1;
     }
-	std::cout << "File mgt system initialized successfully" << std::endl;
+    std::cout << "File mgt system initialized successfully" << std::endl;
 
     //sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     //sf::RenderWindow window(mode, "CORE ZONE", sf::State::Fullscreen);
@@ -36,7 +41,6 @@ int main() {
     std::string fontPath = corezone::AssetPath::getFontPath("regular.ttf");
     corezone::HomeScreen home(window, fontPath, &fileManager);
     home.initialize();
-
     sf::Clock clock;
 
     while (window.isOpen()) {
@@ -60,6 +64,57 @@ int main() {
 
         float dt = clock.restart().asSeconds();
         home.update(dt);
+        if (home.isGameReady()) {
+            std::string game = home.getSelectedGame();
+            home.resetGame();
+            if (game == "ROCKET SHOOTER") {
+                home.pauseMusic();
+                runRocketShooter(window, fileManager);
+                home.resumeMusic();
+                continue;
+            }// Skip rendering the home screen when a game is launched
+
+            if (game == "FLAPPY BIRD") {          //Merge Resolved by Abhi Devkota. 
+                home.pauseMusic();
+                runFlappyBird(window, fileManager);
+                home.resumeMusic();
+            }
+            if (game == "SNAKE") {
+                home.pauseMusic();
+                runSnake(window, fileManager);
+                home.resumeMusic();
+                continue;
+            }
+            if (game == "PAC MAN") {
+                home.pauseMusic();
+                runPacMan(window, fileManager);
+                home.resumeMusic();
+                continue;
+            }
+
+            if (game == "DINO RUN") {
+                home.pauseMusic();
+                RunDino(window, fileManager);
+                home.resumeMusic();
+                continue;
+            }
+        }
+        //Up to here
+
+
+        if (home.isGameReady()) {
+            std::string game = home.getSelectedGame();
+            home.resetGame();
+            if (game == "PAC MAN")
+            {
+                runPacMan(window, fileManager);
+                home.resumeMusic();
+                continue;
+            }
+
+            home.resetGame();
+        }
+        //Up to here
 
         window.clear();
         home.draw();
