@@ -1,0 +1,67 @@
+name: Build Game
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - "v*"
+
+  pull_request:
+    branches:
+      - master
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Ubuntu dependencies
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            xorg-dev \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libudev-dev \
+            libflac-dev \
+            libvorbis-dev \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            libfreetype6-dev \
+            libopenal-dev
+
+      # Configure CMake
+      - name: Configure
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      # Build
+      - name: Build
+        run: |
+          cmake --build build --config Release
+
+      # Upload everything from build folder
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-Build
+          path: build/
