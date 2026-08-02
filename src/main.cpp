@@ -78,6 +78,7 @@ int main() {
                 home.pauseMusic();
                 runFlappyBird(window, fileManager);
                 home.resumeMusic();
+                continue;
             }
             if (game == "SNAKE") {
                 home.pauseMusic();

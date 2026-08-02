@@ -40,8 +40,10 @@ PipePair::PipePair(sf::RenderWindow& window, float cellW, float cellH)
         reset(window, cellW, cellH);
 }
 
-void PipePair::update(float dt, sf::RenderWindow& window, float cellW, float cellH) {
-    pipeX -= cellW * 3.f * dt;
+void PipePair::update(float dt, sf::RenderWindow& window, float cellW, float cellH, int score) {
+    // pipe speed increases slowly with score, capped so it never gets impossible
+    float speedMultiplier = std::min(6.f, 3.f + score * 0.05f);
+    pipeX -= cellW * speedMultiplier * dt;
 
     pipeDown.setPosition({ pipeX, 0.f });
     pipeUp.setPosition({ pipeX, (float)window.getSize().y });
@@ -53,7 +55,7 @@ void PipePair::update(float dt, sf::RenderWindow& window, float cellW, float cel
         float maxGapY = cellH * 12.f;
         gapY = minGapY + (float)(std::rand() % (int)(maxGapY - minGapY));
 
-        scored = false;  // <-- add this: new pipe cycle, allow scoring again
+        scored = false;
         applyPipeSize(window);
     }
 }

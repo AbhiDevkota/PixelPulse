@@ -1,25 +1,24 @@
 #include "flappy/bird.h"
 
 Bird::Bird(sf::RenderWindow& window, float cellW, float cellH)
-    : sprite(spriteSheet)
+    : sprite(textureNeutral)
 {
-    // try to load the spritesheet image, stop here if it fails
-    loaded = spriteSheet.loadFromFile("assets/Flappy/jetman.png");
+    // load all three separate pose images
+    bool okUp = textureUp.loadFromFile("assets/flappy/jetman_1.png");
+    bool okNeutral = textureNeutral.loadFromFile("assets/flappy/jetman_2.png");
+    bool okDown = textureDown.loadFromFile("assets/flappy/jetman_3.png");
+
+    loaded = okUp && okNeutral && okDown;
     if (!loaded) return;
 
-    sprite.setTexture(spriteSheet, true);
-
-    // show the neutral pose (middle one, index 1) when the game starts
-    sprite.setTextureRect(sf::IntRect({ CELL_W * 1, 0 }, { CELL_W, CELL_H }));
+    // show the neutral pose when the game starts
+    sprite.setTexture(textureNeutral, true);
 
     // decide how big the bird should look on screen
-    targetWidth  = (float)window.getSize().x * 0.065f;
+    targetWidth = (float)window.getSize().x * 0.065f;
     targetHeight = (float)window.getSize().y * 0.13f;
 
-    // work out how much to shrink the big spritesheet cell down to that size
-    float scaleX = targetWidth  / (float)CELL_W;
-    float scaleY = targetHeight / (float)CELL_H;
-    sprite.setScale({ scaleX, scaleY });
+    applyScaleForCurrentTexture();
 
     // put the bird at its starting position
     sprite.setPosition({ cellW * 2.f, cellH * 8.f });
@@ -29,6 +28,16 @@ void Bird::flap() {
     vy = -600.f;   // give the bird an upward push
 }
 
+void Bird::applyScaleForCurrentTexture() {
+    // each of the 3 images has a different pixel size, so scale is
+    // recalculated every time the texture changes, keeping the bird
+    // the same on-screen size regardless of which pose is showing
+    sf::Vector2u texSize = sprite.getTexture().getSize();
+    float scaleX = targetWidth / (float)texSize.x;
+    float scaleY = targetHeight / (float)texSize.y;
+    sprite.setScale({ scaleX, scaleY });
+}
+
 void Bird::applyAngleTexture() {
     // figure out which pose SHOULD be showing based on how fast we're moving
     int newPose;
@@ -36,17 +45,25 @@ void Bird::applyAngleTexture() {
     else if (vy < 300.f)  newPose = 1;   // moving gently       -> "neutral" pose
     else                  newPose = 2;   // falling fast        -> "down" pose
 
-    // only switch the picture if the pose actually changed (avoids doing this every frame)
+    // only switch the picture if the pose actually changed
     if (newPose != currentPose) {
         currentPose = newPose;
-        // jump to the correct cell in the spritesheet (cell 0, 1, or 2)
-        sprite.setTextureRect(sf::IntRect({ CELL_W * currentPose, 0 }, { CELL_W, CELL_H }));
+
+        if (currentPose == 0)      sprite.setTexture(textureUp, true);
+        else if (currentPose == 1) sprite.setTexture(textureNeutral, true);
+        else                       sprite.setTexture(textureDown, true);
+
+        // texture just changed size -> recompute scale so it still looks the same size
+        applyScaleForCurrentTexture();
     }
 }
 
-void Bird::update(float dt, sf::RenderWindow& window) {
-    // apply gravity, then move the bird
-    vy += gravity * dt;
+void Bird::update(float dt, sf::RenderWindow& window, int score) {
+    // apply gravity (scaled up as score increases), then move the bird
+    float extraGravity = std::min(400.f, score * 4.f);
+    float effectiveGravity = gravity + extraGravity;
+
+    vy += effectiveGravity * dt;
     sprite.move({ 0.f, vy * dt });
 
     // update which pose is showing based on the new speed
@@ -71,7 +88,8 @@ void Bird::update(float dt, sf::RenderWindow& window) {
 void Bird::reset(float cellW, float cellH) {
     // put everything back to how it was at the start
     currentPose = 1;
-    sprite.setTextureRect(sf::IntRect({ CELL_W * 1, 0 }, { CELL_W, CELL_H }));
+    sprite.setTexture(textureNeutral, true);
+    applyScaleForCurrentTexture();
     sprite.setPosition({ cellW * 2.f, cellH * 8.f });
     vy = 0.f;
 }
@@ -89,19 +107,19 @@ sf::FloatRect Bird::getBounds() const {
     float offsetYRatio = (1.f - scaleH) / 2.f;
 
     if (currentPose == 0) {
-        // "up" pose: head near top, flame trails to bottom-left
-        offsetXRatio = 0.016f;  scaleW = 0.882f;
-        offsetYRatio = 0.02f;   scaleH = 0.45f;
+        // "up" pose: flame trails bottom-left, front is top-right (unchanged)
+        offsetXRatio = 0.480f;  scaleW = 0.340f;
+        offsetYRatio = 0.025f;  scaleH = 0.731f;
     }
     else if (currentPose == 1) {
-        // "neutral" pose: flame trails off LEFT edge, character on the RIGHT
-        offsetXRatio = 0.48f;   scaleW = 0.42f;
-        offsetYRatio = 0.087f;  scaleH = 0.826f;
+        // "neutral" pose: flame trails off the left, front is right (unchanged)
+        offsetXRatio = 0.230f;  scaleW = 0.590f;
+        offsetYRatio = 0.02f;   scaleH = 0.85f;
     }
     else if (currentPose == 2) {
-        // "down" pose
-        offsetXRatio = 0.080f;  scaleW = 0.849f;
-        offsetYRatio = 0.0f;    scaleH = 0.957f;
+        // "down" pose: flame/torch top-left, front is bottom-right (unchanged)
+        offsetXRatio = 0.260f;  scaleW = 0.560f;
+        offsetYRatio = 0.317f;  scaleH = 0.480f;
     }
 
     float newW = full.size.x * scaleW;
