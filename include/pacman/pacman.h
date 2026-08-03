@@ -132,6 +132,8 @@ private:
 	sf::Music bgMusic_;
 	sf::SoundBuffer foodBuf_, powerBuf_, ghostBuf_, hurtBuf_, gameOverBuf_;
 	std::unique_ptr<sf::Sound> foodSnd_, powerSnd_, ghostSnd_, hurtSnd_, gameOverSnd_;
+	sf::SoundBuffer fruitBuf_;
+	std::unique_ptr<sf::Sound> fruitSnd_;
 };
 
 void runPacMan(sf::RenderWindow& window, corezone::FileManager& fileManager);

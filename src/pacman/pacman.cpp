@@ -113,6 +113,7 @@ bool Pacman::loadAudio() {
 	loadSnd(ghostBuf_, ghostSnd_, "audios/pacman/ghost_chomp.wav", 65.f);
 	loadSnd(hurtBuf_, hurtSnd_, "audios/pacman/hurt.wav", 65.f);
 	loadSnd(gameOverBuf_, gameOverSnd_, "audios/pacman/game_over.wav", 65.f);
+	loadSnd(fruitBuf_, fruitSnd_, corezone::AssetPath::getAudioPath("snake/food_crunch.wav"), 65.f);
 	return true;
 }
 
@@ -351,6 +352,7 @@ void Pacman::movePac(float dist) {
 			score_ += 20;
 			fruitActive_ = false;
 			fruitPos_ = { -1.f, -1.f };
+			if (fruitSnd_) fruitSnd_->play();
 			for (auto& g : ghosts_)
 				g.setFrightened(4.f);
 		}
@@ -967,12 +969,15 @@ void Pacman::startNewGame() {
 }
 
 void Pacman::startContinue() {
+	// Re-read the save file so a mid-session quit (Escape saves a newer state)
+	// is picked up instead of stale values cached at run() start.
+	loadContinueData();
 	if (!hasContinue_) return;
 	map_.loadGenerated(continueSeed_);
-	score_ = continueScore_;
-	lives_ = continueLives_;
-	level_ = continueLevel_;
 	seed_ = continueSeed_;
+	score_ = 0;
+	lives_ = 1;
+	level_ = 1;
 	state_ = State::Playing;
 	reset();
 	inMenu_ = false;
@@ -1037,6 +1042,7 @@ void Pacman::updateSoundVolumes() {
 	if (ghostSnd_) ghostSnd_->setVolume(effectVol_);
 	if (hurtSnd_) hurtSnd_->setVolume(effectVol_);
 	if (gameOverSnd_) gameOverSnd_->setVolume(effectVol_);
+	if (fruitSnd_) fruitSnd_->setVolume(effectVol_);
 }
 
 void Pacman::spawnFruit() {
