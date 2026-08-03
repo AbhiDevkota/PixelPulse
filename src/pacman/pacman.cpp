@@ -249,6 +249,10 @@ void Pacman::processGameEvents(bool&) {
 // buffered-turn behaviour), and movePac() only commits it when a tile opens up.
 void Pacman::pollDirection() {
 	using K = sf::Keyboard::Key;
+	// While Pac-Man is travelling through the tunnel (outside the map
+	// horizontally) ignore all movement input; he keeps going until he
+	// emerges on the other side.
+	if (pacPos_.x < 0.f || pacPos_.x >= float(Map::COLS)) return;
 	if (sf::Keyboard::isKeyPressed(K::Up) || sf::Keyboard::isKeyPressed(K::W))
 		pacWant_ = Direction::UP;
 	else if (sf::Keyboard::isKeyPressed(K::Down) || sf::Keyboard::isKeyPressed(K::S))
@@ -318,12 +322,17 @@ void Pacman::movePac(float dist) {
 		pacPos_ = { std::round(pacPos_.x), std::round(pacPos_.y) };
 		int c = int(pacPos_.x), r = int(pacPos_.y);
 
-		if (pacWant_ != Direction::NONE) {
-			sf::Vector2i wd = dirDelta(pacWant_);
-			if (!map_.isWall(c + wd.x, r + wd.y)) pacDir_ = pacWant_;
+		// While inside the tunnel (outside the map horizontally) every column
+		// reads as open, so direction input is ignored until he re-emerges.
+		const bool inTunnel = (c < 0 || c >= Map::COLS);
+		if (!inTunnel) {
+			if (pacWant_ != Direction::NONE) {
+				sf::Vector2i wd = dirDelta(pacWant_);
+				if (!map_.isWall(c + wd.x, r + wd.y)) pacDir_ = pacWant_;
+			}
+			sf::Vector2i cd = dirDelta(pacDir_);
+			if (map_.isWall(c + cd.x, r + cd.y)) pacDir_ = Direction::NONE;
 		}
-		sf::Vector2i cd = dirDelta(pacDir_);
-		if (map_.isWall(c + cd.x, r + cd.y)) pacDir_ = Direction::NONE;
 
 		Map::Eat eaten = map_.consume(c, r);
 		if (eaten == Map::Eat::Dot) {
