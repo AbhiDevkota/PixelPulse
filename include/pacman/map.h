@@ -36,6 +36,7 @@ public:
 	char tileChar(int c, int r) const;
 	bool isWall(int c, int r) const;          // blocks pac-man (walls + ghost door)
 	bool isWallForGhost(int c, int r) const;  // ghosts may pass the door
+	bool isGhostHouse(int c, int r) const;    // ghost-house interior tiles
 
 	// Consume a pellet at (c, r) if present; updates the pellet count.
 	Eat consume(int c, int r);

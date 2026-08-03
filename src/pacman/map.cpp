@@ -112,6 +112,12 @@ bool Map::isWallForGhost(int c, int r) const {
 	return isWallChar(ch);
 }
 
+bool Map::isGhostHouse(int c, int r) const {
+	// Interior of the ghost house (see MapGenerator phase10): the tiles inside
+	// the walls, excluding the door tile (9, 8) and the spawn-marker tiles.
+	return c >= 7 && c <= 11 && r >= 9 && r <= 10;
+}
+
 Map::Eat Map::consume(int c, int r) {
 	if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return Eat::None;
 	char& t = grid_[r][c];

@@ -1043,7 +1043,7 @@ void Pacman::spawnFruit() {
 	std::vector<sf::Vector2f> candidates;
 	for (int r = 0; r < Map::ROWS; ++r) {
 		for (int c = 0; c < Map::COLS; ++c) {
-			if (map_.tileChar(c, r) == ' ')
+			if (map_.tileChar(c, r) == ' ' && !map_.isGhostHouse(c, r))
 				candidates.push_back({ float(c), float(r) });
 		}
 	}
